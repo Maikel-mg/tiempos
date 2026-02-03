@@ -1,0 +1,14 @@
+{
+  "name": "importador-tiempos",
+  "version": "1.0.0",
+  "description": "Importador de tiempos desde CSV a SQL Server",
+  "main": "generar-sql.js",
+  "scripts": {
+    "extract": "node extraer-tareas.js",
+    "generate": "node generar-sql.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["tiempos", "csv", "sql", "importador"],
+  "author": "",
+  "license": "MIT"
+}
