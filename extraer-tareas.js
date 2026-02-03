@@ -4,6 +4,56 @@ const { leerCSV } = require('./csv-utils');
 // Leer configuración
 const config = JSON.parse(fs.readFileSync('./config.json', 'utf8'));
 
+// Funciones de validación de configuración
+function validarUsuario(valor) {
+    if (!valor || typeof valor !== 'string' || valor.trim() === '') {
+        throw new Error("Config error: 'usuario' must be a non-empty string");
+    }
+}
+
+function validarTipoHora(valor) {
+    const num = parseInt(valor);
+    if (isNaN(num) || num <= 0) {
+        throw new Error("Config error: 'tipoHora' must be a positive integer");
+    }
+}
+
+function validarTeletrabajo(valor) {
+    const num = parseInt(valor);
+    if (num !== 0 && num !== 1) {
+        throw new Error("Config error: 'teletrabajo' must be 0 or 1");
+    }
+}
+
+function validarEncoding(valor) {
+    const validEncodings = ['utf8', 'utf-8', 'latin1', 'iso-8859-1', 'ascii', 'base64', 'hex'];
+    if (!valor || typeof valor !== 'string' || !validEncodings.includes(valor.toLowerCase())) {
+        throw new Error("Config error: 'encoding' must be a valid Node.js encoding (e.g., utf8, latin1)");
+    }
+}
+
+function validarArchivoTareas(valor) {
+    if (!valor || typeof valor !== 'string' || valor.trim() === '') {
+        throw new Error("Config error: 'archivoTareas' must be a non-empty string");
+    }
+}
+
+function validarConfig(config) {
+    validarUsuario(config.usuario);
+    validarTipoHora(config.tipoHora);
+    validarTeletrabajo(config.teletrabajo);
+    validarEncoding(config.encoding);
+    validarArchivoTareas(config.archivoTareas);
+}
+
+// Validar configuración inmediatamente después de cargar
+try {
+    validarConfig(config);
+} catch (error) {
+    console.error(`❌ ${error.message}`);
+    process.exit(1);
+}
+
 // Obtener nombre del archivo CSV de los argumentos
 const csvFile = process.argv[2];
 
