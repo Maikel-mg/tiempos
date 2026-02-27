@@ -175,12 +175,12 @@ export function Step2Tasks({
                     )}
 
                     {/* Tasks Table */}
-                    <ScrollArea className="h-[400px] border rounded-lg">
+                    <ScrollArea className="h-[500px] border rounded-lg">
                         <Table>
                             <TableHeader className="sticky top-0 bg-background z-10">
                                 <TableRow>
-                                    <TableHead className="w-[60%]">Nombre de Tarea</TableHead>
-                                    <TableHead className="w-[40%]">ID de Proceso</TableHead>
+                                    <TableHead className="min-w-[400px]">Nombre de Tarea</TableHead>
+                                    <TableHead className="w-[180px]">ID de Proceso</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -192,14 +192,14 @@ export function Step2Tasks({
                                     return (
                                         <TableRow key={index}>
                                             <TableCell className="font-medium">
-                                                <div className="flex items-center gap-2">
+                                                <div className="flex items-center gap-2 min-w-0">
                                                     {isValid ? (
                                                         <Check className="w-4 h-4 text-green-500 shrink-0" />
                                                     ) : (
                                                         <div className="w-4 h-4 rounded-full border-2 border-muted shrink-0" />
                                                     )}
                                                     <span 
-                                                        className="truncate max-w-[300px]" 
+                                                        className="truncate" 
                                                         title={task}
                                                     >
                                                         {task}
