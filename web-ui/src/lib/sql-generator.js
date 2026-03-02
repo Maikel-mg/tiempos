@@ -3,6 +3,34 @@
  * Generates SQL statements from CSV data and task mappings
  */
 import { decimalHorasAMinutos } from './csv-parser';
+import { formatToYYYYMMDD, getFirstDayOfMonthYYYYMMDD } from './utils';
+
+/**
+ * Genera SQL para creación de tarea
+ * @param {Object} params - Parámetros de la tarea
+ * @returns {string} SQL generado
+ */
+export function generateTaskSQL(params) {
+    const {
+        nombre,
+        fechaInicio,
+        fechaFin,
+        minutos,
+        usuario
+    } = params;
+
+    const fechaIniPrevista = formatToYYYYMMDD(fechaInicio);
+    const fechaFinPrevista = formatToYYYYMMDD(fechaFin);
+    const fechaEstimacion = getFirstDayOfMonthYYYYMMDD(fechaInicio);
+
+    return `DECLARE @pNombre NVARCHAR(MAX) = '${escapeSQL(nombre)}';
+DECLARE @pFechaIniPrevista VARCHAR(8) = '${fechaIniPrevista}';
+DECLARE @pFechaFinPrevista VARCHAR(8) = '${fechaFinPrevista}';
+DECLARE @pTiempoPrevisto INT = ${minutos};
+DECLARE @pTecnicoPrev INT = ${minutos};
+DECLARE @pFase NVARCHAR(MAX) = '${escapeSQL(usuario)}';
+DECLARE @pFechaEstimacion VARCHAR(8) = '${fechaEstimacion}';`;
+}
 
 /**
  * Valida formato de fecha (DD/MM/AAAA)

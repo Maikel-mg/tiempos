@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { ArrowRight, ArrowLeft, AlertCircle, Check, Search, Edit2, Eye } from 'lucide-react';
+import { ArrowRight, ArrowLeft, AlertCircle, Check, Search, Edit2, Eye, Database, Copy } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
@@ -10,6 +10,7 @@ import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { calculateHours } from '@/lib/utils';
 import { CSVPreviewModal } from './CSVPreviewModal';
+import { generateTaskSQL, copyToClipboard } from '@/lib/sql-generator';
 
 export function Step2Tasks({
     tasks,
@@ -23,12 +24,30 @@ export function Step2Tasks({
     mappedTaskCount,
     csvData,
     selectedRows,
-    setSelectedRows
+    setSelectedRows,
+    config
 }) {
     const [searchTerm, setSearchTerm] = useState('');
     const [editingId, setEditingId] = useState(null);
     const [localErrors, setLocalErrors] = useState({});
     const [previewOpen, setPreviewOpen] = useState(false);
+    const [copiedTask, setCopiedTask] = useState(null);
+
+    const handleCopyTaskSQL = async (task) => {
+        const sql = generateTaskSQL({
+            nombre: task.name,
+            fechaInicio: task.fechaInicio,
+            fechaFin: task.fechaFin,
+            minutos: task.totalMinutes || 0,
+            usuario: config.usuario
+        });
+        
+        const success = await copyToClipboard(sql);
+        if (success) {
+            setCopiedTask(task.name);
+            setTimeout(() => setCopiedTask(null), 2000);
+        }
+    };
 
   // Filter tasks based on search
   const filteredTasks = useMemo(() => {
@@ -240,6 +259,20 @@ export function Step2Tasks({
                             ${isValid ? 'border-green-500 focus-visible:ring-green-500' : ''}
                           `}
                         />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-primary"
+                          onClick={() => handleCopyTaskSQL(task)}
+                          title={copiedTask === task.name ? '¡SQL Copiado!' : 'Generar y copiar SQL de tarea'}
+                        >
+                          {copiedTask === task.name ? (
+                            <Check className="w-4 h-4 text-green-500" />
+                          ) : (
+                            <Database className="w-4 h-4" />
+                          )}
+                        </Button>
+
                         {isValid && (
                           <Check className="w-4 h-4 text-green-500" />
                         )}

@@ -89,6 +89,7 @@ function App() {
                         csvData={csvData}
                         selectedRows={selectedRows}
                         setSelectedRows={setSelectedRows}
+                        config={config}
                     />
                 );
             case 3:

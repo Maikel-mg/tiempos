@@ -125,12 +125,20 @@ export function extractUniqueTasks(rows, indices) {
       if (tarea) {
         const fechaInicioRaw = row[indices.fechaInicio]?.trim() || '';
         const fechaFinRaw = row[indices.fechaFin]?.trim() || '';
+        const duracionRaw = row[indices.duracionDecimal]?.trim() || '0';
+        let minutos = 0;
+        try {
+          minutos = decimalHorasAMinutos(duracionRaw);
+        } catch (e) {
+          // Ignore invalid duration for total calculation
+        }
 
         if (!tareasMap.has(tarea)) {
           tareasMap.set(tarea, {
             name: tarea,
             fechaInicio: fechaInicioRaw,
-            fechaFin: fechaFinRaw
+            fechaFin: fechaFinRaw,
+            totalMinutes: minutos
           });
         } else {
           const existing = tareasMap.get(tarea);
@@ -140,6 +148,7 @@ export function extractUniqueTasks(rows, indices) {
           if (fechaFinRaw && fechaFinRaw > existing.fechaFin) {
             existing.fechaFin = fechaFinRaw;
           }
+          existing.totalMinutes += minutos;
         }
       }
     }
