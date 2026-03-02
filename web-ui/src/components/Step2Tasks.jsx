@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { ArrowRight, ArrowLeft, AlertCircle, Check, Search, Edit2, Save } from 'lucide-react';
+import { ArrowRight, ArrowLeft, AlertCircle, Check, Search, Edit2, Eye } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { calculateHours } from '@/lib/utils';
+import { CSVPreviewModal } from './CSVPreviewModal';
 
 export function Step2Tasks({
     tasks,
@@ -18,19 +20,23 @@ export function Step2Tasks({
     isLoading,
     error,
     totalRows,
-    mappedTaskCount
+    mappedTaskCount,
+    csvData,
+    selectedRows,
+    setSelectedRows
 }) {
     const [searchTerm, setSearchTerm] = useState('');
     const [editingId, setEditingId] = useState(null);
     const [localErrors, setLocalErrors] = useState({});
+    const [previewOpen, setPreviewOpen] = useState(false);
 
-    // Filter tasks based on search
-    const filteredTasks = useMemo(() => {
-        if (!searchTerm) return tasks;
-        return tasks.filter(task => 
-            task.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-    }, [tasks, searchTerm]);
+  // Filter tasks based on search
+  const filteredTasks = useMemo(() => {
+    if (!searchTerm) return tasks;
+    return tasks.filter(task =>
+      task.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [tasks, searchTerm]);
 
     // Calculate progress
     const progress = tasks.length > 0 ? (mappedTaskCount / tasks.length) * 100 : 0;
@@ -65,28 +71,28 @@ export function Step2Tasks({
         }
     };
 
-    // Check if all tasks are valid
-    const allTasksValid = useMemo(() => {
-        if (tasks.length === 0) return false;
-        return tasks.every(task => {
-            const id = taskMapping[task];
-            return id && /^[1-9]\d*$/.test(id);
-        });
-    }, [tasks, taskMapping]);
+  // Check if all tasks are valid
+  const allTasksValid = useMemo(() => {
+    if (tasks.length === 0) return false;
+    return tasks.every(task => {
+      const id = taskMapping[task.name];
+      return id && /^[1-9]\d*$/.test(id);
+    });
+  }, [tasks, taskMapping]);
 
-    // Get validation errors for display
-    const validationErrors = useMemo(() => {
-        const errors = [];
-        tasks.forEach(task => {
-            const id = taskMapping[task];
-            if (!id || id.trim() === '') {
-                errors.push({ task: task.substring(0, 40) + (task.length > 40 ? '...' : ''), error: 'Sin ID' });
-            } else if (!/^[1-9]\d*$/.test(id)) {
-                errors.push({ task: task.substring(0, 40) + (task.length > 40 ? '...' : ''), error: 'ID inválido' });
-            }
-        });
-        return errors.slice(0, 5); // Show only first 5
-    }, [tasks, taskMapping]);
+  // Get validation errors for display
+  const validationErrors = useMemo(() => {
+    const errors = [];
+    tasks.forEach(task => {
+      const id = taskMapping[task.name];
+      if (!id || id.trim() === '') {
+        errors.push({ task: task.name.substring(0, 40) + (task.name.length > 40 ? '...' : ''), error: 'Sin ID' });
+      } else if (!/^[1-9]\d*$/.test(id)) {
+        errors.push({ task: task.name.substring(0, 40) + (task.name.length > 40 ? '...' : ''), error: 'ID inválido' });
+      }
+    });
+    return errors.slice(0, 5); // Show only first 5
+  }, [tasks, taskMapping]);
 
     return (
         <div className="space-y-6">
@@ -174,76 +180,97 @@ export function Step2Tasks({
                         </Alert>
                     )}
 
-                    {/* Tasks Table */}
-                    <ScrollArea className="h-[500px] border rounded-lg">
-                        <Table>
-                            <TableHeader className="sticky top-0 bg-background z-10">
-                                <TableRow>
-                                    <TableHead className="min-w-[400px]">Nombre de Tarea</TableHead>
-                                    <TableHead className="w-[180px]">ID de Proceso</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {filteredTasks.map((task, index) => {
-                                    const id = taskMapping[task] || '';
-                                    const hasError = localErrors[task];
-                                    const isValid = id && /^[1-9]\d*$/.test(id);
+{/* Tasks Table */}
+        <ScrollArea className="h-[500px] border rounded-lg">
+          <Table>
+            <TableHeader className="sticky top-0 bg-background z-10">
+              <TableRow>
+                <TableHead className="min-w-[300px]">Nombre de Tarea</TableHead>
+                <TableHead className="w-[120px]">Fecha Inicio</TableHead>
+                <TableHead className="w-[120px]">Fecha Fin</TableHead>
+                <TableHead className="w-[100px]">Horas</TableHead>
+                <TableHead className="w-[150px]">ID de Proceso</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredTasks.map((task, index) => {
+                const id = taskMapping[task.name] || '';
+                const hasError = localErrors[task.name];
+                const isValid = id && /^[1-9]\d*$/.test(id);
 
-                                    return (
-                                        <TableRow key={index}>
-                                            <TableCell className="font-medium">
-                                                <div className="flex items-center gap-2 min-w-0">
-                                                    {isValid ? (
-                                                        <Check className="w-4 h-4 text-green-500 shrink-0" />
-                                                    ) : (
-                                                        <div className="w-4 h-4 rounded-full border-2 border-muted shrink-0" />
-                                                    )}
-                                                    <span 
-                                                        className="truncate" 
-                                                        title={task}
-                                                    >
-                                                        {task}
-                                                    </span>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell>
-                                                <div className="flex items-center gap-2">
-                                                    <Input
-                                                        type="text"
-                                                        value={id}
-                                                        onChange={(e) => handleIdChange(task, e.target.value)}
-                                                        placeholder="Ej: 123"
-                                                        className={`
-                                                            w-24 text-center
-                                                            ${hasError ? 'border-destructive focus-visible:ring-destructive' : ''}
-                                                            ${isValid ? 'border-green-500 focus-visible:ring-green-500' : ''}
-                                                        `}
-                                                    />
-                                                    {isValid && (
-                                                        <Check className="w-4 h-4 text-green-500" />
-                                                    )}
-                                                    {hasError && (
-                                                        <AlertCircle className="w-4 h-4 text-destructive" />
-                                                    )}
-                                                </div>
-                                                {hasError && (
-                                                    <p className="text-xs text-destructive mt-1">
-                                                        {hasError}
-                                                    </p>
-                                                )}
-                                            </TableCell>
-                                        </TableRow>
-                                    );
-                                })}
-                            </TableBody>
-                        </Table>
-                    </ScrollArea>
+                return (
+                  <TableRow key={index}>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2 min-w-0">
+                        {isValid ? (
+                          <Check className="w-4 h-4 text-green-500 shrink-0" />
+                        ) : (
+                          <div className="w-4 h-4 rounded-full border-2 border-muted shrink-0" />
+                        )}
+                        <span
+                          className="truncate"
+                          title={task.name}
+                        >
+                          {task.name}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-sm">
+                      {task.fechaInicio || '-'}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-sm">
+                      {task.fechaFin || '-'}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-sm font-medium">
+                      {(() => {
+                        const hours = calculateHours(task.fechaInicio, task.fechaFin);
+                        return hours !== null ? `${hours}h` : '-';
+                      })()}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="text"
+                          value={id}
+                          onChange={(e) => handleIdChange(task.name, e.target.value)}
+                          placeholder="Ej: 123"
+                          className={`
+                            w-24 text-center
+                            ${hasError ? 'border-destructive focus-visible:ring-destructive' : ''}
+                            ${isValid ? 'border-green-500 focus-visible:ring-green-500' : ''}
+                          `}
+                        />
+                        {isValid && (
+                          <Check className="w-4 h-4 text-green-500" />
+                        )}
+                        {hasError && (
+                          <AlertCircle className="w-4 h-4 text-destructive" />
+                        )}
+                      </div>
+                      {hasError && (
+                        <p className="text-xs text-destructive mt-1">
+                          {hasError}
+                        </p>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </ScrollArea>
                 </CardContent>
                 <CardFooter className="flex justify-between">
-                    <Button variant="outline" onClick={onBack}>
-                        <ArrowLeft className="w-4 h-4 mr-2" />
-                        Volver
-                    </Button>
+                    <div className="flex gap-2">
+                        <Button variant="outline" onClick={onBack}>
+                            <ArrowLeft className="w-4 h-4 mr-2" />
+                            Volver
+                        </Button>
+                        <Button variant="outline" onClick={() => setPreviewOpen(true)}>
+                            <Eye className="w-4 h-4 mr-2" />
+                            Vista Previa CSV
+                        </Button>
+                    </div>
                     <Button 
                         onClick={onGenerateSQL} 
                         disabled={!allTasksValid || isLoading}
@@ -262,6 +289,14 @@ export function Step2Tasks({
                     </Button>
                 </CardFooter>
             </Card>
+
+            <CSVPreviewModal
+                open={previewOpen}
+                onOpenChange={setPreviewOpen}
+                csvData={csvData}
+                selectedProcessIds={selectedRows}
+                onSelectionChange={setSelectedRows}
+            />
         </div>
     );
 }

@@ -57,7 +57,9 @@ function App() {
         goToStep,
         updateConfig,
         resetWizard,
-        setError
+        setError,
+        selectedRows,
+        setSelectedRows
     } = useWizard();
 
     const renderStep = () => {
@@ -84,6 +86,9 @@ function App() {
                         error={error}
                         totalRows={totalRows}
                         mappedTaskCount={mappedTaskCount}
+                        csvData={csvData}
+                        selectedRows={selectedRows}
+                        setSelectedRows={setSelectedRows}
                     />
                 );
             case 3:

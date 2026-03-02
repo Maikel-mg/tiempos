@@ -23,6 +23,7 @@ export function useWizard() {
     const [taskMapping, setTaskMapping] = useState({});
     const [config, setConfig] = useState(DEFAULT_CONFIG);
     const [sqlResult, setSqlResult] = useState(null);
+    const [selectedRows, setSelectedRows] = useState([]);
 
     // Upload handlers
     const handleFileUpload = useCallback(async (uploadedFile) => {
@@ -42,20 +43,20 @@ export function useWizard() {
                 throw new Error(`Columnas requeridas no encontradas: ${missingColumns.join(', ')}`);
             }
 
-            const uniqueTasks = extractUniqueTasks(data.rows, indices.tarea);
-            
-            // Initialize task mapping with empty IDs
-            const initialMapping = {};
-            uniqueTasks.forEach(task => {
-                initialMapping[task] = '';
-            });
+    const uniqueTasks = extractUniqueTasks(data.rows, indices);
 
-            setFile(uploadedFile);
-            setCsvData(data);
-            setColumnIndices(indices);
-            setTasks(uniqueTasks);
-            setTaskMapping(initialMapping);
-            setStep(2);
+    // Initialize task mapping with empty IDs
+    const initialMapping = {};
+    uniqueTasks.forEach(task => {
+      initialMapping[task.name] = '';
+    });
+
+    setFile(uploadedFile);
+    setCsvData(data);
+    setColumnIndices(indices);
+    setTasks(uniqueTasks);
+    setTaskMapping(initialMapping);
+    setStep(2);
         } catch (err) {
             setError(err.message);
         } finally {
@@ -120,8 +121,15 @@ export function useWizard() {
                 numericMapping[task] = parseInt(id);
             });
 
+            // Filter rows if selection is active
+            let rowsToProcess = csvData.rows;
+            if (selectedRows.length > 0) {
+                const selectedSet = new Set(selectedRows.map(Number));
+                rowsToProcess = csvData.rows.filter((_, index) => selectedSet.has(index));
+            }
+
             const result = generateSQL({
-                rows: csvData.rows,
+                rows: rowsToProcess,
                 headers: csvData.headers,
                 taskMapping: numericMapping,
                 config,
@@ -135,7 +143,7 @@ export function useWizard() {
         } finally {
             setIsLoading(false);
         }
-    }, [csvData, taskMapping, config, columnIndices, validateTaskMapping]);
+    }, [csvData, taskMapping, config, columnIndices, validateTaskMapping, selectedRows]);
 
     // Navigation
     const goToStep = useCallback((targetStep) => {
@@ -147,6 +155,7 @@ export function useWizard() {
             setTaskMapping({});
             setSqlResult(null);
             setError(null);
+            setSelectedRows([]);
         } else if (targetStep === 2 && csvData) {
             setStep(2);
             setSqlResult(null);
@@ -175,6 +184,7 @@ export function useWizard() {
         setSqlResult(null);
         setError(null);
         setIsLoading(false);
+        setSelectedRows([]);
     }, []);
 
     return {
@@ -189,6 +199,7 @@ export function useWizard() {
         taskMapping,
         config,
         sqlResult,
+        selectedRows,
         
         // Computed
         totalRows: csvData?.rows?.length || 0,
@@ -203,6 +214,7 @@ export function useWizard() {
         goToStep,
         updateConfig,
         resetWizard,
-        setError
+        setError,
+        setSelectedRows
     };
 }

@@ -111,24 +111,41 @@ export function parseCSV(file, encoding = 'utf8') {
 }
 
 /**
- * Extrae tareas únicas del CSV
+ * Extrae tareas únicas del CSV con sus fechas teóricas de inicio y fin
  * @param {string[][]} rows - Filas del CSV
- * @param {number} tareaIndex - Índice de la columna Tarea
- * @returns {string[]} Tareas únicas
+ * @param {Object} indices - Índices de columnas del CSV (de findColumnIndices)
+ * @returns {Array<{name: string, fechaInicio: string, fechaFin: string}>} Tareas únicas con fechas
  */
-export function extractUniqueTasks(rows, tareaIndex) {
-    const tareas = new Set();
-    
-    for (const row of rows) {
-        if (row.length > tareaIndex) {
-            const tarea = row[tareaIndex]?.trim();
-            if (tarea) {
-                tareas.add(tarea);
-            }
+export function extractUniqueTasks(rows, indices) {
+  const tareasMap = new Map();
+
+  for (const row of rows) {
+    if (row.length > indices.tarea) {
+      const tarea = row[indices.tarea]?.trim();
+      if (tarea) {
+        const fechaInicioRaw = row[indices.fechaInicio]?.trim() || '';
+        const fechaFinRaw = row[indices.fechaFin]?.trim() || '';
+
+        if (!tareasMap.has(tarea)) {
+          tareasMap.set(tarea, {
+            name: tarea,
+            fechaInicio: fechaInicioRaw,
+            fechaFin: fechaFinRaw
+          });
+        } else {
+          const existing = tareasMap.get(tarea);
+          if (fechaInicioRaw && fechaInicioRaw < existing.fechaInicio) {
+            existing.fechaInicio = fechaInicioRaw;
+          }
+          if (fechaFinRaw && fechaFinRaw > existing.fechaFin) {
+            existing.fechaFin = fechaFinRaw;
+          }
         }
+      }
     }
-    
-    return Array.from(tareas).sort();
+  }
+
+  return Array.from(tareasMap.values()).sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /**
