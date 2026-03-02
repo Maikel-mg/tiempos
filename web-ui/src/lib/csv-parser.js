@@ -55,17 +55,31 @@ export function limpiarValor(valor) {
 }
 
 /**
- * Convierte horas decimales a minutos
- * @param {string|number} decimal - Valor en horas decimales (ej: "1,95")
+ * Convierte duración (decimal o HH:MM:SS) a minutos
+ * @param {string|number} valor - Valor de duración (ej: "0.25", "1,95" o "00:15:00")
  * @returns {number} Minutos enteros
  */
-export function decimalHorasAMinutos(decimal) {
-    if (!decimal) return 0;
-    const horas = parseFloat(decimal.toString().replace(',', '.'));
-    if (isNaN(horas) || horas < 0 || horas > 24) {
-        throw new Error(`Duración inválida: ${decimal}. Debe ser un número entre 0 y 24.`);
+export function decimalHorasAMinutos(valor) {
+    if (!valor) return 0;
+    const str = valor.toString().trim();
+
+    // Caso 1: Formato HH:MM:SS (o HH:MM)
+    if (str.includes(':')) {
+        const partes = str.split(':');
+        const horas = parseInt(partes[0]) || 0;
+        const minutos = parseInt(partes[1]) || 0;
+        const segundos = partes[2] ? parseInt(partes[2]) || 0 : 0;
+        
+        // Redondear minutos según segundos (si hay segundos >= 30, sumar 1 minuto)
+        return (horas * 60) + minutos + (segundos >= 30 ? 1 : 0);
     }
-    return Math.round(horas * 60);
+
+    // Caso 2: Formato decimal (ej: "1,25" o "1.25")
+    const horasDecimal = parseFloat(str.replace(',', '.'));
+    if (isNaN(horasDecimal) || horasDecimal < 0 || horasDecimal > 24) {
+        throw new Error(`Duración inválida: ${valor}. Debe ser un número entre 0 y 24 o formato HH:MM:SS.`);
+    }
+    return Math.round(horasDecimal * 60);
 }
 
 /**
@@ -181,10 +195,9 @@ export function findColumnIndices(headers) {
         horaInicio: headers.findIndex(h => normalizarHeader(h) === 'hora de inicio'),
         fechaFin: headers.findIndex(h => normalizarHeader(h) === 'fecha de finalizacion'),
         horaFin: headers.findIndex(h => normalizarHeader(h) === 'hora de finalizacion'),
-        duracionDecimal: headers.findIndex(h => {
-            const hNorm = normalizarHeader(h);
-            return hNorm === 'duracion (decimal)' || hNorm === 'duracion (h)';
-        }),
+        duracionDecimal: headers.findIndex(h => normalizarHeader(h) === 'duracion (decimal)') !== -1 
+            ? headers.findIndex(h => normalizarHeader(h) === 'duracion (decimal)')
+            : headers.findIndex(h => normalizarHeader(h) === 'duracion (h)'),
     };
     
     return indices;

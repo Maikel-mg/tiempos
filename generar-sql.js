@@ -121,10 +121,9 @@ const indices = {
     horaInicio: headers.findIndex(h => normalizarHeader(h) === 'hora de inicio'),
     fechaFin: headers.findIndex(h => normalizarHeader(h) === 'fecha de finalizacion'),
     horaFin: headers.findIndex(h => normalizarHeader(h) === 'hora de finalizacion'),
-    duracionDecimal: headers.findIndex(h => {
-        const hNorm = normalizarHeader(h);
-        return hNorm === 'duracion (decimal)' || hNorm === 'duracion (h)';
-    }),
+    duracionDecimal: headers.findIndex(h => normalizarHeader(h) === 'duracion (decimal)') !== -1 
+        ? headers.findIndex(h => normalizarHeader(h) === 'duracion (decimal)')
+        : headers.findIndex(h => normalizarHeader(h) === 'duracion (h)'),
 };
 
 // Verificar que existan las columnas necesarias
