@@ -8,6 +8,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 
+function isValidFileType(file) {
+    if (!file) return false;
+    return file.name.endsWith('.csv') || file.name.endsWith('.txt');
+}
+
 export function Step1Upload({ 
     onFileUpload, 
     isLoading, 
@@ -17,6 +22,7 @@ export function Step1Upload({
 }) {
     const [isDragOver, setIsDragOver] = useState(false);
     const [selectedFile, setSelectedFile] = useState(null);
+    const [fileError, setFileError] = useState(null);
 
     const handleDragOver = useCallback((e) => {
         e.preventDefault();
@@ -47,12 +53,24 @@ export function Step1Upload({
     const handleFileSelect = useCallback((e) => {
         const file = e.target.files?.[0];
         if (file) {
+            if (!isValidFileType(file)) {
+                setFileError('Tipo de archivo inválido. Solo se aceptan archivos .csv o .txt');
+                setSelectedFile(null);
+                e.target.value = '';
+                return;
+            }
+            setFileError(null);
             setSelectedFile(file);
         }
     }, []);
 
     const handleUpload = useCallback(() => {
         if (selectedFile) {
+            if (!isValidFileType(selectedFile)) {
+                setFileError('Tipo de archivo inválido. Solo se aceptan archivos .csv o .txt');
+                return;
+            }
+            setFileError(null);
             onFileUpload(selectedFile);
         }
     }, [selectedFile, onFileUpload]);
@@ -164,6 +182,15 @@ export function Step1Upload({
                     )}
 
                     {/* Error Alert */}
+                    {fileError && (
+                        <Alert variant="destructive">
+                            <AlertCircle className="w-4 h-4" />
+                            <AlertTitle>Error</AlertTitle>
+                            <AlertDescription>{fileError}</AlertDescription>
+                        </Alert>
+                    )}
+
+                    {/* Server Error Alert */}
                     {error && (
                         <Alert variant="destructive">
                             <AlertCircle className="w-4 h-4" />

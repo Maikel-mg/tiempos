@@ -204,7 +204,7 @@ export function Step2Tasks({
           <Table>
             <TableHeader className="sticky top-0 bg-background z-10">
               <TableRow>
-                <TableHead className="min-w-[300px]">Nombre de Tarea</TableHead>
+                <TableHead className="min-w-[400px]">Nombre de Tarea</TableHead>
                 <TableHead className="w-[120px]">Fecha Inicio</TableHead>
                 <TableHead className="w-[120px]">Fecha Fin</TableHead>
                 <TableHead className="w-[100px]">Horas</TableHead>
