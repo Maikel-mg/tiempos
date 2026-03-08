@@ -1,3 +1,7 @@
+## Purpose
+
+Enable users to preview, filter, search, and select specific CSV records before generating SQL, improving data verification and control over the import process.
+
 ## ADDED Requirements
 
 ### Requirement: User can preview CSV data before SQL generation

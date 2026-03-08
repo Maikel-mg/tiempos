@@ -1,3 +1,7 @@
+## Purpose
+
+Calculate and display task duration in hours based on start/end dates, using an 8-hour workday standard, enabling users to quickly assess effort.
+
 ## ADDED Requirements
 
 ### Requirement: Task hours display

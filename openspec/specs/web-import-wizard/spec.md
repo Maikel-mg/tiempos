@@ -25,13 +25,17 @@ El sistema SHALL permitir al usuario seleccionar un archivo CSV mediante arrastr
 - **AND** el sistema no avanza al paso 2
 
 ### Requirement: Wizard muestra tareas extraídas en tabla editable para asignar IDs
-El sistema SHALL mostrar una tabla editable con todas las tareas únicas extraídas del CSV, permitiendo al usuario asignar un ID numérico a cada tarea.
+El sistema SHALL mostrar una tabla editable con todas las tareas únicas extraídas del CSV, permitiendo al usuario asignar un ID numérico a cada tarea. La tabla SHALL tener un diseño espacioso que permita leer los nombres de tareas y fechas cómodamente.
 
 #### Scenario: Usuario visualiza tareas extraídas
 - **WHEN** el usuario llega al paso 2 del wizard
-- **THEN** el sistema muestra una tabla con columnas: "Tarea" (nombre), "ID Proceso" (campo editable), "Ocurrencias" (número de veces en CSV)
+- **THEN** el sistema muestra una tabla con columnas: "Tarea" (nombre), "Fecha Inicio" (primera aparicion), "Fecha Fin" (ultima aparicion), "ID Proceso" (campo editable)
 - **AND** el sistema muestra el número total de tareas únicas
 - **AND** el sistema muestra un indicador visual de qué tareas aún no tienen ID asignado
+- **AND** la columna "Fecha Inicio" muestra la fecha más antigua del campo "fecha de inicio" para cada tarea
+- **AND** la columna "Fecha Fin" muestra la fecha del campo "fecha de finalizacion" de la ultima ocurrencia de cada tarea
+- **AND** la columna de nombre de tarea tiene suficiente ancho para mostrar nombres largos sin truncamiento excesivo
+- **AND** el nombre de tarea truncado muestra tooltip con el nombre completo al pasar el mouse
 
 #### Scenario: Usuario asigna IDs a tareas
 - **WHEN** el usuario ingresa un número en el campo "ID Proceso" de una tarea
