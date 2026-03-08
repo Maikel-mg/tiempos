@@ -88,40 +88,50 @@ export function Step1Upload({
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    {/* Configuration */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-muted/50 rounded-lg">
-                        <div className="space-y-2">
-                            <Label htmlFor="usuario">Usuario</Label>
-                            <Input
-                                id="usuario"
-                                value={config.usuario}
-                                onChange={(e) => onUpdateConfig('usuario', e.target.value)}
-                                placeholder="Nombre de usuario"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="tipoHora">Tipo de Hora</Label>
-                            <Input
-                                id="tipoHora"
-                                type="number"
-                                value={config.tipoHora}
-                                onChange={(e) => onUpdateConfig('tipoHora', e.target.value)}
-                                placeholder="11"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="teletrabajo">Teletrabajo</Label>
-                            <select
-                                id="teletrabajo"
-                                value={config.teletrabajo}
-                                onChange={(e) => onUpdateConfig('teletrabajo', e.target.value)}
-                                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-                            >
-                                <option value="0">No</option>
-                                <option value="1">Sí</option>
-                            </select>
-                        </div>
-                    </div>
+            {/* Configuration */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-muted/50 rounded-lg">
+                <div className="space-y-2">
+                    <Label htmlFor="usuario">Usuario</Label>
+                    <Input
+                        id="usuario"
+                        value={config.usuario}
+                        onChange={(e) => onUpdateConfig('usuario', e.target.value)}
+                        placeholder="MG01"
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="fase">Fase (ID)</Label>
+                    <Input
+                        id="fase"
+                        type="number"
+                        value={config.fase}
+                        onChange={(e) => onUpdateConfig('fase', e.target.value)}
+                        placeholder="38653"
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="tipoHora">Tipo de Hora</Label>
+                    <Input
+                        id="tipoHora"
+                        type="number"
+                        value={config.tipoHora}
+                        onChange={(e) => onUpdateConfig('tipoHora', e.target.value)}
+                        placeholder="11"
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="teletrabajo">Teletrabajo</Label>
+                    <select
+                        id="teletrabajo"
+                        value={config.teletrabajo}
+                        onChange={(e) => onUpdateConfig('teletrabajo', e.target.value)}
+                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                    >
+                        <option value="0">No</option>
+                        <option value="1">Sí</option>
+                    </select>
+                </div>
+            </div>
 
                     <Separator />
 

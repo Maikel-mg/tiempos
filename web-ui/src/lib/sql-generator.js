@@ -6,7 +6,7 @@ import { decimalHorasAMinutos } from './csv-parser';
 import { formatToYYYYMMDD, getFirstDayOfMonthYYYYMMDD } from './utils';
 
 /**
- * Genera SQL para creación de tarea
+ * Genera SQL para creación de tarea/proceso
  * @param {Object} params - Parámetros de la tarea
  * @returns {string} SQL generado
  */
@@ -16,20 +16,63 @@ export function generateTaskSQL(params) {
         fechaInicio,
         fechaFin,
         minutos,
-        usuario
+        usuario,
+        fase = null,
+        cliente = 'ELECNOR',
+        tipoHora = 1,
+        presencial = 1,
+        disponible = 1
     } = params;
 
     const fechaIniPrevista = formatToYYYYMMDD(fechaInicio);
     const fechaFinPrevista = formatToYYYYMMDD(fechaFin);
     const fechaEstimacion = getFirstDayOfMonthYYYYMMDD(fechaInicio);
 
-    return `DECLARE @pNombre NVARCHAR(MAX) = '${escapeSQL(nombre)}';
-DECLARE @pFechaIniPrevista VARCHAR(8) = '${fechaIniPrevista}';
-DECLARE @pFechaFinPrevista VARCHAR(8) = '${fechaFinPrevista}';
-DECLARE @pTiempoPrevisto INT = ${minutos};
-DECLARE @pTecnicoPrev INT = ${minutos};
-DECLARE @pFase NVARCHAR(MAX) = '${escapeSQL(usuario)}';
-DECLARE @pFechaEstimacion VARCHAR(8) = '${fechaEstimacion}';`;
+    const faseValue = fase || usuario;
+
+    return `-- INSERT DE UN TAREA = PROCESO
+DECLARE @p38 VARCHAR(200)
+SET @p38 = NULL
+
+EXEC spNETTiempos_Procesos_Mantenimiento
+    @pAccion = 'I',
+    @pProceso = NULL,
+    @pNombre = '${escapeSQL(nombre)}',
+    @pFechaIniPrevista = '${fechaIniPrevista}',
+    @pFechaFinPrevista = '${fechaFinPrevista}',
+    @pFechaIniReal = NULL,
+    @pFechaFinReal = NULL,
+    @pTiempoPrevisto = ${minutos},
+    @pTecnicoPrev = ${minutos},
+    @pObservaciones = NULL,
+    @pRutaDOC = NULL,
+    @pTipoDeHora = ${tipoHora},
+    @pPresencial = ${presencial},
+    @pDisponible = ${disponible},
+    @pCosteEmpresa = 1,
+    @pFechaAviso = NULL,
+    @pHoraAviso = NULL,
+    @pUsuredAviso = NULL,
+    @pUsuredResp = 'BR00',
+    @pUsuredRespRev = 'BR00',
+    @pRecursos = NULL,
+    @pDiseño = 'N',
+    @pTecnicos = '${escapeSQL(usuario)}',
+    @pIdDpto = 5,
+    @pFase = ${faseValue},
+    @pComentarioOblig = 0,
+    @pCliente = '${escapeSQL(cliente)}',
+    @pIdDptoClte = NULL,
+    @pIdAplicacion = NULL,
+    @pFechaEstimacion = '${fechaEstimacion}',
+    @pTareaTecnica = 1,
+    @pObservacionEstExt = NULL,
+    @pHito = 0,
+    @pDesplazamientoPS = 0,
+    @pHerramienta = NULL,
+    @pProtegida = 0,
+    @pFaseAnterior = NULL,
+    @Resultado = @p38 OUTPUT`;
 }
 
 /**
@@ -250,10 +293,11 @@ export function formatSQLForHighlight(sql) {
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
-        .replace(/(exec|spNETTiempos_Alta)/gi, '<span class="text-purple-600 font-semibold">$1</span>')
+        .replace(/(exec|spNETTiempos_Alta|spNETTiempos_Procesos_Mantenimiento)/gi, '<span class="text-purple-600 font-semibold">$1</span>')
         .replace(/(@\w+)/g, '<span class="text-blue-600">$1</span>')
         .replace(/('[^']*')/g, '<span class="text-green-600">$1</span>')
         .replace(/(\d+)/g, '<span class="text-orange-600">$1</span>')
         .replace(/,/g, '<span class="text-gray-400">,</span>')
-        .replace(/GO/g, '<span class="text-purple-500 font-semibold">GO</span>');
+        .replace(/GO/g, '<span class="text-purple-500 font-semibold">GO</span>')
+        .replace(/(DECLARE|SET|NULL)/g, '<span class="text-purple-500 font-semibold">$1</span>');
 }

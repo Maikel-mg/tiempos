@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { FileSpreadsheet, CheckCircle2, Circle, Database } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -5,6 +6,7 @@ import { useWizard } from '@/hooks/useWizard';
 import { Step1Upload } from '@/components/Step1Upload';
 import { Step2Tasks } from '@/components/Step2Tasks';
 import { Step3Preview } from '@/components/Step3Preview';
+import { DBConnection } from '@/components/DBConnection';
 
 function StepIndicator({ currentStep, step, label, icon: Icon }) {
     const isActive = currentStep === step;
@@ -39,6 +41,13 @@ function StepIndicator({ currentStep, step, label, icon: Icon }) {
 }
 
 function App() {
+    const [dbConfig, setDbConfig] = useState({
+        server: '',
+        database: '',
+        username: '',
+        password: ''
+    });
+
     const {
         step,
         isLoading,
@@ -66,13 +75,19 @@ function App() {
         switch (step) {
             case 1:
                 return (
-                    <Step1Upload
-                        onFileUpload={handleFileUpload}
-                        isLoading={isLoading}
-                        error={error}
-                        config={config}
-                        onUpdateConfig={updateConfig}
-                    />
+                    <>
+                        <DBConnection 
+                            dbConfig={dbConfig} 
+                            onUpdateDbConfig={setDbConfig} 
+                        />
+                        <Step1Upload
+                            onFileUpload={handleFileUpload}
+                            isLoading={isLoading}
+                            error={error}
+                            config={config}
+                            onUpdateConfig={updateConfig}
+                        />
+                    </>
                 );
             case 2:
                 return (
@@ -90,6 +105,7 @@ function App() {
                         selectedRows={selectedRows}
                         setSelectedRows={setSelectedRows}
                         config={config}
+                        dbConfig={dbConfig}
                     />
                 );
             case 3:
@@ -99,6 +115,7 @@ function App() {
                         onBack={() => goToStep(2)}
                         onReset={resetWizard}
                         fileName={file?.name}
+                        dbConfig={dbConfig}
                     />
                 );
             default:

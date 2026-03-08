@@ -4,6 +4,7 @@ import { generateSQL } from '@/lib/sql-generator';
 
 const DEFAULT_CONFIG = {
     usuario: '',
+    fase: '',
     tipoHora: '11',
     teletrabajo: '0',
     encoding: 'utf8'

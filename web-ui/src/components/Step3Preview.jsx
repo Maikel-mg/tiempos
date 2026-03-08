@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, Copy, Download, Check, FileCode, AlertCircle, RefreshCcw } from 'lucide-react';
+import { ArrowLeft, Copy, Download, Check, FileCode, AlertCircle, RefreshCcw, Play, Loader2 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -8,15 +8,20 @@ import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { downloadSQL, formatSQLForHighlight } from '@/lib/sql-generator';
+import { SQLPreviewModal } from './SQLPreviewModal';
 
-export function Step3Preview({
-    sqlResult,
-    onBack,
-    onReset,
-    fileName
+export function Step3Preview({ 
+    sqlResult, 
+    onBack, 
+    onReset, 
+    fileName,
+    dbConfig
 }) {
     const [copied, setCopied] = useState(false);
     const [showRaw, setShowRaw] = useState(false);
+    const [sqlPreviewOpen, setSqlPreviewOpen] = useState(false);
+    const [isExecuting, setIsExecuting] = useState(false);
+    const [executeResult, setExecuteResult] = useState(null);
 
     const handleCopy = async () => {
         try {
@@ -31,6 +36,43 @@ export function Step3Preview({
     const handleDownload = () => {
         const outputName = fileName?.replace('.csv', '.sql').replace('.txt', '.sql') || 'tiempos.sql';
         downloadSQL(sqlResult.sql, outputName);
+    };
+
+    const handleExecuteBatchSQL = async () => {
+        if (!dbConfig.server || !dbConfig.database || !dbConfig.username) {
+            setExecuteResult({
+                success: false,
+                message: 'Configura la conexión a la base de datos primero'
+            });
+            return;
+        }
+
+        setIsExecuting(true);
+        setExecuteResult(null);
+
+        try {
+            const response = await fetch('http://localhost:3000/api/execute-sql', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    server: dbConfig.server,
+                    database: dbConfig.database,
+                    username: dbConfig.username,
+                    password: dbConfig.password,
+                    sqlStatements: sqlResult.statements
+                })
+            });
+
+            const data = await response.json();
+            setExecuteResult(data);
+        } catch (error) {
+            setExecuteResult({
+                success: false,
+                message: `Error: ${error.message}`
+            });
+        } finally {
+            setIsExecuting(false);
+        }
     };
 
     // Calculate stats
@@ -190,32 +232,59 @@ export function Step3Preview({
                             Nuevo archivo
                         </Button>
                     </div>
-                    <div className="flex gap-2">
-                        <Button
-                            variant="outline"
-                            onClick={handleCopy}
-                            disabled={copied}
-                        >
-                            {copied ? (
-                                <>
-                                    <Check className="w-4 h-4 mr-2" />
-                                    Copiado
-                                </>
-                            ) : (
-                                <>
-                                    <Copy className="w-4 h-4 mr-2" />
-                                    Copiar
-                                </>
-                            )}
-                        </Button>
-                        <Button onClick={handleDownload}>
-                            <Download className="w-4 h-4 mr-2" />
-                            Descargar .sql
-                        </Button>
-                    </div>
-                </CardFooter>
-            </Card>
-        </div>
+                <div className="flex gap-2">
+                    <Button
+                        variant="outline"
+                        onClick={handleCopy}
+                        disabled={copied}
+                    >
+                        {copied ? (
+                            <>
+                                <Check className="w-4 h-4 mr-2" />
+                                Copiado
+                            </>
+                        ) : (
+                            <>
+                                <Copy className="w-4 h-4 mr-2" />
+                                Copiar
+                            </>
+                        )}
+                    </Button>
+                    <Button
+                        variant="outline"
+                        onClick={handleExecuteBatchSQL}
+                        disabled={isExecuting}
+                    >
+                        {isExecuting ? (
+                            <>
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                Ejecutando...
+                            </>
+                        ) : (
+                            <>
+                                <Play className="w-4 h-4 mr-2" />
+                                Ejecutar en BD
+                            </>
+                        )}
+                    </Button>
+                    <Button onClick={handleDownload}>
+                        <Download className="w-4 h-4 mr-2" />
+                        Descargar .sql
+                    </Button>
+                </div>
+            </CardFooter>
+        </Card>
+
+        <SQLPreviewModal
+            open={sqlPreviewOpen}
+            onOpenChange={setSqlPreviewOpen}
+            sql={sqlResult.sql}
+            title="SQL Batch"
+            onExecute={handleExecuteBatchSQL}
+            isExecuting={isExecuting}
+            executeResult={executeResult}
+        />
+    </div>
     );
 }
 
