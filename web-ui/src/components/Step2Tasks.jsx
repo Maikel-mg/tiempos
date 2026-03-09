@@ -34,7 +34,7 @@ export function Step2Tasks({
     const [localErrors, setLocalErrors] = useState({});
     const [previewOpen, setPreviewOpen] = useState(false);
     const [sqlPreviewOpen, setSqlPreviewOpen] = useState(false);
-    const [selectedTaskSql, setSelectedTaskSql] = useState('');
+    const [selectedTaskData, setSelectedTaskData] = useState(null);
     const [selectedTaskName, setSelectedTaskName] = useState('');
     const [copiedTask, setCopiedTask] = useState(null);
     const [isExecuting, setIsExecuting] = useState(false);
@@ -58,21 +58,13 @@ export function Step2Tasks({
     };
 
     const handlePreviewTaskSQL = (task) => {
-        const sql = generateTaskSQL({
-            nombre: task.name,
-            fechaInicio: task.fechaInicio,
-            fechaFin: task.fechaFin,
-            minutos: task.totalMinutes || 0,
-            usuario: config.usuario,
-            fase: config.fase
-        });
-        setSelectedTaskSql(sql);
+        setSelectedTaskData(task);
         setSelectedTaskName(task.name);
         setExecuteResult(null);
         setSqlPreviewOpen(true);
     };
 
-    const handleExecuteSQL = async () => {
+    const handleExecuteSQL = async (sqlToExecute) => {
         if (!dbConfig.server || !dbConfig.database || !dbConfig.username) {
             setExecuteResult({
                 success: false,
@@ -93,7 +85,7 @@ export function Step2Tasks({
                     database: dbConfig.database,
                     username: dbConfig.username,
                     password: dbConfig.password,
-                    sqlStatements: [selectedTaskSql]
+                    sqlStatements: [sqlToExecute]
                 })
             });
 
@@ -394,7 +386,8 @@ export function Step2Tasks({
             <SQLPreviewModal
                 open={sqlPreviewOpen}
                 onOpenChange={setSqlPreviewOpen}
-                sql={selectedTaskSql}
+                taskData={selectedTaskData}
+                config={config}
                 title={`SQL: ${selectedTaskName}`}
                 onExecute={handleExecuteSQL}
                 isExecuting={isExecuting}
