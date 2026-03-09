@@ -54,6 +54,7 @@ function App() {
         error,
         file,
         csvData,
+        columnIndices,
         tasks,
         taskMapping,
         config,
@@ -116,6 +117,12 @@ function App() {
                         onReset={resetWizard}
                         fileName={file?.name}
                         dbConfig={dbConfig}
+                        csvData={csvData}
+                        selectedRows={selectedRows}
+                        setSelectedRows={setSelectedRows}
+                        config={config}
+                        taskMapping={taskMapping}
+                        columnIndices={columnIndices}
                     />
                 );
             default:

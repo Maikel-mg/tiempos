@@ -73,33 +73,40 @@ app.post('/api/execute-sql', async (req, res) => {
         }
     };
 
-    // Create connection pool if not exists
-    if (!pool) {
-      pool = new sql.ConnectionPool(config);
-      await pool.connect();
-    } else if (!pool.connected) {
-      await pool.connect();
-    }
+    // Close old pool if config changed (simplified for now: always reconnect or check config)
+    // For this specialized CLI tool, we'll create a new pool per batch execution to ensure clean state
+    const currentPool = new sql.ConnectionPool(config);
+    await currentPool.connect();
+    
+    try {
+      const results = [];
+      let totalRowsAffected = 0;
 
-    const results = [];
-    let totalRowsAffected = 0;
+      console.log(`Ejecutando ${sqlStatements.length} sentencias SQL...`);
+      if (sqlStatements.length > 0) {
+        console.log('Primera sentencia:', sqlStatements[0]);
+      }
 
-    for (const statement of sqlStatements) {
-      const result = await pool.request().query(statement);
-      results.push({
+      for (const statement of sqlStatements) {
+        const result = await currentPool.request().query(statement);
+        results.push({
+          success: true,
+          rowsAffected: result.rowsAffected[0] || 0
+        });
+        totalRowsAffected += result.rowsAffected[0] || 0;
+      }
+
+      res.json({
         success: true,
-        rowsAffected: result.rowsAffected[0] || 0
+        message: 'SQL executed successfully',
+        totalRowsAffected,
+        results
       });
-      totalRowsAffected += result.rowsAffected[0] || 0;
+    } finally {
+      await currentPool.close();
     }
-
-    res.json({
-      success: true,
-      message: 'SQL executed successfully',
-      totalRowsAffected,
-      results
-    });
   } catch (error) {
+    console.error('SQL Execution Error:', error.message);
     res.status(500).json({
       success: false,
       message: error.message,
