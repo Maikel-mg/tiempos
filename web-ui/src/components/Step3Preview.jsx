@@ -39,10 +39,12 @@ export function Step3Preview({
     const [sqlPreviewOpen, setSqlPreviewOpen] = useState(false);
     const [columnsPopoverOpen, setColumnsPopoverOpen] = useState(false);
 
-    const pageSize = 50;
-    const [isInitialized, setIsInitialized] = useState(false);
-    
-    const DEFAULT_HIDDEN_COLUMNS = ['Usuario', 'Grupo', 'Correo Electronico', 'Etiquetas', 'Facturable'];
+const pageSize = 50;
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [columnsLoaded, setColumnsLoaded] = useState(false);
+
+  const STORAGE_KEY = 'csv-import-hidden-columns';
+  const DEFAULT_HIDDEN_COLUMNS = ['Usuario', 'Grupo', 'Correo Electronico', 'Etiquetas', 'Facturable'];
     const [hiddenColumns, setHiddenColumns] = useState(new Set(DEFAULT_HIDDEN_COLUMNS));
     
     const allHeaders = csvData?.headers || [];
@@ -60,18 +62,63 @@ export function Step3Preview({
         });
     };
 
-    const showAllColumns = () => setHiddenColumns(new Set());
-    const hideAllColumns = () => setHiddenColumns(new Set(allHeaders));
+const showAllColumns = () => setHiddenColumns(new Set());
+  const hideAllColumns = () => setHiddenColumns(new Set(allHeaders));
 
-    useEffect(() => {
-        if (!csvData || isInitialized) return;
-        
-        const initialSelected = selectedRows.length > 0 
-            ? new Set(selectedRows.map(Number))
-            : new Set(csvData.rows.map((_, i) => i));
-        setLocalSelectedRows(initialSelected);
-        setIsInitialized(true);
-    }, [csvData, selectedRows]);
+  const loadHiddenColumnsFromStorage = useCallback((headers) => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (!stored) return new Set(DEFAULT_HIDDEN_COLUMNS);
+      
+      const parsed = JSON.parse(stored);
+      if (!Array.isArray(parsed)) return new Set(DEFAULT_HIDDEN_COLUMNS);
+      
+      const headersLower = headers.map(h => h.toLowerCase());
+      const validColumns = parsed.filter(col => {
+        const idx = headersLower.indexOf(col.toLowerCase());
+        return idx !== -1;
+      }).map(col => {
+        const idx = headersLower.indexOf(col.toLowerCase());
+        return headers[idx];
+      });
+      
+      return new Set(validColumns.length > 0 ? validColumns : DEFAULT_HIDDEN_COLUMNS);
+    } catch {
+      return new Set(DEFAULT_HIDDEN_COLUMNS);
+    }
+  }, []);
+
+  const saveHiddenColumnsToStorage = useCallback((columns) => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(columns)));
+    } catch {
+      // Silently fail if localStorage is not available
+    }
+  }, []);
+
+  useEffect(() => {
+    if (allHeaders.length > 0) {
+      const loaded = loadHiddenColumnsFromStorage(allHeaders);
+      setHiddenColumns(loaded);
+      setColumnsLoaded(true);
+    }
+  }, [allHeaders, loadHiddenColumnsFromStorage]);
+
+  useEffect(() => {
+    if (csvData && allHeaders.length > 0 && columnsLoaded) {
+      saveHiddenColumnsToStorage(hiddenColumns);
+    }
+  }, [hiddenColumns, csvData, allHeaders, columnsLoaded, saveHiddenColumnsToStorage]);
+
+  useEffect(() => {
+    if (!csvData || isInitialized) return;
+
+    const initialSelected = selectedRows.length > 0
+    ? new Set(selectedRows.map(Number))
+    : new Set(csvData.rows.map((_, i) => i));
+    setLocalSelectedRows(initialSelected);
+    setIsInitialized(true);
+  }, [csvData, selectedRows]);
 
     const rawRows = csvData?.rows || [];
 
