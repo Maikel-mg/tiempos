@@ -57,6 +57,7 @@ function App() {
         columnIndices,
         tasks,
         taskMapping,
+        suggestedTasks,
         config,
         sqlResult,
         totalRows,
@@ -95,6 +96,7 @@ function App() {
                     <Step2Tasks
                         tasks={tasks}
                         taskMapping={taskMapping}
+                        suggestedTasks={suggestedTasks}
                         onUpdateTaskId={updateTaskId}
                         onGenerateSQL={handleGenerateSQL}
                         onBack={() => goToStep(1)}

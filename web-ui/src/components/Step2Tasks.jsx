@@ -16,6 +16,7 @@ import { generateTaskSQL, copyToClipboard } from '@/lib/sql-generator';
 export function Step2Tasks({
     tasks,
     taskMapping,
+    suggestedTasks,
     onUpdateTaskId,
     onGenerateSQL,
     onBack,
@@ -299,37 +300,45 @@ export function Step2Tasks({
                       })()}
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="text"
-                          value={id}
-                          onChange={(e) => handleIdChange(task.name, e.target.value)}
-                          placeholder="Ej: 123"
-                          className={`
-                            w-24 text-center
-                            ${hasError ? 'border-destructive focus-visible:ring-destructive' : ''}
-                            ${isValid ? 'border-green-500 focus-visible:ring-green-500' : ''}
-                          `}
-                        />
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-primary"
-                          onClick={() => handlePreviewTaskSQL(task)}
-                          title={copiedTask === task.name ? '¡SQL Copiado!' : 'Vista previa SQL'}
-                        >
-                          {copiedTask === task.name ? (
-                            <Check className="w-4 h-4 text-green-500" />
-                          ) : (
-                            <Eye className="w-4 h-4" />
-                          )}
-                        </Button>
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="text"
+                            value={id}
+                            onChange={(e) => handleIdChange(task.name, e.target.value)}
+                            placeholder="Ej: 123"
+                            className={`
+                              w-24 text-center
+                              ${hasError ? 'border-destructive focus-visible:ring-destructive' : ''}
+                              ${isValid ? 'border-green-500 focus-visible:ring-green-500' : ''}
+                            `}
+                          />
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-primary"
+                            onClick={() => handlePreviewTaskSQL(task)}
+                            title={copiedTask === task.name ? '¡SQL Copiado!' : 'Vista previa SQL'}
+                          >
+                            {copiedTask === task.name ? (
+                              <Check className="w-4 h-4 text-green-500" />
+                            ) : (
+                              <Eye className="w-4 h-4" />
+                            )}
+                          </Button>
 
-                        {isValid && (
-                          <Check className="w-4 h-4 text-green-500" />
-                        )}
-                        {hasError && (
-                          <AlertCircle className="w-4 h-4 text-destructive" />
+                          {isValid && (
+                            <Check className="w-4 h-4 text-green-500" />
+                          )}
+                          {hasError && (
+                            <AlertCircle className="w-4 h-4 text-destructive" />
+                          )}
+                        </div>
+                        {suggestedTasks[task.name] && isValid && (
+                          <span className="text-xs text-muted-foreground flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
+                            Sugerido
+                          </span>
                         )}
                       </div>
                       {hasError && (

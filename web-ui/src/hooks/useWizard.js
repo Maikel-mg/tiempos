@@ -1,6 +1,7 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { parseCSV, findColumnIndices, validateRequiredColumns, extractUniqueTasks } from '@/lib/csv-parser';
 import { generateSQL } from '@/lib/sql-generator';
+import { loadMappings, saveMappings, findSuggestedMapping } from '@/lib/task-mapping-storage';
 
 const DEFAULT_CONFIG = {
   usuario: '',
@@ -8,6 +9,8 @@ const DEFAULT_CONFIG = {
   tipoHora: '11',
   encoding: 'utf8'
 };
+
+const PERSISTENT_MAPPINGS_KEY = 'wizard_persistent_mappings';
 
 export function useWizard() {
     // Wizard state
@@ -21,9 +24,28 @@ export function useWizard() {
     const [columnIndices, setColumnIndices] = useState(null);
     const [tasks, setTasks] = useState([]);
     const [taskMapping, setTaskMapping] = useState({});
+    const [suggestedTasks, setSuggestedTasks] = useState({});
     const [config, setConfig] = useState(DEFAULT_CONFIG);
     const [sqlResult, setSqlResult] = useState(null);
     const [selectedRows, setSelectedRows] = useState([]);
+
+    // Load persistent mappings on startup
+    useEffect(() => {
+        try {
+            const stored = sessionStorage.getItem(PERSISTENT_MAPPINGS_KEY);
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                Object.entries(parsed).forEach(([taskName, taskId]) => {
+                    if (taskId) {
+                        saveMappings({ [taskName]: taskId });
+                    }
+                });
+            }
+            sessionStorage.removeItem(PERSISTENT_MAPPINGS_KEY);
+        } catch (e) {
+            // Ignore errors
+        }
+    }, []);
 
     // Upload handlers
     const handleFileUpload = useCallback(async (uploadedFile) => {
@@ -45,10 +67,15 @@ export function useWizard() {
 
     const uniqueTasks = extractUniqueTasks(data.rows, indices);
 
-    // Initialize task mapping with empty IDs
+    // Initialize task mapping with suggestions from localStorage
     const initialMapping = {};
+    const suggested = {};
     uniqueTasks.forEach(task => {
-      initialMapping[task.name] = '';
+      const suggestedId = findSuggestedMapping(task.name);
+      initialMapping[task.name] = suggestedId || '';
+      if (suggestedId) {
+        suggested[task.name] = true;
+      }
     });
 
     setFile(uploadedFile);
@@ -56,6 +83,7 @@ export function useWizard() {
     setColumnIndices(indices);
     setTasks(uniqueTasks);
     setTaskMapping(initialMapping);
+    setSuggestedTasks(suggested);
     setStep(2);
         } catch (err) {
             setError(err.message);
@@ -70,6 +98,15 @@ export function useWizard() {
             ...prev,
             [taskName]: taskId
         }));
+        
+        // Persist to localStorage if valid
+        if (taskId && taskId.trim() !== '' && /^[1-9]\d*$/.test(taskId)) {
+            saveMappings({ [taskName]: taskId });
+            setSuggestedTasks(prev => ({
+                ...prev,
+                [taskName]: true
+            }));
+        }
     }, []);
 
     const validateTaskMapping = useCallback(() => {
@@ -197,6 +234,7 @@ export function useWizard() {
         columnIndices,
         tasks,
         taskMapping,
+        suggestedTasks,
         config,
         sqlResult,
         selectedRows,
