@@ -73,7 +73,7 @@ Los archivos generados estarán en la carpeta `dist/`.
 
 1. **Paso 1 - Subir CSV**: 
    - Arrastra tu archivo CSV o selecciónalo
-   - Configura usuario, tipo de hora y teletrabajo
+   - Configura usuario y tipo de hora
    - Haz clic en "Procesar Archivo"
 
 2. **Paso 2 - Asignar Tareas**:

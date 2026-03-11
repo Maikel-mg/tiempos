@@ -89,7 +89,7 @@ export function Step1Upload({
                 </CardHeader>
                 <CardContent className="space-y-4">
             {/* Configuration */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-muted/50 rounded-lg">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-muted/50 rounded-lg">
                 <div className="space-y-2">
                     <Label htmlFor="usuario">Usuario</Label>
                     <Input
@@ -116,22 +116,10 @@ export function Step1Upload({
                         type="number"
                         value={config.tipoHora}
                         onChange={(e) => onUpdateConfig('tipoHora', e.target.value)}
-                        placeholder="11"
-                    />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="teletrabajo">Teletrabajo</Label>
-                    <select
-                        id="teletrabajo"
-                        value={config.teletrabajo}
-                        onChange={(e) => onUpdateConfig('teletrabajo', e.target.value)}
-                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-                    >
-                        <option value="0">No</option>
-                        <option value="1">Sí</option>
-                    </select>
-                </div>
-            </div>
+placeholder="11"
+/>
+</div>
+</div>
 
                     <Separator />
 

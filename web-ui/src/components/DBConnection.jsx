@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Database, Server, User, Lock, Eye, EyeOff, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { Database, Server, User, Lock, Eye, EyeOff, CheckCircle, XCircle, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -21,36 +21,45 @@ function decryptPassword(encoded) {
 }
 
 export function DBConnection({ dbConfig, onUpdateDbConfig }) {
-    const [showPassword, setShowPassword] = useState(false);
-    const [isTesting, setIsTesting] = useState(false);
-    const [testResult, setTestResult] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
+  const [testResult, setTestResult] = useState(null);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [hasConfig, setHasConfig] = useState(false);
 
-    useEffect(() => {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) {
-            try {
-                const parsed = JSON.parse(saved);
-                onUpdateDbConfig({
-                    server: parsed.server || '',
-                    database: parsed.database || '',
-                    username: parsed.username || '',
-                    password: parsed.password ? decryptPassword(parsed.password) : ''
-                });
-            } catch (e) {
-                console.error('Failed to load saved DB config');
-            }
-        }
-    }, []);
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    const hasSavedConfig = !!saved;
+    setHasConfig(hasSavedConfig);
+    
+    // Set initial collapsed state: collapsed if config exists, expanded if not
+    setIsCollapsed(hasSavedConfig);
+    
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        onUpdateDbConfig({
+          server: parsed.server || '',
+          database: parsed.database || '',
+          username: parsed.username || '',
+          password: parsed.password ? decryptPassword(parsed.password) : ''
+        });
+      } catch (e) {
+        console.error('Failed to load saved DB config');
+      }
+    }
+  }, []);
 
-    const handleSave = () => {
-        const toSave = {
-            server: dbConfig.server,
-            database: dbConfig.database,
-            username: dbConfig.username,
-            password: dbConfig.password ? encryptPassword(dbConfig.password) : ''
-        };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+  const handleSave = () => {
+    const toSave = {
+      server: dbConfig.server,
+      database: dbConfig.database,
+      username: dbConfig.username,
+      password: dbConfig.password ? encryptPassword(dbConfig.password) : ''
     };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+    setHasConfig(true);
+  };
 
     const handleClear = () => {
         localStorage.removeItem(STORAGE_KEY);
@@ -61,6 +70,8 @@ export function DBConnection({ dbConfig, onUpdateDbConfig }) {
             password: ''
         });
         setTestResult(null);
+        setHasConfig(false);
+        setIsCollapsed(false); // Expand panel when config is cleared
     };
 
     const handleTestConnection = async () => {
@@ -104,16 +115,33 @@ export function DBConnection({ dbConfig, onUpdateDbConfig }) {
 
     return (
         <Card className="bg-muted/30">
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                    <Database className="w-4 h-4" />
-                    Conexión a Base de Datos
-                </CardTitle>
-                <CardDescription>
-                    Configura la conexión a SQL Server para ejecutar SQL directamente
-                </CardDescription>
+            <CardHeader className="cursor-pointer" onClick={() => setIsCollapsed(!isCollapsed)}>
+                <div className="flex justify-between items-center">
+                    <div>
+                        <CardTitle className="flex items-center gap-2 text-base">
+                            <Database className="w-4 h-4" />
+                            Conexión a Base de Datos
+                        </CardTitle>
+                        <CardDescription>
+                            Configura la conexión a SQL Server para ejecutar SQL directamente
+                        </CardDescription>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        {hasConfig && isCollapsed && (
+                            <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                                Configurado
+                            </span>
+                        )}
+                        {isCollapsed ? (
+                            <ChevronDown className="w-5 h-5" />
+                        ) : (
+                            <ChevronUp className="w-5 h-5" />
+                        )}
+                    </div>
+                </div>
             </CardHeader>
-            <CardContent className="space-y-4">
+            {!isCollapsed && (
+                <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <Label htmlFor="server">Servidor</Label>
@@ -234,7 +262,8 @@ export function DBConnection({ dbConfig, onUpdateDbConfig }) {
                         </AlertDescription>
                     </Alert>
                 )}
-            </CardContent>
+                </CardContent>
+            )}
         </Card>
     );
 }

@@ -144,17 +144,16 @@ export function validarIdProceso(id) {
  * @returns {string} SQL generado
  */
 export function generateSQLStatement(params) {
-    const {
-        usuario,
-        fechaInicio,
-        horaInicio,
-        horaFin,
-        minutos,
-        idProceso,
-        tipoHora,
-        teletrabajo,
-        descripcion
-    } = params;
+  const {
+    usuario,
+    fechaInicio,
+    horaInicio,
+    horaFin,
+    minutos,
+    idProceso,
+    tipoHora,
+    descripcion
+  } = params;
 
     return `SET DATEFORMAT dmy; exec spNETTiempos_Alta @Usured='${escapeSQL(usuario)}', @Fecha='${fechaInicio}', @HoraDesde='${horaInicio}', @HoraHasta='${horaFin}', @Minutos=${minutos}, @Proceso=${idProceso}, @pParteSalida=NULL, @pGastos=0, @pKms=0, @pTipoHora=${tipoHora}, @ClienteComercial=NULL, @Comentario='${escapeSQL(descripcion)}', @pCambio=NULL, @pTeleTrabajo=0, @ObservacionesCalidad=NULL, @Rapport=0, @RapportCheck=0, @VBPermisoUsured=NULL, @VBPermisoFechaHora=NULL, @ObservacionesPermiso=NULL, @Ticket=NULL, @EsTeleTrabajo=1, @pMarcajeIP_INI=0, @pMarcajeIP_FIN=0, @pObservacionesPseudoMarcaje=NULL, @pTiempoNoReconocido=0, @pObservacionesRegistroHorario=NULL`;
 }
@@ -220,17 +219,16 @@ export function generateSQL(params) {
             const horaFinValidada = validarHora(horaFin);
 
             // Generar SQL
-            const sql = generateSQLStatement({
-                usuario: config.usuario,
-                fechaInicio: fechaInicioValidada,
-                horaInicio: horaInicioValidada,
-                horaFin: horaFinValidada,
-                minutos,
-                idProceso,
-                tipoHora: parseInt(config.tipoHora) || 11,
-                teletrabajo: parseInt(config.teletrabajo) || 0,
-                descripcion
-            });
+const sql = generateSQLStatement({
+      usuario: config.usuario,
+      fechaInicio: fechaInicioValidada,
+      horaInicio: horaInicioValidada,
+      horaFin: horaFinValidada,
+      minutos,
+      idProceso,
+      tipoHora: parseInt(config.tipoHora) || 11,
+      descripcion
+    });
 
             sqlStatements.push(sql);
             processed++;
