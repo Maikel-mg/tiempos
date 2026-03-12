@@ -87,18 +87,31 @@ export function DBConnection({ dbConfig, onUpdateDbConfig }) {
         setTestResult(null);
 
         try {
-            const response = await fetch('http://localhost:3000/api/test-connection', {
-                method: 'POST',
+            // const response = await fetch('http://localhost:3000/api/test-connection', {
+            //     method: 'POST',
+            //     headers: { 'Content-Type': 'application/json' },
+            //     body: JSON.stringify({
+            //         server: dbConfig.server,
+            //         database: dbConfig.database,
+            //         username: dbConfig.username,
+            //         password: dbConfig.password
+            //     })
+            // });
+
+            const response = await fetch('http://localhost:3000/api/time-entries', {
+            // const response = await fetch('http://localhost:3000/api/get-workspace-id', {
+                method: 'GET',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    server: dbConfig.server,
-                    database: dbConfig.database,
-                    username: dbConfig.username,
-                    password: dbConfig.password
-                })
+                // body: JSON.stringify({
+                //     server: dbConfig.server,
+                //     database: dbConfig.database,
+                //     username: dbConfig.username,
+                //     pa       ssword: dbConfig.password
+                // })
             });
 
             const data = await response.json();
+            console.log(`TCL ~ handleTestConnection ~ response:`, response.data)
             setTestResult(data);
         } catch (error) {
             setTestResult({
