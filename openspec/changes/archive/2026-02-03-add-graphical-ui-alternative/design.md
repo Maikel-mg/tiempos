@@ -160,7 +160,7 @@ const [wizardState, setWizardState] = useState({
 
 1. **¿Dónde se hosteará la interfaz web?** 
    - Opción A: Como archivo estático que abren directamente (file://)
-   - Opción B: Servidor local via `npm run web` (localhost:3000)
+   - Opción B: Servidor local via `npm run web` (localhost:3001)
    - Opción C: Despliegue opcional en servidor web (Netlify, Vercel, etc.)
 
 2. **¿Se necesita soporte para múltiples archivos simultáneos?**
