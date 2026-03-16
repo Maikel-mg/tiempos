@@ -505,8 +505,18 @@ export function LiveTimeEntriesPage() {
                         </CardContent>
                     </Card>
                 ) : (
-                    <Card>
-                        <CardHeader>
+                    <div className="space-y-8">
+                        {/* Task Mapping Section */}
+                        <TaskMappingTable 
+                            entries={entries}
+                            taskMapping={taskMapping}
+                            onUpdateTaskId={handleUpdateTaskId}
+                            config={config}
+                            dbConfig={dbConfig}
+                        />
+
+                        <Card>
+                            <CardHeader>
                             <div className="flex flex-col gap-4">
                                 <div className="flex items-center justify-between">
                                     <CardTitle className="text-lg">
@@ -731,17 +741,6 @@ export function LiveTimeEntriesPage() {
                                 </div>
                             )}
 
-                            {/* Task Mapping Section */}
-                            {entries.length > 0 && (
-                                <TaskMappingTable 
-                                    entries={entries}
-                                    taskMapping={taskMapping}
-                                    onUpdateTaskId={handleUpdateTaskId}
-                                    config={config}
-                                    dbConfig={dbConfig}
-                                />
-                            )}
-
                             {/* SQL Preview Section */}
                             <Separator />
 
@@ -889,6 +888,7 @@ export function LiveTimeEntriesPage() {
                             </div>
                         </CardContent>
                     </Card>
+                </div>
                 )}
             </main>
         </div>
