@@ -299,3 +299,147 @@ export function formatSQLForHighlight(sql) {
         .replace(/GO/g, '<span class="text-purple-500 font-semibold">GO</span>')
         .replace(/(DECLARE|SET|NULL)/g, '<span class="text-purple-500 font-semibold">$1</span>');
 }
+
+/**
+ * Convierte duración ISO 8601 (PT1H30M) a minutos
+ * @param {string} isoDuration - Duración en formato ISO 8601
+ * @returns {number} Minutos
+ */
+export function parseISO8601DurationToMinutes(isoDuration) {
+    console.log(`TCL ~ parseISO8601DurationToMinutes ~ isoDuration:`, isoDuration)
+    if (!isoDuration) return 0;
+    console.log(`TCL ~ parseISO8601DurationToMinutes ~ !isoDuration:`, !isoDuration)
+    const regex = /PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/;
+    console.log(`TCL ~ parseISO8601DurationToMinutes ~ match:`, match)
+    const match = isoDuration.match(regex);
+    console.log(`TCL ~ parseISO8601DurationToMinutes ~ match:`, match)
+    if (!match) return 0;
+    
+    const hours = parseInt(match[1] || '0', 10);
+    const minutes = parseInt(match[2] || '0', 10);
+    const seconds = parseInt(match[3] || '0', 10);
+    
+    return hours * 60 + minutes + Math.ceil(seconds / 60);
+}
+
+/**
+ * Convierte fecha ISO a formato DD/MM/YYYY para SQL
+ * @param {string} isoDateString - Fecha en formato ISO
+ * @returns {string} Fecha en formato DD/MM/YYYY
+ */
+export function formatISOToSQLDate(isoDateString) {
+    if (!isoDateString) return '';
+    const date = new Date(isoDateString);
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+}
+
+/**
+ * Convierte fecha ISO a formato HH:MM:SS para SQL
+ * @param {string} isoDateString - Fecha en formato ISO
+ * @returns {string} Hora en formato HH:MM:SS
+ */
+export function formatISOToSQLTime(isoDateString) {
+    if (!isoDateString) return '';
+    const date = new Date(isoDateString);
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    const seconds = date.getSeconds().toString().padStart(2, '0');
+    return `${hours}:${minutes}:${seconds}`;
+}
+
+/**
+ * Adapta un objeto de Clockify al formato requerido por generateSQLStatement
+ * @param {Object} entry - Entrada de Clockify
+ * @param {Object} taskMapping - Mapeo de nombres de tarea a IDs
+ * @param {Object} config - Configuración (usuario, tipoHora)
+ * @returns {Object} Objeto adaptado
+ */
+export function adaptClockifyEntry(entry, taskMapping, config) {
+    const projectName = entry.project?.name || entry.projectId || '';
+    const taskName = entry.taskName || entry.task?.name || '';
+    const description = entry.description || '';
+    const timeInterval = entry.timeInterval || {};
+    const start = timeInterval.start;
+    const end = timeInterval.end;
+    
+    if (!taskName || !taskMapping[taskName]) {
+        throw new Error(`Tarea no encontrada en mapeo: "${taskName}"`);
+    }
+    
+    const idProceso = validarIdProceso(taskMapping[taskName]);
+    const minutos = typeof timeInterval.duration === 'string' 
+        ? parseISO8601DurationToMinutes(timeInterval.duration)
+        : Math.ceil((timeInterval.duration || 0) / 60);
+    const fechaInicio = formatISOToSQLDate(start);
+    const horaInicio = formatISOToSQLTime(start);
+    const fechaFin = formatISOToSQLDate(end);
+    const horaFin = formatISOToSQLTime(end);
+    
+    return {
+        usuario: config.usuario,
+        fechaInicio,
+        horaInicio,
+        horaFin,
+        minutos,
+        idProceso,
+        tipoHora: parseInt(config.tipoHora) || 11,
+        descripcion : description
+    };
+}
+
+/**
+ * Genera SQL desde objetos de Clockify
+ * @param {Object} params - Parámetros de generación
+ * @returns {Object} Resultado de la generación
+ */
+export function generateSQLFromObjects(params) {
+    const {
+        entries,
+        taskMapping,
+        config
+    } = params;
+        console.log(`TCL ~ generateSQLFromObjects ~ entries:`, entries)
+        console.log(`TCL ~ generateSQLFromObjects ~ taskMapping:`, taskMapping)
+
+    const sqlStatements = [];
+    const errors = [];
+    let processed = 0;
+
+    for (let i = 0; i < entries.length; i++) {
+        const entry = entries[i];
+        console.log(`TCL ~ generateSQLFromObjects ~ entry:`, entry)
+
+        try {
+            const adaptedParams = adaptClockifyEntry(entry, taskMapping, config);
+            console.log(`TCL ~ generateSQLFromObjects ~ adaptedParams:`, adaptedParams)
+            
+            if (!adaptedParams.fechaInicio || !adaptedParams.horaInicio) {
+                errors.push({
+                    index: i,
+                    message: 'Faltan datos de fecha/hora'
+                });
+                continue;
+            }
+
+            const sql = generateSQLStatement(adaptedParams);
+            sqlStatements.push(sql);
+            processed++;
+        } catch (error) {
+            errors.push({
+                index: i,
+                message: error.message
+            });
+        }
+    }
+
+    return {
+        sql: sqlStatements.join('\nGO\n'),
+        statements: sqlStatements,
+        processed,
+        errors,
+        total: entries.length
+    };
+}

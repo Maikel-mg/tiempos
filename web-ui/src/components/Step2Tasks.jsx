@@ -78,7 +78,7 @@ export function Step2Tasks({
         setExecuteResult(null);
 
         try {
-            const response = await fetch('http://localhost:3000/api/execute-sql', {
+            const response = await fetch('http://localhost:3001/api/execute-sql', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

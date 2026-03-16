@@ -98,7 +98,7 @@ export function DBConnection({ dbConfig, onUpdateDbConfig }) {
             //     })
             // });
 
-            const response = await fetch('http://localhost:3000/api/time-entries', {
+            const response = await fetch('http://localhost:3001/api/time-entries', {
             // const response = await fetch('http://localhost:3000/api/get-workspace-id', {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' },

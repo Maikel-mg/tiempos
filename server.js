@@ -3,14 +3,11 @@ import cors from 'cors';
 import sql from 'mssql';
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors());
 app.use(express.json());
-
-// Connection pool configuration
-let pool = null;
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Backend server is running' });
@@ -20,7 +17,6 @@ app.get('/api/health', (req, res) => {
 app.post('/api/test-connection', async (req, res) => {
   const { server, database, username, password } = req.body;
   
-  console.log(`TCL ~ process.env.CLOCKIFY_WORKSPACE_ID:`, process.env.CLOCKIFY_WORKSPACE_ID)
   try {
     const testConfig = {
       server,
@@ -143,7 +139,6 @@ app.get('/api/get-workspace-id', async (req, res) => {
         if (!response.ok) throw new Error('API Key inválida o error de conexión');
         
         const userData = await response.json();
-        console.log(`TCL ~ userData:`, userData)
         
         res.json({
             success: true,
@@ -162,8 +157,7 @@ app.get('/api/get-workspace-id', async (req, res) => {
 // Endpoint para obtener time entries
 app.get('/api/time-entries', async (req, res) => {
     try {
-        // const { startDate, endDate, userId } = req.query;
-        const { startDate, endDate, userId } = {startDate : '2026-03-01T00:00:00Z', endDate : '2026-03-12T00:00:00Z'};
+        const { startDate, endDate, userId } = req.query;
         console.log(`TCL ~ endDate:`, endDate)
         console.log(`TCL ~ startDate:`, startDate)
         
@@ -224,6 +218,152 @@ app.get('/api/time-entries', async (req, res) => {
             success: false,
             error: 'Error al obtener datos de Clockify',
             details: error.message
+        });
+    }
+});
+
+// POST /api/clockify/report
+app.post('/api/clockify/report', async (req, res) => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 20000); // 20s timeout
+
+    try {
+        const { startDate, endDate } = req.body;
+         let { onlyMe } = req.body;
+        
+        // 2. Forzar valor por defecto si es undefined o null
+        if (onlyMe === undefined || onlyMe === null) {
+            onlyMe = true;
+        }
+        console.log(`TCL ~ endDate :`, endDate)
+        console.log(`TCL ~ startDate:`, startDate)
+
+        // Validación de fechas
+        // const isValidDate = (d) => /^\d{4}-\d{2}-\d{2}$/.test(d);
+        
+        // if (!startDate || !isValidDate(startDate)) {
+        //     return res.status(400).json({
+        //         success: false,
+        //         error: 'startDate requerido en formato YYYY-MM-DD'
+        //     });
+        // }
+
+        // if (endDate && !isValidDate(endDate)) {
+        //     return res.status(400).json({
+        //         success: false,
+        //         error: 'endDate inválido. Use formato YYYY-MM-DD'
+        //     });
+        // }
+
+        const workspaceId = process.env.CLOCKIFY_WORKSPACE_ID?.trim();
+        if (!workspaceId || !/^[0-9a-f]{24}$/i.test(workspaceId)) {
+            return res.status(500).json({
+                success: false,
+                error: 'CLOCKIFY_WORKSPACE_ID inválido en .env'
+            });
+        }
+        
+        // 3. 🔑 OBTENER TU USER ID (necesario para Reports API)
+        const userResponse = await fetch('https://api.clockify.me/api/v1/user', {
+            headers: { 'X-Api-Key': process.env.CLOCKIFY_API_KEY }
+        });
+
+        if (!userResponse.ok) {
+            throw new Error('No se pudo obtener información del usuario de Clockify');
+        }
+
+        const userData = await userResponse.json();
+        const userId = userData.id;
+
+        if (!userId) {
+            throw new Error('No se pudo obtener el User ID de Clockify');
+        }
+
+        // 4. URL CORRECTA para Reports API
+        const url = `https://reports.api.clockify.me/v1/workspaces/${workspaceId}/reports/detailed`;
+
+        // 5. ✅ Payload con userIds (filtro obligatorio)
+        const payload = {
+            dateRangeStart: startDate,
+            dateRangeEnd: endDate || new Date().toISOString().split('T')[0],
+            hydrate: true,
+            page: 1,
+            'page-size': 100,
+             users: {
+                    ids: [userId],
+                    contains: "CONTAINS",
+                    status: "ALL"
+                },
+            detailedFilter: {
+                page: 1,
+                pageSize: 100,
+                sortColumn: "DATE",
+                // sortOrder: "DESCENDING"
+            } // ← FILTRO OBLIGATORIO CON TU USER ID
+        };
+
+        console.log('📊 Enviando reporte para usuario:', userId);
+
+
+
+        // Petición con fetch nativo
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'X-Api-Key': process.env.CLOCKIFY_API_KEY,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload),
+            signal: controller.signal
+        });
+        // console.log(`TCL ~ response:`, response.json())
+
+// // 🔍 DEBUG TOTAL - ver la respuesta RAW completa
+// const rawText = await response.text();
+// console.log('📥 Status:', response.status);
+// console.log('📥 Raw response:', rawText);
+
+// // Luego parsear
+// const json = JSON.parse(rawText);
+// console.log('📥 Keys en data:', Object.keys(json));
+// console.log('📥 data completa:', JSON.stringify(json, null, 2));
+
+        clearTimeout(timeout);
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            return res.status(response.status).json({
+                success: false,
+                error: errorData.message || `Error ${response.status} de Clockify`
+            });
+        }
+
+        const data = await response.json();
+        console.log(`TCL ~ data:`, data.timeentries)
+
+        // Respuesta limpia
+        res.json({
+            success: true,
+            count: data.timeentries?.length || 0,
+            data: data.timeentries || []
+        });
+
+    } catch (error) {
+        clearTimeout(timeout);
+        
+        console.error('Error en reporte:', error.message);
+
+        if (error.name === 'AbortError') {
+            return res.status(504).json({
+                success: false,
+                error: 'Timeout: La petición tardó demasiado'
+            });
+        }
+
+        res.status(500).json({
+            success: false,
+            error: 'Error interno al generar el reporte',
+            details: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
 });
