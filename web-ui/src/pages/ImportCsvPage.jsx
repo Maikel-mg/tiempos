@@ -4,7 +4,7 @@ import { FileSpreadsheet, CheckCircle2, Circle, Database, ArrowLeft } from 'luci
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
-import { useWizard } from '@/hooks/useWizard';
+import { useWizard } from '@/hooks/wizard/useWizard';
 import { Step1Upload } from '@/components/Step1Upload';
 import { Step2Tasks } from '@/components/Step2Tasks';
 import { Step3Preview } from '@/components/Step3Preview';
@@ -56,26 +56,20 @@ export function ImportCsvPage() {
         step,
         isLoading,
         error,
-        file,
-        csvData,
-        columnIndices,
-        tasks,
-        taskMapping,
-        suggestedTasks,
-        config,
-        sqlResult,
-        totalRows,
-        mappedTaskCount,
-        handleFileUpload,
-        updateTaskId,
-        handleGenerateSQL,
+        uploadFile,
+        setTaskId,
+        generateSQL,
         goToStep,
-        updateConfig,
-        resetWizard,
-        setError,
-        selectedRows,
-        setSelectedRows
+        reset,
+        totalRows,
+        uniqueTasks,
+        mappedTasks,
+        getTasks,
+        getSqlResult,
+        _raw
     } = useWizard();
+
+    const { config, updateConfig, selectedRows, setSelectedRows, csvData, file, sqlResult, columnIndices, taskMapping } = _raw;
 
     const renderStep = () => {
         switch (step) {
@@ -87,7 +81,7 @@ export function ImportCsvPage() {
                             onUpdateDbConfig={setDbConfig} 
                         />
                         <Step1Upload
-                            onFileUpload={handleFileUpload}
+                            onFileUpload={uploadFile}
                             isLoading={isLoading}
                             error={error}
                             config={config}
@@ -101,13 +95,13 @@ export function ImportCsvPage() {
                         tasks={tasks}
                         taskMapping={taskMapping}
                         suggestedTasks={suggestedTasks}
-                        onUpdateTaskId={updateTaskId}
-                        onGenerateSQL={handleGenerateSQL}
-                        onBack={() => goToStep(1)}
+                        onUpdateTaskId={setTaskId}
+                        onGenerateSQL={generateSQL}
+                        onBack={() => goToStep('upload')}
                         isLoading={isLoading}
                         error={error}
                         totalRows={totalRows}
-                        mappedTaskCount={mappedTaskCount}
+                        mappedTaskCount={mappedTasks}
                         csvData={csvData}
                         selectedRows={selectedRows}
                         setSelectedRows={setSelectedRows}
@@ -119,8 +113,8 @@ export function ImportCsvPage() {
                 return (
                     <Step3Preview
                         sqlResult={sqlResult}
-                        onBack={() => goToStep(2)}
-                        onReset={resetWizard}
+                        onBack={() => goToStep('mapping')}
+                        onReset={reset}
                         fileName={file?.name}
                         dbConfig={dbConfig}
                         csvData={csvData}
