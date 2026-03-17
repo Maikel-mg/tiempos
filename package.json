@@ -1,11 +1,9 @@
 {
   "name": "importador-tiempos",
   "version": "1.0.0",
-  "description": "Importador de tiempos desde CSV a SQL Server",
-  "main": "generar-sql.js",
+  "description": "Importador de tiempos desde CSV a SQL Server (Web UI)",
+  "main": "server.js",
   "scripts": {
-    "extract": "node extraer-tareas.js",
-    "generate": "node generar-sql.js",
     "web": "cd web-ui && npm run dev",
     "start": "node --env-file=.env server.js",
     "dev-backend": "node --watch server.js",

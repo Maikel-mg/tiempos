@@ -1,8 +1,0 @@
-{
-  "usuario": "MG01",
-  "teletrabajo": 1,
-  "tipoHora": 11,
-  "archivoTareas": "tareas_mapeo.json",
-  "formatoFecha": "DD/MM/YYYY",
-  "encoding": "utf8"
-}
