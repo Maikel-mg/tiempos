@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, ArrowLeft, RefreshCw, AlertCircle, Loader2, Search, X, CheckSquare, Square, MinusSquare, FileCode, Copy, Download, Play, ChevronDown, ChevronUp, Check } from 'lucide-react';
+import { Clock, ArrowLeft, RefreshCw, AlertCircle, Loader2, Search, X, CheckSquare, Square, MinusSquare, FileCode, Copy, Download, Play, ChevronDown, ChevronUp, Check, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -110,6 +110,11 @@ export function LiveTimeEntriesPage() {
     const [isExecuting, setIsExecuting] = useState(false);
     const [executeResult, setExecuteResult] = useState<any>(null);
     
+    // Validation state
+    const [isValidating, setIsValidating] = useState(false);
+    const [validatedEntries, setValidatedEntries] = useState<any[]>([]);
+    const [hideAlreadyCreated, setHideAlreadyCreated] = useState(false);
+    
     // Config from localStorage
     const [config, setConfig] = useState<ImportConfig>(DEFAULT_CONFIG);
     const [taskMapping, setTaskMapping] = useState<TaskMappings>({});
@@ -155,6 +160,41 @@ export function LiveTimeEntriesPage() {
         }
     }, [startDate]);
 
+    const fetchValidation = async (sDate: string, eDate: string) => {
+        console.log(`TCL ~ fetchValidation ~ sDate:`, sDate)
+        if (!dbConfig?.server || !dbConfig?.database || !dbConfig?.username) return;
+
+        setIsValidating(true);
+        try {
+            const response = await fetch('http://localhost:3001/api/validate-entries', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    server: dbConfig.server,
+                    database: dbConfig.database,
+                    username: dbConfig.username,
+                    password: dbConfig.password,
+                    startDate: sDate,
+                    endDate: eDate
+                })
+            });
+            console.log(`TCL ~ fetchValidation ~ response:`, response)
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success) {
+                    // Flatten data from all months
+                    const allData = data.results.flatMap((r: any) => r.data);
+                    setValidatedEntries(allData);
+                }
+            }
+        } catch (err) {
+            console.error('Error validating entries:', err);
+        } finally {
+            setIsValidating(false);
+        }
+    };
+
     const fetchReport = async () => {
         setLoading(true);
         setError(null);
@@ -178,6 +218,9 @@ export function LiveTimeEntriesPage() {
             setEntries(sortedEntries);
             setSelectedEntries(new Set());
             setSqlResult(null);
+
+            // Fetch validation
+            fetchValidation(startDate, endDate);
         } catch (err: any) {
             setError(err.message || 'Error al cargar los datos');
         } finally {
@@ -189,17 +232,46 @@ export function LiveTimeEntriesPage() {
         fetchReport();
     }, []);
 
+    const isAlreadyCreated = (entry: TimeEntry) => {
+        if (!validatedEntries.length) return false;
+        
+        const entryDate = new Date(entry.timeInterval.start);
+        const entryDay = entryDate.getDate();
+        const entryMonth = entryDate.getMonth() + 1;
+        const entryYear = entryDate.getFullYear();
+        const entryStart = formatTimeHHMMSS(entry.timeInterval.start).slice(0, 5);
+        const entryEnd = formatTimeHHMMSS(entry.timeInterval.end).slice(0, 5);
+
+        return validatedEntries.some(v => {
+            const vDate = new Date(v.Fecha);
+            const vStart = v.Desde; // SP format is 'HH:MM'
+            const vEnd = v.Hasta;   // SP format is 'HH:MM'
+            
+            return vDate.getDate() === entryDay && 
+                   (vDate.getMonth() + 1) === entryMonth && 
+                   vDate.getFullYear() === entryYear &&
+                   vStart === entryStart &&
+                   vEnd === entryEnd;
+        });
+    };
+
     const filteredEntries = useMemo(() => {
-        if (!searchTerm) return entries;
+        let result = entries;
+
+        if (hideAlreadyCreated) {
+            result = result.filter(entry => !isAlreadyCreated(entry));
+        }
+
+        if (!searchTerm) return result;
         const lowerSearch = searchTerm.toLowerCase();
-        return entries.filter(entry => 
+        return result.filter(entry => 
             (entry.description || '').toLowerCase().includes(lowerSearch) ||
             (entry.project?.name || '').toLowerCase().includes(lowerSearch) ||
             (entry.projectId || '').toLowerCase().includes(lowerSearch) ||
             (entry.task?.name || '').toLowerCase().includes(lowerSearch) ||
             (entry.taskName || '').toLowerCase().includes(lowerSearch)
         );
-    }, [entries, searchTerm]);
+    }, [entries, searchTerm, hideAlreadyCreated, validatedEntries]);
 
     const sortedEntries = useMemo(() => {
         return [...filteredEntries].sort((a, b) => {
@@ -275,7 +347,9 @@ export function LiveTimeEntriesPage() {
     };
 
     const handleSelectAll = () => {
-        const allIds = paginatedEntries.map(e => getEntryUniqueId(e));
+        const allIds = paginatedEntries
+            .filter(e => !isAlreadyCreated(e))
+            .map(e => getEntryUniqueId(e));
         const newSelected = new Set([...selectedEntries, ...allIds]);
         setSelectedEntries(newSelected);
     };
@@ -288,8 +362,10 @@ export function LiveTimeEntriesPage() {
     };
 
     const isRowSelected = (entryId: string) => selectedEntries.has(entryId);
-    const isAllInPageSelected = paginatedEntries.length > 0 && paginatedEntries.every(e => selectedEntries.has(getEntryUniqueId(e)));
-    const isSomeInPageSelected = paginatedEntries.some(e => selectedEntries.has(getEntryUniqueId(e))) && !isAllInPageSelected;
+    
+    const selectableInPage = paginatedEntries.filter(e => !isAlreadyCreated(e));
+    const isAllInPageSelected = selectableInPage.length > 0 && selectableInPage.every(e => selectedEntries.has(getEntryUniqueId(e)));
+    const isSomeInPageSelected = selectableInPage.some(e => selectedEntries.has(getEntryUniqueId(e))) && !isAllInPageSelected;
 
     // Handle task ID update
     const handleUpdateTaskId = useCallback((taskName: string, taskId: string) => {
@@ -423,20 +499,26 @@ export function LiveTimeEntriesPage() {
                                 </p>
                             </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                            <Badge variant="secondary" className="mr-2">
-                                {selectedEntries.size} seleccionadas
-                            </Badge>
-                            <Button 
-                                variant="outline" 
-                                size="sm" 
-                                onClick={fetchReport}
-                                disabled={loading}
-                            >
-                                <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                                Actualizar
-                            </Button>
-                        </div>
+                             <div className="flex items-center gap-2">
+                                <Badge variant="secondary" className="mr-2">
+                                    {selectedEntries.size} seleccionadas
+                                </Badge>
+                                {isValidating && (
+                                    <Badge variant="outline" className="animate-pulse flex items-center gap-1 border-blue-200 text-blue-600">
+                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                        Validando...
+                                    </Badge>
+                                )}
+                                <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    onClick={fetchReport}
+                                    disabled={loading}
+                                >
+                                    <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                                    Actualizar
+                                </Button>
+                            </div>
                     </div>
                 </div>
             </header>
@@ -551,6 +633,17 @@ export function LiveTimeEntriesPage() {
                                         <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                                         Aplicar filtro
                                     </Button>
+                                    <div className="flex items-center gap-2 ml-4">
+                                        <Button
+                                            variant={hideAlreadyCreated ? "secondary" : "outline"}
+                                            size="sm"
+                                            onClick={() => setHideAlreadyCreated(!hideAlreadyCreated)}
+                                            className="flex items-center gap-2"
+                                        >
+                                            {hideAlreadyCreated ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                            {hideAlreadyCreated ? "Mostrando pendientes" : "Ocultar ya creadas"}
+                                        </Button>
+                                    </div>
                                 </div>
                             </div>
                         </CardHeader>
@@ -637,10 +730,21 @@ export function LiveTimeEntriesPage() {
                                     <TableBody>
                                         {paginatedEntries.map((entry) => {
                                             const durationSeconds = typeof entry.timeInterval?.duration === 'number' ? entry.timeInterval.duration : parseISO8601Duration(entry.timeInterval?.duration);
+                                            const isCreated = isAlreadyCreated(entry);
                                             return (
-                                            <TableRow key={getEntryUniqueId(entry)} className={isRowSelected(getEntryUniqueId(entry)) ? 'bg-green-50' : ''}>
+                                            <TableRow 
+                                                key={getEntryUniqueId(entry)} 
+                                                className={`
+                                                    ${isRowSelected(getEntryUniqueId(entry)) ? 'bg-green-50' : ''}
+                                                    ${isCreated ? 'opacity-60 bg-muted/20' : ''}
+                                                `}
+                                            >
                                                 <TableCell className="w-12">
-                                                    {isRowSelected(getEntryUniqueId(entry)) ? (
+                                                    {isCreated ? (
+                                                        <div className="flex items-center justify-center">
+                                                            <CheckCircle2 className="w-4 h-4 text-green-600" />
+                                                        </div>
+                                                    ) : isRowSelected(getEntryUniqueId(entry)) ? (
                                                         <CheckSquare 
                                                             className="w-4 h-4 cursor-pointer text-green-600" 
                                                             onClick={() => handleRowSelect(getEntryUniqueId(entry), false)} 
@@ -653,7 +757,9 @@ export function LiveTimeEntriesPage() {
                                                     )}
                                                 </TableCell>
                                                 <TableCell className="whitespace-nowrap">
-                                                    {formatDateDDMMYYYY(entry.timeInterval?.start)}
+                                                    <div className="flex items-center gap-2">
+                                                        {formatDateDDMMYYYY(entry.timeInterval?.start)}
+                                                    </div>
                                                 </TableCell>
                                                 <TableCell className="whitespace-nowrap font-mono">
                                                     {formatTimeHHMMSS(entry.timeInterval?.start)}

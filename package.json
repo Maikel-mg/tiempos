@@ -6,7 +6,7 @@
   "scripts": {
     "web": "cd web-ui && npm run dev",
     "start": "node --env-file=.env dist/server.js",
-    "dev-backend": "tsx watch server.ts",
+    "dev-backend": "tsx watch --env-file .env server.ts",
     "build:backend": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

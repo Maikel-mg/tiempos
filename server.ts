@@ -226,7 +226,8 @@ app.get('/api/time-entries', async (req: Request, res: Response) => {
 });
 
 app.post('/api/clockify/report', async (req: Request, res: Response) => {
-    const controller = new AbortController();
+  const controller = new AbortController();
+  console.log(`TCL ~ Request:`, Request)
     const timeout = setTimeout(() => controller.abort(), 20000);
 
     try {
@@ -323,6 +324,71 @@ app.post('/api/clockify/report', async (req: Request, res: Response) => {
             details: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
+});
+
+
+interface ValidateEntriesParams extends DbConnectionParams {
+  startDate: string; // YYYY-MM-DD
+  endDate: string;   // YYYY-MM-DD
+}
+
+app.post('/api/validate-entries', async (req: Request, res: Response) => {
+  const { server, database, username, password, startDate, endDate } = req.body as ValidateEntriesParams;
+  console.log(`TCL ~ validate-entries request:`, { startDate, endDate, hasServer: !!server });
+
+  if (!startDate || !endDate) {
+      return res.status(400).json({ success: false, message: 'startDate and endDate are required' });
+  }
+
+  // Helper to generate Year/Month pairs
+  const getYearMonthPairs = (start: string, end: string) => {
+    const pairs = [];
+    let current = new Date(start);
+    const stop = new Date(end);
+    
+    while (current <= stop) {
+        pairs.push({ year: current.getFullYear(), month: current.getMonth() + 1 });
+        current.setMonth(current.getMonth() + 1);
+    }
+    return pairs;
+  };
+
+  try {
+    const config: sql.config = {
+        server,
+        database,
+        user: username,
+        password,
+        options: { encrypt: true, trustServerCertificate: true }
+    };
+
+    const currentPool = new sql.ConnectionPool(config);
+    await currentPool.connect();
+    
+    try {
+      const pairs = getYearMonthPairs(startDate, endDate);
+      const allResults: any[] = [];
+
+      for (const pair of pairs) {
+        const query = `EXEC spNETTiempos_ListaImputaciones @pUsured='MG01', @pAnio=${pair.year}, @pMes=${pair.month}, @pDia=NULL, @pOrder=' ORDER BY TC.Fecha DESC, CONVERT(char(5), TL.[Desde Hora], 108)', @pWhere=NULL`;
+        console.log(`TCL ~ query:`, query)
+        
+        const result = await currentPool.request().query(query);
+        allResults.push({
+            year: pair.year,
+            month: pair.month,
+            data: result.recordset
+        });
+      }
+
+      res.json({ success: true, results: allResults });
+    } finally {
+      await currentPool.close();
+    }
+  } catch (error: any) {
+    console.error('Validation Error:', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
 });
 
 app.listen(PORT, () => {
