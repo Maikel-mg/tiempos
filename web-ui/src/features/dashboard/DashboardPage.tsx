@@ -8,6 +8,7 @@ import { useAggregatedData } from './hooks/useAggregatedData';
 import { PeriodSelector } from './components/PeriodSelector';
 import { SummaryCards } from './components/SummaryCards';
 import { TaskBreakdownTable } from './components/TaskBreakdownTable';
+import { DayGroupedEntries } from './components/DayGroupedEntries';
 import type { PeriodType, DateRange } from './types';
 import type { TimeEntry } from '@/lib/types';
 
@@ -149,6 +150,7 @@ export function DashboardPage() {
               entriesCount={summary.entriesCount}
               avgPerDaySeconds={summary.avgPerDaySeconds}
             />
+            <DayGroupedEntries entries={entries} />
             <TaskBreakdownTable tasks={summary.tasksBreakdown} />
           </>
         )}
