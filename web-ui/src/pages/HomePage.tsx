@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { FileSpreadsheet, Clock, ArrowRight } from 'lucide-react';
+import { FileSpreadsheet, Clock, ArrowRight, LayoutDashboard } from 'lucide-react';
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
@@ -36,6 +36,30 @@ export function HomePage() {
                     </div>
 
                     <div className="grid md:grid-cols-2 gap-6">
+                        <Card className="hover:shadow-lg transition-shadow cursor-pointer group border-2 border-transparent hover:border-primary">
+                            <CardHeader>
+                                <div className="flex items-center gap-3 mb-2">
+                                    <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
+                <LayoutDashboard className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+
+                                    </div>
+                                    <CardTitle>Dashboard</CardTitle>
+                                </div>
+                                <CardDescription>
+                                    Información sobre tus tiempos por periodos
+                                </CardDescription>
+                            </CardHeader>
+                            <CardFooter>
+                                <Button 
+                                    className="w-full group-hover:bg-primary/90 transition-colors"
+                                    onClick={() => navigate('/dashboard')}
+                                >
+                                    Ver estadísticas
+                                    <ArrowRight className="ml-2 h-4 w-4" />
+                                </Button>
+                            </CardFooter>
+                        </Card>
+                       
                         <Card className="hover:shadow-lg transition-shadow cursor-pointer group border-2 border-transparent hover:border-primary">
                             <CardHeader>
                                 <div className="flex items-center gap-3 mb-2">
