@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import type { ParsedData } from '@/lib/csv-parser';
+import type { ParsedData } from '../services/csv-parser';
 
 export interface CSVPreviewModalProps {
   open: boolean;

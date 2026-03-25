@@ -1,7 +1,7 @@
 import { renderHook, act } from '@testing-library/react';
-import { useWizard } from '../wizard/useWizard';
+import { useImportWizard } from '../hooks/use-import-wizard';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { CSVParserPort, TaskStoragePort, SQLGeneratorPort, SQLResult } from '../wizard/ports';
+import type { CSVParserPort, TaskStoragePort, SQLGeneratorPort, SQLResult } from '../ports';
 
 describe('useWizard Actions', () => {
   let mockCsvParser: CSVParserPort;
@@ -28,7 +28,7 @@ describe('useWizard Actions', () => {
   });
 
   it('initializes with step 1', () => {
-    const { result } = renderHook(() => useWizard({ adapters }));
+    const { result } = renderHook(() => useImportWizard({ adapters }));
     expect(result.current.step).toBe(1);
     expect(result.current.isLoading).toBe(false);
   });
@@ -42,7 +42,7 @@ describe('useWizard Actions', () => {
     });
     (mockTaskStorage.loadSuggestedMapping as any).mockReturnValue('123');
 
-    const { result } = renderHook(() => useWizard({ adapters }));
+    const { result } = renderHook(() => useImportWizard({ adapters }));
 
     await act(async () => {
       await result.current.uploadFile(mockFile);
@@ -56,7 +56,7 @@ describe('useWizard Actions', () => {
   });
 
   it('setTaskId updates mapping and persists', async () => {
-    const { result } = renderHook(() => useWizard({ adapters }));
+    const { result } = renderHook(() => useImportWizard({ adapters }));
 
     act(() => {
       result.current.setTaskId('Task1', '456');
@@ -82,7 +82,7 @@ describe('useWizard Actions', () => {
       total: 1
     } as SQLResult);
 
-    const { result } = renderHook(() => useWizard({ adapters }));
+    const { result } = renderHook(() => useImportWizard({ adapters }));
 
     await act(async () => {
       await result.current.uploadFile(mockFile);
@@ -101,7 +101,7 @@ describe('useWizard Actions', () => {
   });
 
   it('reset clears state', async () => {
-    const { result } = renderHook(() => useWizard({ adapters }));
+    const { result } = renderHook(() => useImportWizard({ adapters }));
 
     // Manually set some state
     act(() => {

@@ -1,7 +1,7 @@
 import { renderHook, act } from '@testing-library/react';
-import { useWizard } from '../wizard/useWizard';
+import { useImportWizard } from '../hooks/use-import-wizard';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { CSVParserPort } from '../wizard/ports';
+import type { CSVParserPort } from '../ports';
 
 describe('useWizard Accessors', () => {
   let mockCsvParser: CSVParserPort;
@@ -23,7 +23,7 @@ describe('useWizard Accessors', () => {
       separador: ','
     });
 
-    const { result } = renderHook(() => useWizard({ adapters }));
+    const { result } = renderHook(() => useImportWizard({ adapters }));
 
     await act(async () => {
       await result.current.uploadFile(new File([], 'test.csv'));

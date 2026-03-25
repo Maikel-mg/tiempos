@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
-import { findColumnIndices, validateRequiredColumns, extractUniqueTasks, type CSVIndices, type ParsedData, type UniqueTask } from '@/lib/csv-parser';
+import { findColumnIndices, validateRequiredColumns, extractUniqueTasks, type CSVIndices, type ParsedData, type UniqueTask } from '../services/csv-parser';
 import { CSVParserAdapter, TaskStorageAdapter, SQLGeneratorAdapter } from '../adapters';
 import type { CSVParserPort, TaskStoragePort, SQLGeneratorPort, SQLResult, ImportConfigPort } from '../ports';
 
@@ -212,6 +212,18 @@ export function useImportWizard({ initialConfig, adapters = DEFAULT_ADAPTERS }: 
     totalMinutes: task.totalMinutes
   })), [tasks]);
 
+  const getSqlResult = useCallback(() => {
+    if (!sqlResult) return null;
+    return {
+      sql: sqlResult.sql,
+      statements: sqlResult.statements,
+      stats: {
+        processed: sqlResult.processed,
+        errors: sqlResult.errors.length
+      }
+    };
+  }, [sqlResult]);
+
   return {
     step,
     isLoading,
@@ -228,6 +240,7 @@ export function useImportWizard({ initialConfig, adapters = DEFAULT_ADAPTERS }: 
     progress,
     isFullyMapped,
     getTasks,
+    getSqlResult,
     _raw: {
       csvData,
       taskMapping,

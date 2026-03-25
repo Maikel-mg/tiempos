@@ -5,10 +5,10 @@ import { FileSpreadsheet, CheckCircle2, Database, ArrowLeft } from 'lucide-react
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
-import { useWizard } from '@/hooks/wizard/useWizard';
-import { Step1Upload } from '@/components/Step1Upload';
-import { Step2Tasks } from '@/components/Step2Tasks';
-import { Step3Preview } from '@/components/Step3Preview';
+import { useImportWizard } from '@/features/import-csv/hooks/use-import-wizard';
+import { Step1Upload } from '@/features/import-csv/components/Step1Upload';
+import { Step2Tasks } from '@/features/import-csv/components/Step2Tasks';
+import { Step3Preview } from '@/features/import-csv/components/Step3Preview';
 import { DBConnection, type DbConfig } from '@/components/DBConnection';
 
 interface StepIndicatorProps {
@@ -73,7 +73,7 @@ export function ImportCsvPage() {
         mappedTasks,
         getTasks,
         _raw
-    } = useWizard();
+    } = useImportWizard();
 
     const { config, updateConfig, selectedRows, setSelectedRows, csvData, file, columnIndices, taskMapping } = _raw;
 

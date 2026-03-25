@@ -1,8 +1,8 @@
-import { parseCSV } from '@/lib/csv-parser';
+import { parseCSV } from './services/csv-parser';
 import { findSuggestedMapping, saveMappings } from '@/lib/task-mapping-storage';
 import { generateSQL } from '@/lib/sql-generator';
 import type { CSVParserPort, TaskStoragePort, SQLGeneratorPort, ParsedData, SQLResult } from './ports';
-import type { CSVIndices } from '@/lib/csv-parser';
+import type { CSVIndices } from './services/csv-parser';
 import type { ImportConfigPort } from './ports';
 
 export class CSVParserAdapter implements CSVParserPort {

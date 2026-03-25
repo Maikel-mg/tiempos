@@ -11,8 +11,8 @@ import { Separator } from '@/components/ui/separator';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { downloadSQL, formatSQLForHighlight, generateSQL } from '@/lib/sql-generator';
-import type { ParsedData, CSVIndices } from '@/lib/csv-parser';
-import type { SQLResult } from '@/hooks/wizard/ports';
+import type { ParsedData, CSVIndices } from '../services/csv-parser';
+import type { SQLResult } from '../ports';
 
 export interface Step3PreviewProps {
     sqlResult: SQLResult | null;

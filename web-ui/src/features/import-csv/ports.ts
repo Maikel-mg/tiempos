@@ -1,4 +1,4 @@
-import type { UniqueTask, CSVIndices, ParsedData } from '@/lib/csv-parser';
+import type { UniqueTask, CSVIndices, ParsedData } from './services/csv-parser';
 
 export { type UniqueTask, type CSVIndices, type ParsedData };
 
