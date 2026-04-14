@@ -106,6 +106,29 @@ export function HomePage() {
                                 </Button>
                             </CardFooter>
                         </Card>
+
+                        <Card className="hover:shadow-lg transition-shadow cursor-pointer group border-2 border-transparent hover:border-primary">
+                            <CardHeader>
+                                <div className="flex items-center gap-3 mb-2">
+                                    <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
+                                        <Clock className="w-6 h-6 text-green-600 dark:text-green-400" />
+                                    </div>
+                                    <CardTitle>Mi TimeTracker</CardTitle>
+                                </div>
+                                <CardDescription>
+                                    Registra tu tiempo con temporizador o entrada manual y sincroniza con la BBDD
+                                </CardDescription>
+                            </CardHeader>
+                            <CardFooter>
+                                <Button 
+                                    className="w-full group-hover:bg-primary/90 transition-colors"
+                                    onClick={() => navigate('/time-tracker')}
+                                >
+                                    Abrir TimeTracker
+                                    <ArrowRight className="ml-2 h-4 w-4" />
+                                </Button>
+                            </CardFooter>
+                        </Card>
                     </div>
                 </div>
             </main>

@@ -13,7 +13,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { generateSQLFromObjects, formatSQLForHighlight, downloadSQL, copyToClipboard, type SQLGenerationResult } from '@/lib/sql-generator';
 import { loadMappings, type TaskMappings } from '@/lib/task-mapping-storage';
 import { ImportConfigPanel, type ImportConfig } from '@/components/ImportConfigPanel';
-import { TaskMappingTable } from '@/components/TaskMappingTable';
+import { ProcessMappingTable } from '@/features/process-management';
+import { processExtractor, processValidation } from '@/features/process-management';
+import type { Process } from '@/features/process-management';
 import type { DbConfig } from '@/components/DBConnection';
 
 interface TimeEntry {
@@ -115,11 +117,15 @@ export function LiveTimeEntriesPage() {
     const [validatedEntries, setValidatedEntries] = useState<any[]>([]);
     const [hideAlreadyCreated, setHideAlreadyCreated] = useState(false);
     
-    // Config from localStorage
-    const [config, setConfig] = useState<ImportConfig>(DEFAULT_CONFIG);
-    const [taskMapping, setTaskMapping] = useState<TaskMappings>({});
-    const [dbConfig, setDbConfig] = useState<DbConfig | null>(null);
-    const [selectedMonth, setSelectedMonth] = useState(() => new Date());
+  // Config from localStorage
+  const [config, setConfig] = useState<ImportConfig>(DEFAULT_CONFIG);
+  const [taskMapping, setTaskMapping] = useState<TaskMappings>({});
+  const [dbConfig, setDbConfig] = useState<DbConfig | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState(() => new Date());
+  
+  // Process management state
+  const [processes, setProcesses] = useState<Process[]>([]);
+  const [localErrors, setLocalErrors] = useState<Record<string, string | null>>({});
 
     // Load config and mappings on mount
     useEffect(() => {
@@ -563,14 +569,14 @@ export function LiveTimeEntriesPage() {
                     </Card>
                 ) : (
                     <div className="space-y-8">
-                        {/* Task Mapping Section */}
-                        <TaskMappingTable 
-                            entries={entries}
-                            taskMapping={taskMapping}
-                            onUpdateTaskId={handleUpdateTaskId}
-                            config={config}
-                            dbConfig={dbConfig}
-                        />
+      {/* Task Mapping Section */}
+      <ProcessMappingTable
+        processes={processes}
+        taskMapping={taskMapping}
+        localErrors={localErrors}
+        config={config}
+        onUpdateProcessId={handleUpdateTaskId}
+      />
 
                         <Card>
                             <CardHeader>

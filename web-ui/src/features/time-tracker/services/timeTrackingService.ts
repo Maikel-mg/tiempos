@@ -1,0 +1,183 @@
+import { v4 as uuidv4 } from 'uuid';
+import type { StorageStrategy } from '@/lib/storage/StorageStrategy';
+import type { TimeEntry, TimerState } from '../types';
+
+function formatTimeHHMM(date: Date): string {
+  return date.toTimeString().slice(0, 5); // HH:MM
+}
+
+function calculateDurationSeconds(startTime: string, endTime: string): number {
+  const [sh, sm] = startTime.split(':').map(Number);
+  const [eh, em] = endTime.split(':').map(Number);
+  return (eh * 60 + em) - (sh * 60 + sm);
+}
+
+/**
+ * Servicio de lógica de negocio para el TimeTracker.
+ * Maneja CRUD de registros, control del temporizador y sincronización.
+ */
+export class TimeTrackingService {
+  constructor(private storage: StorageStrategy) {}
+
+  /**
+   * Crea un nuevo registro de tiempo.
+   */
+  async createEntry(data: {
+    taskId: string;
+    taskName: string;
+    date: string;
+    startTime: string;
+    endTime: string;
+    description?: string;
+  }): Promise<TimeEntry> {
+    const now = new Date().toISOString();
+    const duration = calculateDurationSeconds(data.startTime, data.endTime);
+
+    const entry: TimeEntry = {
+      id: uuidv4(),
+      taskId: data.taskId,
+      taskName: data.taskName,
+      date: data.date,
+      startTime: data.startTime,
+      endTime: data.endTime,
+      duration: duration * 60, // Convertir minutos a segundos
+      description: data.description,
+      createdAt: now,
+      updatedAt: now,
+      synced: false
+    };
+
+    await this.storage.saveEntry(entry);
+    return entry;
+  }
+
+  /**
+   * Actualiza un registro existente.
+   */
+  async updateEntry(id: string, data: Partial<TimeEntry>): Promise<TimeEntry | null> {
+    const existing = await this.storage.getEntry(id);
+    if (!existing) return null;
+
+    const updated: TimeEntry = {
+      ...existing,
+      ...data,
+      updatedAt: new Date().toISOString()
+    };
+
+    // Recalcular duración si cambiaron los tiempos
+    if (data.startTime || data.endTime) {
+      updated.duration = calculateDurationSeconds(
+        data.startTime || existing.startTime,
+        data.endTime || existing.endTime
+      ) * 60;
+    }
+
+    await this.storage.updateEntry(updated);
+    return updated;
+  }
+
+  /**
+   * Elimina un registro.
+   */
+  async deleteEntry(id: string): Promise<void> {
+    await this.storage.deleteEntry(id);
+  }
+
+  /**
+   * Obtiene todos los registros, opcionalmente filtrados por rango de fechas.
+   */
+  async getEntries(startDate?: string, endDate?: string): Promise<TimeEntry[]> {
+    if (startDate && endDate) {
+      return this.storage.getEntriesByDateRange(startDate, endDate);
+    }
+    return this.storage.getAllEntries();
+  }
+
+  /**
+   * Obtiene un registro por ID.
+   */
+  async getEntry(id: string): Promise<TimeEntry | null> {
+    return this.storage.getEntry(id);
+  }
+
+  /**
+   * Inicia el temporizador para una tarea.
+   */
+  async startTimer(taskId: string, taskName: string): Promise<TimerState> {
+    const state: TimerState = {
+      isRunning: true,
+      taskId,
+      taskName,
+      startTime: new Date().toISOString(),
+      elapsed: 0
+    };
+    await this.storage.saveTimerState(state);
+    return state;
+  }
+
+  /**
+   * Detiene el temporizador y crea un registro de tiempo.
+   * @returns El TimeEntry creado, o null si no había un temporizador activo.
+   */
+  async stopTimer(): Promise<TimeEntry | null> {
+    const state = await this.storage.getTimerState();
+    if (!state || !state.isRunning) return null;
+
+    const start = new Date(state.startTime);
+    const end = new Date();
+
+    // Calcular duración real desde el inicio
+    const durationSeconds = Math.floor((end.getTime() - start.getTime()) / 1000);
+
+    const entry = await this.createEntry({
+      taskId: state.taskId,
+      taskName: state.taskName,
+      date: start.toISOString().split('T')[0],
+      startTime: formatTimeHHMM(start),
+      endTime: formatTimeHHMM(end),
+      description: undefined
+    });
+
+    // Actualizar la duración con el cálculo real
+    const updatedEntry = await this.updateEntry(entry.id, {
+      duration: durationSeconds
+    });
+
+    await this.storage.clearTimerState();
+    return updatedEntry || entry;
+  }
+
+  /**
+   * Recupera el estado del temporizador al abrir la aplicación.
+   * Calcula el tiempo transcurrido desde que se inició.
+   */
+  async recoverTimerState(): Promise<TimerState | null> {
+    const state = await this.storage.getTimerState();
+    if (!state || !state.isRunning) return null;
+
+    // Calcular tiempo transcurrido desde startTime
+    const elapsed = Math.floor(
+      (Date.now() - new Date(state.startTime).getTime()) / 1000
+    );
+
+    return { ...state, elapsed };
+  }
+
+  /**
+   * Obtiene el estado actual del temporizador sin recuperación.
+   */
+  async getTimerState(): Promise<TimerState | null> {
+    return this.storage.getTimerState();
+  }
+
+  /**
+   * Cancela el temporizador sin crear un registro.
+   */
+  async cancelTimer(): Promise<void> {
+    await this.storage.clearTimerState();
+  }
+}
+
+// Instancia por defecto con IndexedDB
+import { indexedDBStorage } from '@/lib/storage/IndexedDBStorage';
+export const timeTrackingService = new TimeTrackingService(indexedDBStorage);
