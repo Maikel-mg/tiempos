@@ -1,11 +1,9 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Clock, ArrowLeft, RefreshCw, AlertCircle, Loader2, Search, X, CheckSquare, Square, MinusSquare, FileCode, Copy, Download, Play, ChevronDown, ChevronUp, Check, CheckCircle2, Eye, EyeOff } from 'lucide-react';
+import { Clock, RefreshCw, AlertCircle, Loader2, Search, X, CheckSquare, Square, MinusSquare, FileCode, Copy, Download, Play, ChevronDown, ChevronUp, Check, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
@@ -93,7 +91,6 @@ function decryptPassword(encoded: string): string {
 }
 
 export function LiveTimeEntriesPage() {
-    const navigate = useNavigate();
     const [entries, setEntries] = useState<TimeEntry[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -482,53 +479,7 @@ export function LiveTimeEntriesPage() {
     const hasErrors = sqlResult?.errors && sqlResult.errors.length > 0;
 
     return (
-        <div className="min-h-screen bg-background flex flex-col">
-            <header className="border-b bg-card">
-                <div className="container mx-auto px-4 py-4">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                onClick={() => navigate('/')}
-                            >
-                                <ArrowLeft className="h-4 w-4 mr-1" />
-                                Volver
-                            </Button>
-                            <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                                <Clock className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-                            </div>
-                            <div>
-                                <h1 className="text-xl font-bold">Ver Tiempos en Vivo</h1>
-                                <p className="text-sm text-muted-foreground">
-                                    Visualización de Clockify
-                                </p>
-                            </div>
-                        </div>
-                             <div className="flex items-center gap-2">
-                                <Badge variant="secondary" className="mr-2">
-                                    {selectedEntries.size} seleccionadas
-                                </Badge>
-                                {isValidating && (
-                                    <Badge variant="outline" className="animate-pulse flex items-center gap-1 border-blue-200 text-blue-600">
-                                        <Loader2 className="h-3 w-3 animate-spin" />
-                                        Validando...
-                                    </Badge>
-                                )}
-                                <Button 
-                                    variant="outline" 
-                                    size="sm" 
-                                    onClick={fetchReport}
-                                    disabled={loading}
-                                >
-                                    <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                                    Actualizar
-                                </Button>
-                            </div>
-                    </div>
-                </div>
-            </header>
-
+        <>
             <div className="container mx-auto px-4 py-4">
                 <ImportConfigPanel 
                     config={config} 
@@ -536,7 +487,6 @@ export function LiveTimeEntriesPage() {
                     selectedMonth={selectedMonth}
                 />
             </div>
-
             <main className="flex-1 container mx-auto px-4 py-8">
                 {loading && !entries.length ? (
                     <div className="flex items-center justify-center py-12">
@@ -968,6 +918,6 @@ export function LiveTimeEntriesPage() {
                 </div>
                 )}
             </main>
-        </div>
+        </>
     );
 }

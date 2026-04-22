@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, RefreshCw, AlertCircle, Loader2, LayoutDashboard } from 'lucide-react';
+import { RefreshCw, AlertCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useTimeEntries } from './hooks/useTimeEntries';
@@ -51,7 +50,6 @@ function formatDateForApi(date: Date): string {
 }
 
 export function DashboardPage() {
-  const navigate = useNavigate();
   const [period, setPeriod] = useState<PeriodType>('week');
   const [customRange, setCustomRange] = useState<DateRange | undefined>(undefined);
   
@@ -77,84 +75,47 @@ export function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => navigate('/')}
-              >
-                <ArrowLeft className="h-4 w-4 mr-1" />
-                Volver
-              </Button>
-              <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
-                <LayoutDashboard className="w-6 h-6 text-purple-600 dark:text-purple-400" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold">Dashboard</h1>
-                <p className="text-sm text-muted-foreground">
-                  Resumen de Clockify
-                </p>
-              </div>
-            </div>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => refetch()}
-              disabled={isLoading}
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-              Actualizar
-            </Button>
-          </div>
-        </div>
-      </header>
+    <div className="container mx-auto px-4 py-6 space-y-6">
+      <Card>
+        <CardContent className="pt-6">
+          <PeriodSelector 
+            value={period}
+            customRange={customRange}
+            onChange={handlePeriodChange}
+          />
+        </CardContent>
+      </Card>
 
-      <main className="container mx-auto px-4 py-6 space-y-6">
-        <Card>
+      {isLoading && !entries.length ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span className="ml-3 text-muted-foreground">Cargando datos...</span>
+        </div>
+      ) : error ? (
+        <Card className="max-w-2xl mx-auto">
           <CardContent className="pt-6">
-            <PeriodSelector 
-              value={period}
-              customRange={customRange}
-              onChange={handlePeriodChange}
-            />
+            <div className="flex items-center gap-3 text-destructive mb-4">
+              <AlertCircle className="h-5 w-5" />
+              <span className="font-medium">Error al cargar datos</span>
+            </div>
+            <p className="text-muted-foreground mb-4">{error.message}</p>
+            <Button onClick={() => refetch()}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Reintentar
+            </Button>
           </CardContent>
         </Card>
-
-        {isLoading && !entries.length ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <span className="ml-3 text-muted-foreground">Cargando datos...</span>
-          </div>
-        ) : error ? (
-          <Card className="max-w-2xl mx-auto">
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3 text-destructive mb-4">
-                <AlertCircle className="h-5 w-5" />
-                <span className="font-medium">Error al cargar datos</span>
-              </div>
-              <p className="text-muted-foreground mb-4">{error.message}</p>
-              <Button onClick={() => refetch()}>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Reintentar
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <>
-            <SummaryCards
-              totalSeconds={summary.totalSeconds}
-              entriesCount={summary.entriesCount}
-              avgPerDaySeconds={summary.avgPerDaySeconds}
-            />
-            <DayGroupedEntries entries={entries} />
-            <TaskBreakdownTable tasks={summary.tasksBreakdown} />
-          </>
-        )}
-      </main>
+      ) : (
+        <>
+          <SummaryCards
+            totalSeconds={summary.totalSeconds}
+            entriesCount={summary.entriesCount}
+            avgPerDaySeconds={summary.avgPerDaySeconds}
+          />
+          <DayGroupedEntries entries={entries} />
+          <TaskBreakdownTable tasks={summary.tasksBreakdown} />
+        </>
+      )}
     </div>
   );
 }

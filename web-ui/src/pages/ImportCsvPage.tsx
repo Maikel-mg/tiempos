@@ -1,10 +1,8 @@
 import * as React from 'react';
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { FileSpreadsheet, CheckCircle2, Database, ArrowLeft } from 'lucide-react';
+import { FileSpreadsheet, CheckCircle2, Database } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Button } from '@/components/ui/button';
 import { useImportWizard } from '@/features/import-csv/hooks/use-import-wizard';
 import { Step1Upload } from '@/features/import-csv/components/Step1Upload';
 import { Step2Tasks } from '@/features/import-csv/components/Step2Tasks';
@@ -51,8 +49,6 @@ function StepIndicator({ currentStep, step, label, icon: Icon }: StepIndicatorPr
 }
 
 export function ImportCsvPage() {
-    const navigate = useNavigate();
-    
     const [dbConfig, setDbConfig] = useState<DbConfig>({
         server: '',
         database: '',
@@ -137,82 +133,39 @@ export function ImportCsvPage() {
     };
 
     return (
-        <div className="min-h-screen bg-background">
-            {/* Header */}
-            <header className="border-b bg-card">
-                <div className="container mx-auto px-4 py-4">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                onClick={() => navigate('/')}
-                                className="mr-2"
-                            >
-                                <ArrowLeft className="h-4 w-4 mr-1" />
-                                Volver
-                            </Button>
-                            <div className="p-2 bg-primary/10 rounded-lg">
-                                <FileSpreadsheet className="w-6 h-6 text-primary" />
-                            </div>
-                            <div>
-                                <h1 className="text-xl font-bold">Importador de Tiempos</h1>
-                                <p className="text-sm text-muted-foreground">
-                                    Importar desde CSV
-                                </p>
-                            </div>
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                            v1.0.0
-                        </div>
+        <div className="container mx-auto px-4 py-8">
+            {/* Step Indicator */}
+            <Card className="mb-8">
+                <CardContent className="p-4">
+                    <div className="flex items-center justify-center gap-2 sm:gap-8">
+                        <StepIndicator
+                            currentStep={step}
+                            step={1}
+                            label="Subir CSV"
+                            icon={FileSpreadsheet}
+                        />
+                        <Separator className="w-8 sm:w-16" />
+                        <StepIndicator
+                            currentStep={step}
+                            step={2}
+                            label="Asignar Tareas"
+                            icon={CheckCircle2}
+                        />
+                        <Separator className="w-8 sm:w-16" />
+                        <StepIndicator
+                            currentStep={step}
+                            step={3}
+                            label="Generar SQL"
+                            icon={Database}
+                        />
                     </div>
-                </div>
-            </header>
+                </CardContent>
+            </Card>
 
-            {/* Main Content */}
-            <main className="container mx-auto px-4 py-8">
-                {/* Step Indicator */}
-                <Card className="mb-8">
-                    <CardContent className="p-4">
-                        <div className="flex items-center justify-center gap-2 sm:gap-8">
-                            <StepIndicator
-                                currentStep={step}
-                                step={1}
-                                label="Subir CSV"
-                                icon={FileSpreadsheet}
-                            />
-                            <Separator className="w-8 sm:w-16" />
-                            <StepIndicator
-                                currentStep={step}
-                                step={2}
-                                label="Asignar Tareas"
-                                icon={CheckCircle2}
-                            />
-                            <Separator className="w-8 sm:w-16" />
-                            <StepIndicator
-                                currentStep={step}
-                                step={3}
-                                label="Generar SQL"
-                                icon={Database}
-                            />
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Step Content */}
-                <div className="max-w-7xl mx-auto">
-                    {renderStep()}
-                </div>
-            </main>
-
-            {/* Footer */}
-            <footer className="border-t mt-auto">
-                <div className="container mx-auto px-4 py-4">
-                    <p className="text-center text-sm text-muted-foreground">
-                        Funciona completamente en el navegador • Sin servidor necesario
-                    </p>
-                </div>
-            </footer>
+            {/* Step Content */}
+            <div className="max-w-7xl mx-auto">
+                {renderStep()}
+            </div>
         </div>
     );
 }
