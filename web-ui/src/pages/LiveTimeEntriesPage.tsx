@@ -219,6 +219,7 @@ export function LiveTimeEntriesPage() {
             const data = await response.json();
             const sortedEntries = (data.data as TimeEntry[]).sort((a, b) => new Date(b.timeInterval.start).getTime() - new Date(a.timeInterval.start).getTime());
             setEntries(sortedEntries);
+            setProcesses(processExtractor.extractFromEntries(sortedEntries));
             setSelectedEntries(new Set());
             setSqlResult(null);
 
@@ -231,9 +232,16 @@ export function LiveTimeEntriesPage() {
         }
     };
 
-    useEffect(() => {
-        fetchReport();
-    }, []);
+     useEffect(() => {
+         fetchReport();
+     }, []);
+
+     // Keep processes in sync with entries
+     useEffect(() => {
+         if (entries.length > 0) {
+             setProcesses(processExtractor.extractFromEntries(entries));
+         }
+     }, [entries]);
 
     const isAlreadyCreated = (entry: TimeEntry) => {
         if (!validatedEntries.length) return false;
