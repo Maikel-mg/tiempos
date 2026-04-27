@@ -332,6 +332,76 @@ interface ValidateEntriesParams extends DbConnectionParams {
   endDate: string;   // YYYY-MM-DD
 }
 
+interface ProjectsRequest extends DbConnectionParams {
+  fecha?: string;     // YYYY-MM-DD
+  modoProc?: string;  // Filtering mode
+  usured?: string;    // User ID filter
+}
+
+app.post('/api/projects', async (req: Request, res: Response) => {
+  // console.log(`TCL ~ Projects request body:`, req.body);
+  const { server, database, username, password, fecha, modoProc, usured } = req.body as ProjectsRequest;
+
+  try {
+    const config: sql.config = {
+        server,
+        database,
+        user: username,
+        password,
+        options: {
+            encrypt: true,
+            trustServerCertificate: true
+        }
+    };
+
+    const currentPool = new sql.ConnectionPool(config);
+    await currentPool.connect();
+    
+    try {
+      const fechaInput = fecha || new Date().toISOString().split('T')[0];
+      const pModoProc = modoProc ? parseInt(modoProc, 10) : 1;
+      const pUsured = usured || 'MG01';
+
+      // console.log(`TCL ~ Projects params:`, { 
+      //   fechaInput,
+      //   pModoProc, 
+      //   pUsured 
+      // });
+
+      // Usamos .query con SET DATEFORMAT para asegurar que SQL Server interprete la fecha correctamente
+      // independientemente de la configuración de idioma del servidor (MDY vs DMY)
+      // Nota: Usamos concatenación directa para el SET DATEFORMAT y pasamos el valor de fecha 
+      // de forma que SQL Server no tenga dudas sobre el formato (YYYYMMDD).
+      // El SP utiliza internamente CONVERT(..., 103) que es formato dd/mm/yyyy
+      // y construye SQL dinámico. Para que ese SQL dinámico funcione con fechas > 12,
+      // la sesión DEBE tener SET DATEFORMAT dmy.
+      const [year, month, day] = fechaInput.split('-');
+      const pFechaSpanish = `${day}/${month}/${year}`;
+      
+      const query = `
+        SET DATEFORMAT dmy;
+        EXEC spNETProyectos_SeleccionProyectos @pFecha = '${pFechaSpanish}', @pModoProc = ${pModoProc}, @pUsured = '${pUsured.replace(/'/g, "''")}';
+      `;
+      
+      // console.log(`TCL ~ Ejecutando query raw:`, query);
+      const result = await currentPool.request().query(query);
+
+      // console.log(`TCL ~ result:`, result)
+      // El resultado de mssql.query() puede devolver múltiples recordsets si hay varias sentencias
+      // o PRINTs en el SP. spNETProyectos_SeleccionProyectos tiene PRINT @vSql al final.
+      const data = Array.isArray(result.recordsets) ? result.recordsets[0] : result.recordset;
+      console.log(`TCL ~ data:`, data)
+      // return data;
+      res.json({ success: true, data: data || [] });
+    } finally {
+      await currentPool.close();
+    }
+  } catch (error: any) {
+    console.error('Projects Fetch Error:', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 app.post('/api/validate-entries', async (req: Request, res: Response) => {
   const { server, database, username, password, startDate, endDate } = req.body as ValidateEntriesParams;
   console.log(`TCL ~ validate-entries request:`, { startDate, endDate, hasServer: !!server });

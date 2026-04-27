@@ -38,6 +38,8 @@ export function ProcessMappingTable({
   onUpdateProcessId,
   onCopySuccess
 }: ProcessMappingTableProps) {
+  console.log(`TCL ~ ProcessMappingTable ~ taskMapping:`, taskMapping)
+  console.log(`TCL ~ ProcessMappingTable ~ processes:`, processes)
   const [copiedProcess, setCopiedProcess] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState<ProcessFilterType>('all');

@@ -16,6 +16,7 @@ import {
   LayoutDashboard,
   FileSpreadsheet,
   Clock,
+  FolderOpen,
 } from "lucide-react"
 
 const navItems = [
@@ -28,6 +29,11 @@ const navItems = [
     title: "Importar CSV",
     url: "/import",
     icon: FileSpreadsheet,
+  },
+  {
+    title: "Proyectos",
+    url: "/projects",
+    icon: FolderOpen,
   },
   {
     title: "Tiempos en Vivo",
