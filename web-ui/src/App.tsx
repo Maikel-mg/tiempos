@@ -3,6 +3,7 @@ import { HomePage } from './pages/HomePage';
 import { ImportCsvPage } from './pages/ImportCsvPage';
 import { LiveTimeEntriesPage } from './pages/LiveTimeEntriesPage';
 import { ProjectsPage } from './pages/ProjectsPage';
+import { ProjectDetailPage } from './pages/ProjectDetailPage';
 import { DashboardPage } from './features/dashboard/DashboardPage';
 import { TimeTrackingPage } from './features/time-tracker/pages/TimeTrackingPage';
 import { AppLayout } from './components/AppLayout';
@@ -15,6 +16,7 @@ function App() {
                 <Route path="/import" element={<ImportCsvPage />} />
                 <Route path="/live-entries" element={<LiveTimeEntriesPage />} />
                 <Route path="/projects" element={<ProjectsPage />} />
+                <Route path="/projects/:codCli/:proyecto" element={<ProjectDetailPage />} />
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/time-tracker" element={<TimeTrackingPage />} />
                 <Route path="*" element={<Navigate to="/" replace />} />

@@ -464,3 +464,310 @@ app.post('/api/validate-entries', async (req: Request, res: Response) => {
 app.listen(PORT, () => {
   console.log(`Backend server running on port ${PORT}`);
 });
+
+// ============================================
+// Phase 1: Tipos e Interfaces
+// ============================================
+
+/**
+ * Parámetros para el endpoint /api/projects-tree
+ */
+interface ProjectsTreeParams extends DbConnectionParams {
+  codCli?: string;    // Código de cliente
+  proyecto?: string; // Código del proyecto
+  fecha?: string;   // Fecha en formato YYYY-MM-DD
+  modo?: string;    // Modo de filtrado (1, 2, etc.)
+}
+
+/**
+ * Datos del cliente (resultset 0)
+ */
+interface ClienteData {
+  CodCli: number;
+  Cliente: string;
+  NomCliente: string;
+}
+
+/**
+ * Datos del proyecto (resultset 1)
+ */
+interface ProyectoData {
+  CodCli: number;
+  Proyecto: number;
+  NomProy: string;
+  Cerrado: boolean;
+  CMMI: boolean;
+  EsCM: boolean;
+  EsPET: boolean;
+}
+
+/**
+ * Datos de disciplinas (resultset 2)
+ */
+interface DisciplinaData {
+  Proyecto: number;
+  IdDisciplina: number;
+  Disciplina: string;
+  SinDisciplina: boolean;
+  Orden: number;
+}
+
+/**
+ * Datos de fases (resultset 3)
+ */
+interface FaseData {
+  Proyecto: number;
+  Fase: number;
+  Nombre: string;
+  Cerrado: boolean;
+  Disciplina: number;
+  Orden: number;
+}
+
+/**
+ * Datos de procesos (resultset 4)
+ */
+interface ProcesoData {
+  Fase: number;
+  Proceso: number;
+  Nombre: string;
+}
+
+/**
+ * Proceso en la jerarquía
+ */
+interface ProcesoNode {
+  proceso: number;
+  nombre: string;
+}
+
+/**
+ * Fase en la jerarquía (contiene procesos)
+ */
+interface FaseNode {
+  fase: number;
+  nombre: string;
+  cerrado: boolean;
+  orden: number;
+  procesos: ProcesoNode[];
+}
+
+/**
+ * Disciplina en la jerarquía (contiene fases)
+ */
+interface DisciplinaNode {
+  idDisciplina: number;
+  nombre: string;
+  sinDisciplina: boolean;
+  orden: number;
+  fases: FaseNode[];
+}
+
+/**
+ * Estructura completa del árbol de proyectos (respuesta del endpoint)
+ */
+interface ProjectsTreeResponse {
+  cliente: ClienteData;
+  proyecto: ProyectoData;
+  disciplinas: DisciplinaNode[];
+}
+
+/**
+ * Transforma los 5 resultsets del SP a estructura jerárquica
+ * @param results - Array de 5 recordsets del SP
+ * @returns Estructura jerárquica de proyectos
+ * 
+ * Estructura de resultsets:
+ * - results[0]: Cliente (CodCli, Cliente, NomCliente)
+ * - results[1]: Proyecto (CodCli, Proyecto, NomProy, Cerrado, CMMI, EsCM, EsPET)
+ * - results[2]: Disciplinas (Proyecto, IdDisciplina, Disciplina, SinDisciplina, Orden)
+ * - results[3]: Fases (Proyecto, Fase, Nombre, Cerrado, Disciplina, Orden)
+ * - results[4]: Procesos (Fase, Proceso, Nombre)
+ */
+function transformToTreeStructure(results: any[]): ProjectsTreeResponse {
+  // Extraer los 5 resultsets con los índices correctos
+  const clientes = (results[0] || []) as ClienteData[];
+  const proyectos = (results[1] || []) as ProyectoData[];
+  const disciplinasRaw = (results[2] || []) as DisciplinaData[];
+  const fasesRaw = (results[3] || []) as FaseData[];
+  const procesosRaw = (results[4] || []) as ProcesoData[];
+
+  console.log(`TCL ~ transformToTreeStructure ~ clientes:`, clientes.length);
+  console.log(`TCL ~ transformToTreeStructure ~ proyectos:`, proyectos.length);
+  console.log(`TCL ~ transformToTreeStructure ~ disciplinas:`, disciplinasRaw.length);
+  console.log(`TCL ~ transformToTreeStructure ~ fases:`, fasesRaw.length);
+  console.log(`TCL ~ transformToTreeStructure ~ procesos:`, procesosRaw.length);
+
+  // Obtener cliente y proyecto (típicamente hay solo uno)
+  const cliente = clientes[0] || { CodCli: 0, Cliente: '', NomCliente: '' };
+  const proyecto = proyectos[0] || { 
+    CodCli: 0, 
+    Proyecto: 0, 
+    NomProy: '', 
+    Cerrado: false, 
+    CMMI: false, 
+    EsCM: false, 
+    EsPET: false 
+  };
+
+  // Crear mapa de disciplinas por idDisciplina
+  const disciplinasMap = new Map<number, DisciplinaNode>();
+  
+  for (const disc of disciplinasRaw) {
+    if (!disciplinasMap.has(disc.IdDisciplina)) {
+      disciplinasMap.set(disc.IdDisciplina, {
+        idDisciplina: disc.IdDisciplina,
+        nombre: disc.Disciplina,
+        sinDisciplina: disc.SinDisciplina,
+        orden: disc.Orden,
+        fases: []
+      });
+    }
+  }
+
+  // Crear mapa de fases por fase
+  const fasesMap = new Map<number, FaseNode>();
+  
+  for (const fase of fasesRaw) {
+    fasesMap.set(fase.Fase, {
+      fase: fase.Fase,
+      nombre: fase.Nombre,
+      cerrado: fase.Cerrado,
+      orden: fase.Orden,
+      procesos: []
+    });
+  }
+
+  // Asignar fases a disciplinas (por Disciplina de la fase = IdDisciplina)
+  for (const fase of fasesRaw) {
+    const faseNode = fasesMap.get(fase.Fase);
+    const disciplinaNode = disciplinasMap.get(fase.Disciplina);
+    if (faseNode && disciplinaNode) {
+      disciplinaNode.fases.push(faseNode);
+    }
+  }
+
+  // Asignar procesos a fases (por Fase del proceso)
+  for (const proc of procesosRaw) {
+    const faseNode = fasesMap.get(proc.Fase);
+    if (faseNode) {
+      faseNode.procesos.push({
+        proceso: proc.Proceso,
+        nombre: proc.Nombre
+      });
+    }
+  }
+
+  // Convertir mapa de disciplinas a array, ordenado por orden
+  const disciplinas = Array.from(disciplinasMap.values()).sort((a, b) => a.orden - b.orden);
+
+  return {
+    cliente,
+    proyecto,
+    disciplinas
+  };
+}
+
+// ============================================
+// Phase 2: Endpoint /api/projects-tree
+// ============================================
+
+app.post('/api/projects-tree', async (req: Request, res: Response) => {
+  const { codCli, proyecto, fecha, modo, server, database, username, password } = req.body;
+  console.log(`TCL ~ req.body:`, req.body)
+
+  // Parámetros de conexión desde body o usar valores por defecto
+  const dbServer = server || process.env.DB_SERVER || 'localhost';
+  const dbDatabase = database || process.env.DB_NAME || 'Tiempos';
+  const dbUser = username || process.env.DB_USER || '';
+  const dbPassword = password || process.env.DB_PASSWORD || '';
+
+  try {
+    const config: sql.config = {
+      server: dbServer,
+      database: dbDatabase,
+      user: dbUser,
+      password: dbPassword,
+      options: {
+        encrypt: true,
+        trustServerCertificate: true
+      }
+    };
+
+    const currentPool = new sql.ConnectionPool(config);
+    await currentPool.connect();
+    
+    try {
+      // Preparar parámetros para el SP
+      const pCodCli = codCli || null;
+      const pProyecto = proyecto || null;
+      const pFecha = fecha || new Date().toISOString().split('T')[0];
+      const pModo = modo ? parseInt(modo, 10) : 1;
+
+      // Convertir fecha a formato español si es necesario
+      // El usuario puede enviar en formato YYYY-MM-DD, DD/MM/YYYY, YYYY/MM/DD o DD-MM-YYYY
+      let pFechaSpanish: string | null = null;
+      if (pFecha) {
+        // Normalizar separadores a-guion
+        const normalizedFecha = pFecha.replace(/\//g, '-');
+        const parts = normalizedFecha.split('-');
+        
+        if (parts.length === 3) {
+          const firstPart = parseInt(parts[0], 10);
+          const secondPart = parseInt(parts[1], 10);
+          
+          if (firstPart > 12) {
+            // Formato DD/MM/YYYY o DD-MM-YYYY - mantener mismo formato para SQL
+            pFechaSpanish = pFecha; // usar formato original con /
+          } else if (secondPart > 12) {
+            // Formato MM/DD/YYYY - convertir a DD/MM/YYYY
+            pFechaSpanish = `${parts[1]}/${parts[0]}/${parts[2]}`;
+          } else {
+            // Asumir YYYY-MM-DD - convertir a DD/MM/YYYY
+            pFechaSpanish = `${parts[2]}/${parts[1]}/${parts[0]}`;
+          }
+        }
+      }
+
+      // Llamar al SP con los 5 resultados
+      const query = `
+        SET DATEFORMAT dmy;
+        EXEC spNETProyectos_TreeProyectos 
+          @pClientes = ${pCodCli ? `'${pCodCli.replace(/'/g, "''")}'` : 'NULL'}, 
+          @pProyectos = ${pProyecto ? `'${pProyecto.replace(/'/g, "''")}'` : 'NULL'}, 
+          @pFecha = ${pFechaSpanish ? `'${pFechaSpanish}'` : 'NULL'}, 
+          @pModo = ${pModo};
+      `;
+      
+      console.log(`TCL ~ /api/projects-tree ejecutando:`, query);
+      
+      const result = await currentPool.request().query(query);
+      console.log(`TCL ~ result:`, result)
+      
+      // mssql retorna varios recordsets cuando el SP ejecuta múltiples SELECTs
+      // result.recordsets puede ser un array o un objeto con propiedades numéricas
+      const rawRecordsets = result.recordsets;
+      const recordsets: any[] = Array.isArray(rawRecordsets) 
+        ? rawRecordsets 
+        : Object.values(rawRecordsets || {});
+      console.log(`TCL ~ /api/projects-tree recordsets count:`, recordsets.length);
+      
+      // Transformar los resultados a estructura jerárquica
+      const treeData = transformToTreeStructure(recordsets);
+      console.log(`TCL ~ treeData:`, treeData)
+      
+      res.json({
+        success: true,
+        data: treeData
+      });
+    } finally {
+      await currentPool.close();
+    }
+  } catch (error: any) {
+    console.error('Projects Tree Error:', error.message);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message 
+    });
+  }
+});

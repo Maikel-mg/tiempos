@@ -515,16 +515,6 @@ export function LiveTimeEntriesPage() {
                             </Button>
                         </CardContent>
                     </Card>
-                ) : entries.length === 0 ? (
-                    <Card className="max-w-2xl mx-auto">
-                        <CardContent className="pt-6 text-center py-12">
-                            <Clock className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                            <h3 className="text-lg font-semibold mb-2">No hay entradas de tiempo</h3>
-                            <p className="text-muted-foreground">
-                                No se encontraron registros en el rango de fechas actual.
-                            </p>
-                        </CardContent>
-                    </Card>
                 ) : (
                     <div className="space-y-8">
       {/* Task Mapping Section */}
@@ -611,7 +601,19 @@ export function LiveTimeEntriesPage() {
                                 </div>
                             </div>
                         </CardHeader>
-                        <CardContent className="space-y-4">
+                        {
+                            entries.length === 0 ? (
+                        <CardContent className="pt-6 text-center py-12">
+                            <Clock className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                            <h3 className="text-lg font-semibold mb-2">No hay entradas de tiempo</h3>
+                            <p className="text-muted-foreground">
+                                No se encontraron registros en el rango de fechas actual.
+                            </p>
+                        </CardContent>
+                            ) : (
+
+                                
+                                <CardContent className="space-y-4">
                             {/* Selection controls */}
                             <div className="flex items-center gap-2">
                                 <Button 
@@ -656,7 +658,7 @@ export function LiveTimeEntriesPage() {
                                             <TableHead 
                                                 className="whitespace-nowrap cursor-pointer hover:bg-muted/50"
                                                 onClick={() => handleSort('start')}
-                                            >
+                                                >
                                                 Inicio {getSortIcon('start')}
                                             </TableHead>
                                             <TableHead 
@@ -784,7 +786,7 @@ export function LiveTimeEntriesPage() {
                                     onClick={() => setSqlPreviewOpen(!sqlPreviewOpen)}
                                     disabled={selectedEntries.size === 0 || hasUnmappedTasks}
                                     className="w-full flex items-center justify-between p-4 bg-muted/50 hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
+                                    >
                                     <div>
                                         <h3 className="text-lg font-semibold flex items-center gap-2">
                                             <FileCode className="w-5 h-5" />
@@ -922,6 +924,8 @@ export function LiveTimeEntriesPage() {
                                 )}
                             </div>
                         </CardContent>
+        )
+    }
                     </Card>
                 </div>
                 )}

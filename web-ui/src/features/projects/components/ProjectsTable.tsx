@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { DataTable, ColumnDef } from '@/components/ui/data-table';
@@ -19,6 +20,11 @@ export function ProjectsTable({
   onRetry,
   emptyMessage
 }: ProjectsTableProps) {
+  const navigate = useNavigate();
+
+  const handleRowClick = (project: Project) => {
+    navigate(`/projects/${project.CodCli}/${project.Proyecto}`);
+  };
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -100,6 +106,7 @@ export function ProjectsTable({
       columns={columns}
       data={projects}
       getRowId={getRowId}
+      onRowClick={handleRowClick}
     />
   );
 }

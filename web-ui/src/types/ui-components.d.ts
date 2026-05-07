@@ -31,3 +31,17 @@ declare module '@/components/ui/select' {
   export const SelectScrollUpButton: React.ComponentType<any>
   export const SelectScrollDownButton: React.ComponentType<any>
 }
+
+declare module '@/components/ui/sheet' {
+  import * as React from 'react'
+  export const Sheet: React.ComponentType<any>
+  export const SheetPortal: React.ComponentType<any>
+  export const SheetOverlay: React.ComponentType<any>
+  export const SheetTrigger: React.ComponentType<any>
+  export const SheetClose: React.ComponentType<any>
+  export const SheetContent: React.ComponentType<any>
+  export const SheetHeader: React.ComponentType<any>
+  export const SheetFooter: React.ComponentType<any>
+  export const SheetTitle: React.ComponentType<any>
+  export const SheetDescription: React.ComponentType<any>
+}

@@ -14,6 +14,7 @@ import type { TimeEntry } from '@/lib/types';
 function getDateRangeForPeriod(period: PeriodType, customRange?: DateRange): { start: Date; end: Date } {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  console.log(`TCL ~ getDateRangeForPeriod ~ today:`, today)
   
   switch (period) {
     case 'today':
@@ -29,7 +30,7 @@ function getDateRangeForPeriod(period: PeriodType, customRange?: DateRange): { s
       return { start: monday, end: sunday };
     }
     case 'month': {
-      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1 +1, 0, 0, 0, 0);
       const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
       return { start: firstDay, end: lastDay };
     }
