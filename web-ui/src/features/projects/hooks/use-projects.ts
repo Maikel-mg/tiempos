@@ -1,32 +1,22 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
 import type { Project, ProjectsParams, ProjectsRequest } from '../types';
-
-function decryptPassword(encoded: string): string {
-    try {
-        return atob(encoded);
-    } catch {
-        return '';
-    }
-}
-
-const STORAGE_KEY = 'db_connection_config';
+import { dbConfig } from '@/config/stores';
 
 export function useProjects(params: ProjectsParams = {}) {
   return useQuery({
     queryKey: ['projects', params],
     queryFn: async () => {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (!saved) {
+      const config = dbConfig.get();
+      if (!config) {
         throw new Error('No se encontró configuración de base de datos');
       }
 
-      const dbConfig = JSON.parse(saved);
       const request: ProjectsRequest = {
-        server: dbConfig.server,
-        database: dbConfig.database,
-        username: dbConfig.username,
-        password: dbConfig.password ? decryptPassword(dbConfig.password) : '',
+        server: config.server,
+        database: config.database,
+        username: config.username,
+        password: config.password || '',
         fecha: params.fecha || new Date().toISOString().split('T')[0],
         modoProc: params.modoProc || '',
         usured: params.usured || '',

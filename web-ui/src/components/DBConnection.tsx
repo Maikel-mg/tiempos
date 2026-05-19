@@ -5,6 +5,7 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { dbConfig as dbConfigStore } from '@/config/stores';
 
 export interface DbConfig {
     server: string;
@@ -18,19 +19,7 @@ export interface DBConnectionProps {
     onUpdateDbConfig: (config: DbConfig) => void;
 }
 
-const STORAGE_KEY = 'db_connection_config';
 
-function encryptPassword(password: string): string {
-    return btoa(password);
-}
-
-function decryptPassword(encoded: string): string {
-    try {
-        return atob(encoded);
-    } catch {
-        return '';
-    }
-}
 
 export function DBConnection({ dbConfig, onUpdateDbConfig }: DBConnectionProps) {
   const [showPassword, setShowPassword] = useState(false);
@@ -40,21 +29,20 @@ export function DBConnection({ dbConfig, onUpdateDbConfig }: DBConnectionProps) 
   const [hasConfig, setHasConfig] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
+    const saved = dbConfigStore.get();
     const hasSavedConfig = !!saved;
     setHasConfig(hasSavedConfig);
-    
+
     // Set initial collapsed state: collapsed if config exists, expanded if not
     setIsCollapsed(hasSavedConfig);
-    
+
     if (saved) {
       try {
-        const parsed = JSON.parse(saved);
         onUpdateDbConfig({
-          server: parsed.server || '',
-          database: parsed.database || '',
-          username: parsed.username || '',
-          password: parsed.password ? decryptPassword(parsed.password) : ''
+          server: saved.server || '',
+          database: saved.database || '',
+          username: saved.username || '',
+          password: saved.password || ''
         });
       } catch (e) {
         console.error('Failed to load saved DB config');
@@ -63,18 +51,17 @@ export function DBConnection({ dbConfig, onUpdateDbConfig }: DBConnectionProps) 
   }, []);
 
   const handleSave = () => {
-    const toSave = {
+    dbConfigStore.set({
       server: dbConfig.server,
       database: dbConfig.database,
       username: dbConfig.username,
-      password: dbConfig.password ? encryptPassword(dbConfig.password) : ''
-    };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+      password: dbConfig.password || ''
+    });
     setHasConfig(true);
   };
 
     const handleClear = () => {
-        localStorage.removeItem(STORAGE_KEY);
+        dbConfigStore.reset();
         onUpdateDbConfig({
             server: '',
             database: '',

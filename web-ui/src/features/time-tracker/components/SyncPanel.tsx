@@ -7,21 +7,11 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { generateSQLFromObjects } from '@/lib/sql-generator';
 import { loadMappings } from '@/lib/task-mapping-storage';
 import type { TimeEntry } from '../types';
+import { wizardConfig, dbConfig } from '@/config/stores';
 
 interface SyncPanelProps {
   selectedEntries: TimeEntry[];
   onSyncComplete: (ids: string[]) => Promise<void>;
-}
-
-/**
- * Desencripta la contraseña de la configuración de BBDD.
- */
-function decryptPassword(encoded: string): string {
-  try {
-    return atob(encoded);
-  } catch {
-    return '';
-  }
 }
 
 /**
@@ -37,11 +27,15 @@ export function SyncPanel({ selectedEntries, onSyncComplete }: SyncPanelProps) {
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
   const [autoSyncEnabled, setAutoSyncEnabled] = useState(false); // Por defecto OFF (como PRD)
 
-  // Get config from localStorage
+  // Get config from config storage
   const config = useMemo(() => {
     try {
-      const stored = localStorage.getItem('wizard_config');
-      return stored ? JSON.parse(stored) : { usuario: '', fase: '', tipoHora: '11' };
+      const stored = wizardConfig.get();
+      return stored ? {
+        usuario: stored.usuario,
+        fase: stored.fase,
+        tipoHora: stored.tipoHora
+      } : { usuario: '', fase: '', tipoHora: '11' };
     } catch {
       return { usuario: '', fase: '', tipoHora: '11' };
     }
@@ -77,21 +71,13 @@ export function SyncPanel({ selectedEntries, onSyncComplete }: SyncPanelProps) {
 
   const handleExecute = async () => {
     // Get DB config
-    const dbConfigStr = localStorage.getItem('db_connection_config');
-    if (!dbConfigStr) {
+    const dbConfigData = dbConfig.get();
+    if (!dbConfigData) {
       setResult({ success: false, message: 'Configura la conexión a la BBDD primero' });
       return;
     }
 
-    let dbConfig;
-    try {
-      dbConfig = JSON.parse(dbConfigStr);
-    } catch {
-      setResult({ success: false, message: 'Error al leer la configuración de BBDD' });
-      return;
-    }
-
-    if (!dbConfig.server || !dbConfig.database) {
+    if (!dbConfigData.server || !dbConfigData.database) {
       setResult({ success: false, message: 'Configura la conexión a la BBDD primero' });
       return;
     }
@@ -104,10 +90,10 @@ export function SyncPanel({ selectedEntries, onSyncComplete }: SyncPanelProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          server: dbConfig.server,
-          database: dbConfig.database,
-          username: dbConfig.username,
-          password: dbConfig.password ? decryptPassword(dbConfig.password) : '',
+          server: dbConfigData.server,
+          database: dbConfigData.database,
+          username: dbConfigData.username,
+          password: dbConfigData.password || '',
           sqlStatements: sqlResult.statements
         })
       });

@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'persistent_task_mappings';
+import { taskConfig } from '@/config/stores';
 
 export interface TaskMappings {
   [taskName: string]: string;
@@ -6,12 +6,12 @@ export interface TaskMappings {
 
 export function loadMappings(): TaskMappings {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      return JSON.parse(stored);
+    const config = taskConfig.get();
+    if (config?.mappings) {
+      return config.mappings;
     }
   } catch (error) {
-    console.warn('Failed to load task mappings from localStorage:', error);
+    console.warn('Failed to load task mappings:', error);
   }
   return {};
 }
@@ -20,10 +20,10 @@ export function saveMappings(newMappings: TaskMappings): boolean {
   try {
     const existing = loadMappings();
     const merged = { ...existing, ...newMappings };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+    taskConfig.set({ mappings: merged });
     return true;
   } catch (error) {
-    console.warn('Failed to save task mappings to localStorage:', error);
+    console.warn('Failed to save task mappings:', error);
     return false;
   }
 }

@@ -3,6 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { AlertCircle } from 'lucide-react';
+import { wizardConfig, phaseByMonthConfig } from '@/config/stores';
 
 export interface ImportConfig {
     usuario: string;
@@ -22,34 +23,35 @@ const DEFAULT_CONFIG: ImportConfig = {
     tipoHora: '11'
 };
 
-const CONFIG_STORAGE_KEY = 'wizard_config';
-const PHASE_BY_MONTH_KEY = 'phase_by_month';
-
 export function ImportConfigPanel({ config, onUpdateConfig, selectedMonth }: ImportConfigPanelProps) {
     const [suggestedFase, setSuggestedFase] = useState('');
     const [faseHint, setFaseHint] = useState('');
 
     useEffect(() => {
-        const stored = localStorage.getItem(CONFIG_STORAGE_KEY);
+        const stored = wizardConfig.get();
         if (stored) {
-            const parsed = JSON.parse(stored);
             onUpdateConfig({
                 ...DEFAULT_CONFIG,
-                ...parsed
+                ...stored
             });
         }
     }, []);
 
     useEffect(() => {
         if (config.usuario || config.fase || config.tipoHora) {
-            localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(config));
+            wizardConfig.set({
+                usuario: config.usuario,
+                fase: config.fase,
+                tipoHora: config.tipoHora
+            });
         }
     }, [config]);
 
     useEffect(() => {
         if (selectedMonth) {
             const monthKey = selectedMonth.toISOString().slice(0, 7);
-            const storedPhases = JSON.parse(localStorage.getItem(PHASE_BY_MONTH_KEY) || '{}');
+            const phaseConfig = phaseByMonthConfig.get();
+            const storedPhases = phaseConfig?.phases || {};
             
             if (storedPhases[monthKey]) {
                 setSuggestedFase(storedPhases[monthKey]);
@@ -74,9 +76,10 @@ export function ImportConfigPanel({ config, onUpdateConfig, selectedMonth }: Imp
         
         if (selectedMonth && value) {
             const monthKey = selectedMonth.toISOString().slice(0, 7);
-            const storedPhases = JSON.parse(localStorage.getItem(PHASE_BY_MONTH_KEY) || '{}');
-            storedPhases[monthKey] = value;
-            localStorage.setItem(PHASE_BY_MONTH_KEY, JSON.stringify(storedPhases));
+            const phaseConfig = phaseByMonthConfig.get();
+            const storedPhases = phaseConfig?.phases || {};
+            const updatedPhases = { ...storedPhases, [monthKey]: value };
+            phaseByMonthConfig.set({ phases: updatedPhases });
         }
     };
 

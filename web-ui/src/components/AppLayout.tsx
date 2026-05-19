@@ -18,6 +18,7 @@ import {
   Clock,
   FolderOpen,
 } from "lucide-react"
+import { uiConfig } from "@/config/stores"
 
 const navItems = [
   {
@@ -49,12 +50,12 @@ const navItems = [
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(() => {
-    const saved = localStorage.getItem("sidebar-open")
-    return saved ? JSON.parse(saved) : true
+    const config = uiConfig.get();
+    return config?.sidebarOpen ?? true;
   })
 
   useEffect(() => {
-    localStorage.setItem("sidebar-open", JSON.stringify(open))
+    uiConfig.set({ sidebarOpen: open });
   }, [open])
 
   return (

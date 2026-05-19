@@ -15,6 +15,7 @@ import { ProcessMappingTable } from '@/features/process-management';
 import { processExtractor, processValidation } from '@/features/process-management';
 import type { Process } from '@/features/process-management';
 import type { DbConfig } from '@/components/DBConnection';
+import { wizardConfig, dbConfig as dbConfigStore } from '@/config/stores';
 
 interface TimeEntry {
     id?: string;
@@ -80,16 +81,6 @@ const DEFAULT_CONFIG: ImportConfig = {
     tipoHora: '11'
 };
 
-const DB_CONFIG_KEY = 'db_connection_config';
-
-function decryptPassword(encoded: string): string {
-    try {
-        return atob(encoded);
-    } catch {
-        return '';
-    }
-}
-
 export function LiveTimeEntriesPage() {
     const [entries, setEntries] = useState<TimeEntry[]>([]);
     const [loading, setLoading] = useState(true);
@@ -129,18 +120,23 @@ export function LiveTimeEntriesPage() {
         try {
             const storedMappings = loadMappings();
             setTaskMapping(storedMappings);
-            
-            const storedConfig = localStorage.getItem('wizard_config');
-            if (storedConfig) {
-                setConfig(JSON.parse(storedConfig));
+
+            const storedWizardConfig = wizardConfig.get();
+            if (storedWizardConfig) {
+                setConfig({
+                    usuario: storedWizardConfig.usuario,
+                    fase: storedWizardConfig.fase,
+                    tipoHora: storedWizardConfig.tipoHora
+                });
             }
-            
-            const storedDbConfig = localStorage.getItem(DB_CONFIG_KEY);
+
+            const storedDbConfig = dbConfigStore.get();
             if (storedDbConfig) {
-                const parsed = JSON.parse(storedDbConfig);
                 setDbConfig({
-                    ...parsed,
-                    password: parsed.password ? decryptPassword(parsed.password) : ''
+                    server: storedDbConfig.server,
+                    database: storedDbConfig.database,
+                    username: storedDbConfig.username,
+                    password: storedDbConfig.password || ''
                 });
             }
         } catch (e) {
