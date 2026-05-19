@@ -17,6 +17,8 @@ import type {
   StoredConfig
 } from './types';
 import { encodeValue, decodeValue } from './encryption';
+import { createLocalStorageBackend } from './backends/localStorage';
+import { createMemoryBackend } from './backends/memory';
 
 /**
  * Current storage format version
@@ -288,16 +290,13 @@ export function defineConfig<T extends Record<string, unknown>>(
 }
 
 /**
- * Get the default storage backend (lazy-initialized localStorage)
+ * Get the default storage backend (localStorage with memory fallback)
  */
 function getDefaultBackend(): StorageBackend {
-  // Dynamic import to avoid issues in SSR/test environments
-  const { createLocalStorageBackend } = require('./backends/localStorage');
   try {
     return createLocalStorageBackend();
   } catch {
     // Fallback to memory backend if localStorage unavailable
-    const { createMemoryBackend } = require('./backends/memory');
     return createMemoryBackend();
   }
 }
