@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useState } from 'react';
+
 import { FileSpreadsheet, CheckCircle2, Database } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -7,7 +7,7 @@ import { useImportWizard } from '@/features/import-csv/hooks/use-import-wizard';
 import { Step1Upload } from '@/features/import-csv/components/Step1Upload';
 import { Step2Tasks } from '@/features/import-csv/components/Step2Tasks';
 import { Step3Preview } from '@/features/import-csv/components/Step3Preview';
-import { DBConnection, type DbConfig } from '@/components/DBConnection';
+import { ConfigInfoBar } from '@/components/ConfigInfoBar';
 
 interface StepIndicatorProps {
     currentStep: number;
@@ -49,13 +49,6 @@ function StepIndicator({ currentStep, step, label, icon: Icon }: StepIndicatorPr
 }
 
 export function ImportCsvPage() {
-    const [dbConfig, setDbConfig] = useState<DbConfig>({
-        server: '',
-        database: '',
-        username: '',
-        password: ''
-    });
-
     const {
         step,
         isLoading,
@@ -78,10 +71,7 @@ export function ImportCsvPage() {
             case 1:
                 return (
                     <>
-                        <DBConnection 
-                            dbConfig={dbConfig} 
-                            onUpdateDbConfig={setDbConfig} 
-                        />
+                        <ConfigInfoBar />
                         <Step1Upload
                             onFileUpload={uploadFile}
                             isLoading={isLoading}
@@ -108,7 +98,7 @@ export function ImportCsvPage() {
                         selectedRows={selectedRows}
                         setSelectedRows={setSelectedRows}
                         config={config}
-                        dbConfig={dbConfig}
+                        dbConfig={{ server: '', database: '', username: '', password: '' }}
                     />
                 );
             case 3:
@@ -118,7 +108,7 @@ export function ImportCsvPage() {
                         onBack={() => goToStep('mapping')}
                         onReset={reset}
                         fileName={file?.name}
-                        dbConfig={dbConfig}
+                        dbConfig={{ server: '', database: '', username: '', password: '' }}
                         csvData={csvData}
                         selectedRows={selectedRows}
                         setSelectedRows={setSelectedRows}
