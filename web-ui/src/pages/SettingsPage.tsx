@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { toast } from 'sonner';
-import { dbConfig } from '@/config/stores';
+import { dbConfig, wizardConfig } from '@/config/stores';
 import { useTestDbConnection } from '@/features/live-entries/mutations/sql-mutations';
 
 interface DbConfig {
@@ -25,6 +25,12 @@ interface DbConfig {
   database: string;
   username: string;
   password: string;
+}
+
+interface WizardConfig {
+  usuario: string;
+  tipoHora: string;
+  fase: string;
 }
 
 export function SettingsPage() {
@@ -35,6 +41,11 @@ export function SettingsPage() {
     password: '',
   });
   const [showPassword, setShowPassword] = useState(false);
+  const [wizardCfg, setWizardCfg] = useState<WizardConfig>({
+    usuario: '',
+    tipoHora: '11',
+    fase: '',
+  });
 
   const testMutation = useTestDbConnection();
 
@@ -46,6 +57,15 @@ export function SettingsPage() {
       username: saved?.username ?? '',
       password: saved?.password ?? '',
     });
+
+    const savedWizard = wizardConfig.get();
+    if (savedWizard) {
+      setWizardCfg({
+        usuario: savedWizard.usuario ?? '',
+        tipoHora: savedWizard.tipoHora ?? '11',
+        fase: savedWizard.fase ?? '',
+      });
+    }
   }, []);
 
   const handleSave = () => {
@@ -70,6 +90,28 @@ export function SettingsPage() {
     });
     toast.info('Restablecido', {
       description: 'Se han restablecido los valores guardados.',
+    });
+  };
+
+  const handleWizardSave = () => {
+    wizardConfig.set({
+      usuario: wizardCfg.usuario,
+      tipoHora: wizardCfg.tipoHora,
+    });
+    toast.success('Preferencias guardadas', {
+      description: 'Los datos de importación se han guardado correctamente.',
+    });
+  };
+
+  const handleWizardReset = () => {
+    const saved = wizardConfig.get();
+    setWizardCfg({
+      usuario: saved?.usuario ?? '',
+      tipoHora: saved?.tipoHora ?? '11',
+      fase: saved?.fase ?? '',
+    });
+    toast.info('Restablecido', {
+      description: 'Se han restablecido las preferencias de importación.',
     });
   };
 
@@ -222,6 +264,59 @@ export function SettingsPage() {
                   </AlertDescription>
                 </Alert>
               )}
+          </CardContent>
+        </Card>
+
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <User className="w-5 h-5" />
+              Preferencias de Importación
+            </CardTitle>
+            <CardDescription>
+              Configura los datos que se aplican al generar SQL de tiempos.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="wizard-usuario">Usuario</Label>
+                <Input
+                  id="wizard-usuario"
+                  placeholder="MG01"
+                  value={wizardCfg.usuario}
+                  onChange={(e) => setWizardCfg({ ...wizardCfg, usuario: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="wizard-tipoHora">Tipo de Hora</Label>
+                <Input
+                  id="wizard-tipoHora"
+                  type="number"
+                  placeholder="11"
+                  value={wizardCfg.tipoHora}
+                  onChange={(e) => setWizardCfg({ ...wizardCfg, tipoHora: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="wizard-fase">Fase</Label>
+                <Input
+                  id="wizard-fase"
+                  value={wizardCfg.fase || '—'}
+                  readOnly
+                  disabled
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <Button variant="outline" onClick={handleWizardSave}>
+                Guardar
+              </Button>
+              <Button variant="ghost" onClick={handleWizardReset}>
+                Restablecer
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>

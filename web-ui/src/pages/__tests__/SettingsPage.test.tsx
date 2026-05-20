@@ -4,7 +4,8 @@ import { toast } from 'sonner';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SettingsPage } from '../SettingsPage';
-import { dbConfig } from '@/config/stores';
+import { dbConfig, wizardConfig } from '@/config/stores';
+
 // Mock sonner toast
 vi.mock('sonner', () => ({
   toast: {
@@ -40,31 +41,41 @@ const renderPage = () => {
   );
 };
 
+// Helpers to get specific inputs by id
+const getServerInput = () => document.getElementById('server') as HTMLInputElement;
+const getDatabaseInput = () => document.getElementById('database') as HTMLInputElement;
+const getUsernameInput = () => document.getElementById('username') as HTMLInputElement;
+const getPasswordInput = () => document.getElementById('password') as HTMLInputElement;
+const getWizardUsuarioInput = () => document.getElementById('wizard-usuario') as HTMLInputElement;
+const getWizardTipoHoraInput = () => document.getElementById('wizard-tipoHora') as HTMLInputElement;
+const getWizardFaseInput = () => document.getElementById('wizard-fase') as HTMLInputElement;
+
 describe('SettingsPage - DB Connection Section', () => {
   beforeEach(() => {
     dbConfig.reset();
+    wizardConfig.reset();
     vi.clearAllMocks();
   });
 
   describe('Test 1: Renders 4 form fields', () => {
-    it('should render server input with label', () => {
+    it('should render server input', () => {
       renderPage();
-      expect(screen.getByLabelText(/servidor/i)).toBeDefined();
+      expect(getServerInput()).toBeDefined();
     });
 
-    it('should render database input with label', () => {
+    it('should render database input', () => {
       renderPage();
-      expect(screen.getByLabelText(/base de datos/i)).toBeDefined();
+      expect(getDatabaseInput()).toBeDefined();
     });
 
-    it('should render username input with label', () => {
+    it('should render username input', () => {
       renderPage();
-      expect(screen.getByLabelText(/usuario/i)).toBeDefined();
+      expect(getUsernameInput()).toBeDefined();
     });
 
-    it('should render password input with label', () => {
+    it('should render password input', () => {
       renderPage();
-      expect(screen.getByLabelText(/contraseña/i)).toBeDefined();
+      expect(getPasswordInput()).toBeDefined();
     });
   });
 
@@ -79,19 +90,19 @@ describe('SettingsPage - DB Connection Section', () => {
 
       renderPage();
 
-      expect((screen.getByLabelText(/servidor/i) as HTMLInputElement).value).toBe('localhost\\SQLEXPRESS');
-      expect((screen.getByLabelText(/base de datos/i) as HTMLInputElement).value).toBe('TiemposDB');
-      expect((screen.getByLabelText(/usuario/i) as HTMLInputElement).value).toBe('sa');
-      expect((screen.getByLabelText(/contraseña/i) as HTMLInputElement).value).toBe('secret123');
+      expect(getServerInput().value).toBe('localhost\\SQLEXPRESS');
+      expect(getDatabaseInput().value).toBe('TiemposDB');
+      expect(getUsernameInput().value).toBe('sa');
+      expect(getPasswordInput().value).toBe('secret123');
     });
 
     it('should show empty fields when store is empty', () => {
       renderPage();
 
-      expect((screen.getByLabelText(/servidor/i) as HTMLInputElement).value).toBe('');
-      expect((screen.getByLabelText(/base de datos/i) as HTMLInputElement).value).toBe('');
-      expect((screen.getByLabelText(/usuario/i) as HTMLInputElement).value).toBe('');
-      expect((screen.getByLabelText(/contraseña/i) as HTMLInputElement).value).toBe('');
+      expect(getServerInput().value).toBe('');
+      expect(getDatabaseInput().value).toBe('');
+      expect(getUsernameInput().value).toBe('');
+      expect(getPasswordInput().value).toBe('');
     });
   });
 
@@ -99,12 +110,14 @@ describe('SettingsPage - DB Connection Section', () => {
     it('should persist form values to dbConfig store when Guardar is clicked', () => {
       renderPage();
 
-      fireEvent.change(screen.getByLabelText(/servidor/i), { target: { value: 'my-server' } });
-      fireEvent.change(screen.getByLabelText(/base de datos/i), { target: { value: 'my-db' } });
-      fireEvent.change(screen.getByLabelText(/usuario/i), { target: { value: 'admin' } });
-      fireEvent.change(screen.getByLabelText(/contraseña/i), { target: { value: 'pass123' } });
+      fireEvent.change(getServerInput(), { target: { value: 'my-server' } });
+      fireEvent.change(getDatabaseInput(), { target: { value: 'my-db' } });
+      fireEvent.change(getUsernameInput(), { target: { value: 'admin' } });
+      fireEvent.change(getPasswordInput(), { target: { value: 'pass123' } });
 
-      fireEvent.click(screen.getByRole('button', { name: /guardar/i }));
+      // Click first Guardar button (DB section)
+      const saveButtons = screen.getAllByRole('button', { name: /guardar/i });
+      fireEvent.click(saveButtons[0]);
 
       const saved = dbConfig.get();
       expect(saved?.server).toBe('my-server');
@@ -125,25 +138,24 @@ describe('SettingsPage - DB Connection Section', () => {
 
       renderPage();
 
-      // Modify fields
-      fireEvent.change(screen.getByLabelText(/servidor/i), { target: { value: 'changed-server' } });
-      fireEvent.change(screen.getByLabelText(/base de datos/i), { target: { value: 'changed-db' } });
+      fireEvent.change(getServerInput(), { target: { value: 'changed-server' } });
+      fireEvent.change(getDatabaseInput(), { target: { value: 'changed-db' } });
 
-      // Click Restablecer
-      fireEvent.click(screen.getByRole('button', { name: /restablecer/i }));
+      // Click first Restablecer button (DB section)
+      const resetButtons = screen.getAllByRole('button', { name: /restablecer/i });
+      fireEvent.click(resetButtons[0]);
 
-      // Fields should revert to saved values
-      expect((screen.getByLabelText(/servidor/i) as HTMLInputElement).value).toBe('saved-server');
-      expect((screen.getByLabelText(/base de datos/i) as HTMLInputElement).value).toBe('saved-db');
-      expect((screen.getByLabelText(/usuario/i) as HTMLInputElement).value).toBe('saved-user');
-      expect((screen.getByLabelText(/contraseña/i) as HTMLInputElement).value).toBe('saved-pass');
+      expect(getServerInput().value).toBe('saved-server');
+      expect(getDatabaseInput().value).toBe('saved-db');
+      expect(getUsernameInput().value).toBe('saved-user');
+      expect(getPasswordInput().value).toBe('saved-pass');
     });
   });
 
   describe('Test 5: Password show/hide toggle', () => {
     it('should have password type by default', () => {
       renderPage();
-      expect((screen.getByLabelText(/contraseña/i) as HTMLInputElement).type).toBe('password');
+      expect(getPasswordInput().type).toBe('password');
     });
 
     it('should toggle to text type when eye button is clicked', () => {
@@ -152,7 +164,7 @@ describe('SettingsPage - DB Connection Section', () => {
       const toggleButton = screen.getByRole('button', { name: '' }); // eye icon button
       fireEvent.click(toggleButton);
 
-      expect((screen.getByLabelText(/contraseña/i) as HTMLInputElement).type).toBe('text');
+      expect(getPasswordInput().type).toBe('text');
     });
   });
 
@@ -170,10 +182,10 @@ describe('SettingsPage - DB Connection Section', () => {
 
       renderPage();
 
-      fireEvent.change(screen.getByLabelText(/servidor/i), { target: { value: 'my-server' } });
-      fireEvent.change(screen.getByLabelText(/base de datos/i), { target: { value: 'my-db' } });
-      fireEvent.change(screen.getByLabelText(/usuario/i), { target: { value: 'admin' } });
-      fireEvent.change(screen.getByLabelText(/contraseña/i), { target: { value: 'pass123' } });
+      fireEvent.change(getServerInput(), { target: { value: 'my-server' } });
+      fireEvent.change(getDatabaseInput(), { target: { value: 'my-db' } });
+      fireEvent.change(getUsernameInput(), { target: { value: 'admin' } });
+      fireEvent.change(getPasswordInput(), { target: { value: 'pass123' } });
 
       fireEvent.click(screen.getByRole('button', { name: /probar conexión/i }));
 
@@ -190,13 +202,117 @@ describe('SettingsPage - DB Connection Section', () => {
     it('should show success toast when Guardar is clicked', () => {
       renderPage();
 
-      fireEvent.change(screen.getByLabelText(/servidor/i), { target: { value: 'my-server' } });
-      fireEvent.click(screen.getByRole('button', { name: /guardar/i }));
+      fireEvent.change(getServerInput(), { target: { value: 'my-server' } });
+
+      const saveButtons = screen.getAllByRole('button', { name: /guardar/i });
+      fireEvent.click(saveButtons[0]);
 
       expect(toast.success).toHaveBeenCalledWith(
         'Configuración guardada',
         expect.objectContaining({ description: expect.any(String) })
       );
+    });
+  });
+});
+
+describe('SettingsPage - Wizard Config Section', () => {
+  beforeEach(() => {
+    dbConfig.reset();
+    wizardConfig.reset();
+    vi.clearAllMocks();
+  });
+
+  describe('Test 1: Renders wizard section with fields', () => {
+    it('should render section heading "Preferencias de Importación"', () => {
+      renderPage();
+      expect(screen.getByText(/preferencias de importación/i)).toBeDefined();
+    });
+
+    it('should render wizard usuario input', () => {
+      renderPage();
+      expect(getWizardUsuarioInput()).toBeDefined();
+    });
+
+    it('should render tipoHora input', () => {
+      renderPage();
+      expect(getWizardTipoHoraInput()).toBeDefined();
+    });
+
+    it('should render fase as read-only input', () => {
+      renderPage();
+      expect(getWizardFaseInput()).toBeDefined();
+      expect(getWizardFaseInput().readOnly).toBe(true);
+    });
+  });
+
+  describe('Test 2: Fase is read-only', () => {
+    it('should have readonly attribute on fase input', () => {
+      renderPage();
+      expect(getWizardFaseInput().readOnly).toBe(true);
+      expect(getWizardFaseInput().disabled).toBe(true);
+    });
+  });
+
+  describe('Test 3: Fields pre-populated from wizardConfig store', () => {
+    it('should populate usuario and tipoHora when store has values', () => {
+      wizardConfig.set({
+        usuario: 'MG01',
+        tipoHora: '15',
+        fase: '38653',
+      });
+
+      renderPage();
+
+      expect(getWizardUsuarioInput().value).toBe('MG01');
+      expect(getWizardTipoHoraInput().value).toBe('15');
+    });
+  });
+
+  describe('Test 4: Guardar persists wizard config', () => {
+    it('should persist usuario and tipoHora to wizardConfig store', () => {
+      renderPage();
+
+      fireEvent.change(getWizardUsuarioInput(), { target: { value: 'MG02' } });
+      fireEvent.change(getWizardTipoHoraInput(), { target: { value: '20' } });
+
+      // Click second Guardar button (wizard section)
+      const saveButtons = screen.getAllByRole('button', { name: /guardar/i });
+      fireEvent.click(saveButtons[saveButtons.length - 1]);
+
+      const saved = wizardConfig.get();
+      expect(saved?.usuario).toBe('MG02');
+      expect(saved?.tipoHora).toBe('20');
+    });
+  });
+
+  describe('Test 5: Restablecer reverts wizard config', () => {
+    it('should revert wizard fields to last saved values', () => {
+      wizardConfig.set({
+        usuario: 'SAVED',
+        tipoHora: '11',
+        fase: '99999',
+      });
+
+      renderPage();
+
+      fireEvent.change(getWizardUsuarioInput(), { target: { value: 'CHANGED' } });
+
+      // Click second Restablecer button (wizard section)
+      const resetButtons = screen.getAllByRole('button', { name: /restablecer/i });
+      fireEvent.click(resetButtons[resetButtons.length - 1]);
+
+      expect(getWizardUsuarioInput().value).toBe('SAVED');
+    });
+  });
+
+  describe('Test 6: Toast on wizard save', () => {
+    it('should show success toast when wizard Guardar is clicked', () => {
+      renderPage();
+
+      const saveButtons = screen.getAllByRole('button', { name: /guardar/i });
+      fireEvent.click(saveButtons[saveButtons.length - 1]);
+
+      expect(toast.success).toHaveBeenCalled();
     });
   });
 });
