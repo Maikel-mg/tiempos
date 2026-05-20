@@ -17,10 +17,12 @@ import {
   FileSpreadsheet,
   Clock,
   FolderOpen,
+  Settings,
 } from "lucide-react"
+import { Separator } from "@/components/ui/separator"
 import { uiConfig } from "@/config/stores"
 
-const navItems = [
+const mainNavItems = [
   {
     title: "Dashboard",
     url: "/dashboard",
@@ -45,6 +47,14 @@ const navItems = [
     title: "Mi TimeTracker",
     url: "/time-tracker",
     icon: Clock,
+  },
+]
+
+const settingsNavItems = [
+  {
+    title: "Configuración",
+    url: "/settings",
+    icon: Settings,
   },
 ]
 
@@ -82,12 +92,38 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <SidebarGroup>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {navItems.map((item) => (
+                  {mainNavItems.map((item) => (
                     <SidebarMenuItem key={item.url}>
                       <NavLink
                         to={item.url}
                         className="w-full"
                         end={item.url === "/"}
+                      >
+                        {({ isActive }) => (
+                          <SidebarMenuButton
+                            isActive={isActive}
+                            tooltip={item.title}
+                          >
+                            <item.icon />
+                            <span>{item.title}</span>
+                          </SidebarMenuButton>
+                        )}
+                      </NavLink>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+            <Separator className="mx-auto w-4/5 my-2" />
+            <SidebarGroup>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {settingsNavItems.map((item) => (
+                    <SidebarMenuItem key={item.url}>
+                      <NavLink
+                        to={item.url}
+                        className="w-full"
+                        end={item.url === "/settings"}
                       >
                         {({ isActive }) => (
                           <SidebarMenuButton

@@ -1,0 +1,37 @@
+# Importador de Tiempos
+
+Aplicación para obtener registros de tiempo desde Clockify y generar/ejecutar SQL en SQL Server.
+
+## Language
+
+**Configuración (Settings)**:
+Página dedicada (`/settings`) para editar la configuración de la aplicación (conexión DB, preferencias de usuario). No es inline en los wizards.
+_Avoid_: Config page, Preferences, Ajustes
+
+**Info Bar**:
+Componente de solo lectura que muestra la configuración activa (usuario, tipoHora, fase) en la parte superior de las páginas. Enlaza a Settings para editar.
+_Avoid_: Config summary, Config display
+
+**Guard Pattern**:
+Bloqueo de acciones que requieren configuración (ej: "Ejecutar en BD") cuando la config falta, con redirección a Settings. No bloquea la carga de la página.
+_Avoid_: Config check, Validation gate
+
+**dbConfig**:
+Store de configuración de conexión a SQL Server (server, database, username, password encriptado). Se edita en Settings.
+_Avoid_: DB settings, Database config
+
+**wizardConfig**:
+Store de preferencias de importación (usuario, fase, tipoHora). Se edita en Settings. La fase tiene comportamiento contextual por mes.
+_Avoid_: Import config, User preferences
+
+**phaseByMonthConfig**:
+Store interno que cachea las fases sugeridas por mes. Se actualiza automáticamente al aplicar sugerencias. No tiene UI.
+_Avoid_: Phase cache, Month phases
+
+**Fase (contextual)**:
+ID de fase que varía por mes. En Settings se muestra la actual. En LiveTimeEntriesPage muestra hint con sugerencia mensual y botón "Aplicar".
+_Avoid_: Phase ID, Fase ID
+
+**Tipo de Hora**:
+Numeral que identifica el tipo de hora a registrar (default: 11). Se edita en Settings, se muestra read-only en info bar.
+_Avoid_: Hour type, Time type
