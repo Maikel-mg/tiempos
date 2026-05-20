@@ -10,12 +10,13 @@ import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { generateSQLFromObjects, formatSQLForHighlight, downloadSQL, copyToClipboard, type SQLGenerationResult } from '@/lib/sql-generator';
 import { loadMappings, type TaskMappings } from '@/lib/task-mapping-storage';
-import { ImportConfigPanel, type ImportConfig } from '@/components/ImportConfigPanel';
+import { ConfigInfoBar } from '@/components/ConfigInfoBar';
+import { toast } from 'sonner';
 import { ProcessMappingTable } from '@/features/process-management';
 import { processExtractor, processValidation } from '@/features/process-management';
 import type { Process } from '@/features/process-management';
 import type { DbConfig } from '@/components/DBConnection';
-import { wizardConfig, dbConfig as dbConfigStore } from '@/config/stores';
+import { wizardConfig, dbConfig as dbConfigStore, phaseByMonthConfig } from '@/config/stores';
 
 interface TimeEntry {
     id?: string;
@@ -73,6 +74,12 @@ function formatTimeHHMMSS(dateString: string | undefined | null) {
     const minutes = date.getMinutes().toString().padStart(2, '0');
     const seconds = date.getSeconds().toString().padStart(2, '0');
     return `${hours}:${minutes}:${seconds}`;
+}
+
+interface ImportConfig {
+    usuario: string;
+    fase: string;
+    tipoHora: string;
 }
 
 const DEFAULT_CONFIG: ImportConfig = {
@@ -374,6 +381,19 @@ export function LiveTimeEntriesPage() {
     const isAllInPageSelected = selectableInPage.length > 0 && selectableInPage.every(e => selectedEntries.has(getEntryUniqueId(e)));
     const isSomeInPageSelected = selectableInPage.some(e => selectedEntries.has(getEntryUniqueId(e))) && !isAllInPageSelected;
 
+    // Handle apply fase suggestion from ConfigInfoBar
+    const handleApplySuggestion = useCallback((fase: string) => {
+        wizardConfig.set({ fase });
+        if (selectedMonth) {
+            const monthKey = selectedMonth.toISOString().slice(0, 7);
+            const phaseConfig = phaseByMonthConfig.get();
+            const storedPhases = phaseConfig?.phases || {};
+            phaseByMonthConfig.set({ phases: { ...storedPhases, [monthKey]: fase } });
+        }
+        setConfig(prev => ({ ...prev, fase }));
+        toast.success('Fase actualizada', { description: `Fase ${fase} aplicada correctamente.` });
+    }, [selectedMonth]);
+
     // Handle task ID update
     const handleUpdateTaskId = useCallback((taskName: string, taskId: string) => {
         setTaskMapping(prev => ({
@@ -445,9 +465,9 @@ export function LiveTimeEntriesPage() {
 
     const handleExecuteSQL = async () => {
         if (!dbConfig?.server || !dbConfig?.database || !dbConfig?.username) {
-            setExecuteResult({
-                success: false,
-                message: 'Configura la conexión a la base de datos primero'
+            toast.error('Conexión no configurada', {
+                description: 'Configura la conexión a la base de datos en Configuración.',
+                action: { label: 'Ir a Configuración', onClick: () => window.location.href = '/settings' },
             });
             return;
         }
@@ -485,10 +505,9 @@ export function LiveTimeEntriesPage() {
     return (
         <>
             <div className="container mx-auto px-4 py-4">
-                <ImportConfigPanel 
-                    config={config} 
-                    onUpdateConfig={setConfig}
+                <ConfigInfoBar
                     selectedMonth={selectedMonth}
+                    onApplySuggestion={handleApplySuggestion}
                 />
             </div>
             <main className="flex-1 container mx-auto px-4 py-8">
