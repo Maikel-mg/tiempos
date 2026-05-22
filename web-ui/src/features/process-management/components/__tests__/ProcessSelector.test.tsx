@@ -1,6 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi } from 'vitest';
+import '@testing-library/jest-dom';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ProcessSelector } from '../ProcessSelector';
 import { useProjects } from '@/features/projects/hooks/use-projects';
 import { useProjectTree } from '@/features/projects/hooks/use-project-tree';
@@ -299,6 +300,7 @@ describe('ProcessSelector', () => {
     });
 
     it('should render search input in projects view', () => {
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
       const mockProjects = [
         { CodCli: '1', NomCliente: 'Client A', NomProy: 'Project Alpha', Proyecto: 'PA' },
         { CodCli: '2', NomCliente: 'Client B', NomProy: 'Project Beta', Proyecto: 'PB' },
@@ -312,7 +314,7 @@ describe('ProcessSelector', () => {
       render(<ProcessSelector open={true} onOpenChange={() => {}} onSelect={() => {}} />);
 
       expect(screen.getByPlaceholderText('Buscar proyectos...')).toBeDefined();
-      expect(screen.getByRole('button', { name: /Limpiar búsqueda de proyectos/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /Limpiar búsqueda de proyectos/i })).not.toBeInTheDocument();
     });
 
     it('should filter projects by name and code (case-insensitive)', async () => {
@@ -327,6 +329,7 @@ describe('ProcessSelector', () => {
         isLoading: false,
         isError: false,
       } as any);
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
 
       render(<ProcessSelector open={true} onOpenChange={() => {}} onSelect={() => {}} />);
 
@@ -360,6 +363,7 @@ describe('ProcessSelector', () => {
         isLoading: false,
         isError: false,
       } as any);
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
 
       render(<ProcessSelector open={true} onOpenChange={() => {}} onSelect={() => {}} />);
 
@@ -383,6 +387,7 @@ describe('ProcessSelector', () => {
         isLoading: false,
         isError: false,
       } as any);
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
 
       render(<ProcessSelector open={true} onOpenChange={() => {}} onSelect={() => {}} />);
 
@@ -482,6 +487,181 @@ describe('ProcessSelector', () => {
 
       // Should go to L2 (processes view), not call onSelect
       expect(screen.getByText(/Procesos para: Project Alpha/)).toBeDefined();
+    });
+  });
+
+  describe('Clear confirmation', () => {
+    beforeEach(() => {
+      vi.mocked(useProjects).mockReturnValue({
+        data: [
+          { CodCli: '1', NomCliente: 'Client A', NomProy: 'Project Alpha', Proyecto: 'PA' },
+        ],
+        isLoading: false,
+        isError: false,
+      } as any);
+      vi.mocked(useProjectTree).mockReturnValue({ isLoading: false } as any);
+      vi.restoreAllMocks();
+      // Mock confirm before each test
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('should show confirmation dialog when X button is clicked', async () => {
+      const user = userEvent.setup();
+      const mockProjects = [
+        { CodCli: '1', NomCliente: 'Client A', NomProy: 'Project Alpha', Proyecto: 'PA' },
+      ];
+      vi.mocked(useProjects).mockReturnValue({
+        data: mockProjects,
+        isLoading: false,
+        isError: false,
+      } as any);
+
+      render(<ProcessSelector open={true} onOpenChange={() => {}} onSelect={() => {}} />);
+
+      // Type in search to show X button
+      const searchInput = screen.getByPlaceholderText('Buscar proyectos...');
+      await user.type(searchInput, 'test');
+
+      // X button should be visible
+      const clearButton = screen.getByRole('button', { name: /Limpiar búsqueda de proyectos/i });
+      expect(clearButton).toBeInTheDocument();
+
+      // Click X button - should trigger confirmation
+      await user.click(clearButton);
+
+      expect(window.confirm).toHaveBeenCalledWith('¿Limpiar valor?');
+    });
+
+    it('should clear search value when confirmation is confirmed', async () => {
+      const user = userEvent.setup();
+
+      render(<ProcessSelector open={true} onOpenChange={() => {}} onSelect={() => {}} />);
+
+      // Type in search
+      const searchInput = screen.getByPlaceholderText('Buscar proyectos...');
+      await user.type(searchInput, 'test');
+      expect((searchInput as HTMLInputElement).value).toBe('test');
+
+      // Click X button and confirm
+      await user.click(screen.getByRole('button', { name: /Limpiar búsqueda de proyectos/i }));
+
+      // Search should be cleared
+      expect((searchInput as HTMLInputElement).value).toBe('');
+    });
+
+    it('should preserve search value when confirmation is cancelled', async () => {
+      const user = userEvent.setup();
+      vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+      render(<ProcessSelector open={true} onOpenChange={() => {}} onSelect={() => {}} />);
+
+      // Type in search
+      const searchInput = screen.getByPlaceholderText('Buscar proyectos...');
+      await user.type(searchInput, 'test');
+      expect((searchInput as HTMLInputElement).value).toBe('test');
+
+      // Click X button and cancel
+      await user.click(screen.getByRole('button', { name: /Limpiar búsqueda de proyectos/i }));
+
+      // Search value should be preserved
+      expect((searchInput as HTMLInputElement).value).toBe('test');
+    });
+
+    it('should show confirmation dialog when Escape is pressed on input with value', async () => {
+      const user = userEvent.setup();
+
+      render(<ProcessSelector open={true} onOpenChange={() => {}} onSelect={() => {}} />);
+
+      // Type in search
+      const searchInput = screen.getByPlaceholderText('Buscar proyectos...');
+      await user.type(searchInput, 'test');
+
+      // Press Escape while focused on input
+      await user.keyboard('{Escape}');
+
+      expect(window.confirm).toHaveBeenCalledWith('¿Limpiar valor?');
+    });
+
+    it('should clear input value on Escape when confirmation is confirmed', async () => {
+      const user = userEvent.setup();
+
+      render(<ProcessSelector open={true} onOpenChange={() => {}} onSelect={() => {}} />);
+
+      // Type in search
+      const searchInput = screen.getByPlaceholderText('Buscar proyectos...');
+      await user.type(searchInput, 'test');
+      expect((searchInput as HTMLInputElement).value).toBe('test');
+
+      // Press Escape and confirm
+      await user.keyboard('{Escape}');
+
+      // Input should be cleared
+      expect((searchInput as HTMLInputElement).value).toBe('');
+    });
+
+    it('should preserve input value on Escape when confirmation is cancelled', async () => {
+      const user = userEvent.setup();
+      vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+      render(<ProcessSelector open={true} onOpenChange={() => {}} onSelect={() => {}} />);
+
+      // Type in search
+      const searchInput = screen.getByPlaceholderText('Buscar proyectos...');
+      await user.type(searchInput, 'test');
+      expect((searchInput as HTMLInputElement).value).toBe('test');
+
+      // Press Escape and cancel
+      await user.keyboard('{Escape}');
+
+      // Input value should be preserved
+      expect((searchInput as HTMLInputElement).value).toBe('test');
+    });
+
+    it('should NOT show confirmation when input is empty on Escape', async () => {
+      const user = userEvent.setup();
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+      render(<ProcessSelector open={true} onOpenChange={() => {}} onSelect={() => {}} />);
+
+      // Input should be empty
+      const searchInput = screen.getByPlaceholderText('Buscar proyectos...');
+      expect((searchInput as HTMLInputElement).value).toBe('');
+
+      // Press Escape while focused on empty input
+      await user.keyboard('{Escape}');
+
+      // Should NOT show confirmation - just close the dialog normally
+      // (The Escape handler should delegate to handleEscape which closes dialog)
+      // Window.confirm should NOT have been called
+      expect(window.confirm).not.toHaveBeenCalled();
+
+      vi.spyOn(window, 'confirm').mockRestore();
+    });
+
+    it('should show clear button on hover when input has value', async () => {
+      const user = userEvent.setup();
+      const mockProjects = [
+        { CodCli: '1', NomCliente: 'Client A', NomProy: 'Project Alpha', Proyecto: 'PA' },
+      ];
+      vi.mocked(useProjects).mockReturnValue({
+        data: mockProjects,
+        isLoading: false,
+        isError: false,
+      } as any);
+
+      render(<ProcessSelector open={true} onOpenChange={() => {}} onSelect={() => {}} />);
+
+      // Type in search to show X button
+      const searchInput = screen.getByPlaceholderText('Buscar proyectos...');
+      await user.type(searchInput, 'test');
+
+      // X button should be in the document
+      const clearButton = screen.getByRole('button', { name: /Limpiar búsqueda de proyectos/i });
+      expect(clearButton).toBeInTheDocument();
     });
   });
 
@@ -720,8 +900,8 @@ describe('ProcessSelector', () => {
       await user.keyboard('{ArrowDown}');
       await user.keyboard('{Enter}');
 
-      // Should call onSelect with project code and process name
-      expect(onSelect).toHaveBeenCalledWith('PA', 'Proceso B');
+      // Should call onSelect with project code and process ID (number)
+      expect(onSelect).toHaveBeenCalledWith('PA', '124');
     });
 
     it('should go back to L1 on Escape in L2', async () => {

@@ -93,19 +93,7 @@ export function ProcessSelector({ open, onOpenChange, onSelect, usuario }: Proce
     }
   }, [view, onOpenChange]);
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        handleEscape();
-      }
-    };
-    if (open) {
-      window.addEventListener('keydown', handleKeyDown);
-    }
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [open, handleEscape]);
-
-// Reset view when opening
+  // Reset view when opening
    useEffect(() => {
      if (open) {
        setView('projects');
@@ -144,18 +132,43 @@ export function ProcessSelector({ open, onOpenChange, onSelect, usuario }: Proce
      setProcessSelectedIndex(0);
    };
 
-   const handleProcessSelect = useCallback((proc: { id: number; nombre: string; ruta: string }) => {
-     if (selectedProject) {
-       onSelect(selectedProject.Proyecto, proc.nombre);
-     }
-   }, [selectedProject, onSelect]);
+    const handleProcessSelect = useCallback((proc: { id: number; nombre: string; ruta: string }) => {
+      if (selectedProject) {
+        onSelect(selectedProject.Proyecto, proc.id.toString());
+      }
+    }, [selectedProject, onSelect]);
 
 // Keyboard navigation handler
    useEffect(() => {
      const handleKeyDown = (e: KeyboardEvent) => {
-       // Only handle if dialog is open and we're not typing in search
        if (!open) return;
-       if (e.target instanceof HTMLInputElement) return;
+       
+       // Handle Escape in input fields
+       if (e.target instanceof HTMLInputElement) {
+         if (e.key === 'Escape') {
+           e.preventDefault();
+           e.stopPropagation();
+           
+           // Get the input value
+           const inputValue = (e.target as HTMLInputElement).value;
+           
+           if (inputValue) {
+             // Has value - ask for confirmation before clearing
+             if (window.confirm('¿Limpiar valor?')) {
+               // Clear the appropriate search state based on input id
+               if (e.target.id === 'project-search') {
+                 setProjectSearchTerm('');
+               } else if (e.target.id === 'process-search') {
+                 setProcessSearchTerm('');
+               }
+             }
+           } else {
+             // Empty input - close dialog
+             handleEscape();
+           }
+         }
+         return;
+       }
 
        if (e.key === 'ArrowDown') {
          e.preventDefault();
@@ -216,26 +229,31 @@ export function ProcessSelector({ open, onOpenChange, onSelect, usuario }: Proce
                  </Alert>
                ) : (
                  <>
-                   <div className="flex items-center gap-2">
-                     <Input
-                       id="project-search"
-                       placeholder="Buscar proyectos..."
-                       value={projectSearchTerm}
-                       onChange={(e) => setProjectSearchTerm(e.target.value)}
-                       aria-label="Buscar proyectos por nombre o código"
-                       className="max-w-sm"
-                     />
-                     {projectSearchTerm && (
-                       <Button
-                         variant="ghost"
-                         size="icon"
-                         onClick={() => setProjectSearchTerm('')}
-                         aria-label="Limpiar búsqueda de proyectos"
-                       >
-                         <X className="h-4 w-4" />
-                       </Button>
-                     )}
-                   </div>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id="project-search"
+                        placeholder="Buscar proyectos..."
+                        value={projectSearchTerm}
+                        onChange={(e) => setProjectSearchTerm(e.target.value)}
+                        aria-label="Buscar proyectos por nombre o código"
+                        className="max-w-sm"
+                      />
+                      {projectSearchTerm && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            if (window.confirm('¿Limpiar valor?')) {
+                              setProjectSearchTerm('');
+                            }
+                          }}
+                          aria-label="Limpiar búsqueda de proyectos"
+                          className="opacity-0 focus:opacity-100 hover:opacity-100"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                    <ScrollArea className="h-[400px] border rounded-lg">
                      <Table>
                        <TableHeader className="sticky top-0 bg-background z-10">
@@ -304,26 +322,31 @@ export function ProcessSelector({ open, onOpenChange, onSelect, usuario }: Proce
                 </Alert>
                ) : (
                  <>
-                   <div className="flex items-center gap-2">
-                     <Input
-                       id="process-search"
-                       placeholder="Buscar procesos..."
-                       value={processSearchTerm}
-                       onChange={(e) => setProcessSearchTerm(e.target.value)}
-                       aria-label="Buscar procesos por ID, nombre o ruta"
-                       className="max-w-sm"
-                     />
-                     {processSearchTerm && (
-                       <Button
-                         variant="ghost"
-                         size="icon"
-                         onClick={() => setProcessSearchTerm('')}
-                         aria-label="Limpiar búsqueda de procesos"
-                       >
-                         <X className="h-4 w-4" />
-                       </Button>
-                     )}
-                   </div>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id="process-search"
+                        placeholder="Buscar procesos..."
+                        value={processSearchTerm}
+                        onChange={(e) => setProcessSearchTerm(e.target.value)}
+                        aria-label="Buscar procesos por ID, nombre o ruta"
+                        className="max-w-sm"
+                      />
+                      {processSearchTerm && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            if (window.confirm('¿Limpiar valor?')) {
+                              setProcessSearchTerm('');
+                            }
+                          }}
+                          aria-label="Limpiar búsqueda de procesos"
+                          className="opacity-0 focus:opacity-100 hover:opacity-100"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                    <ScrollArea className="h-[400px] border rounded-lg">
                      <Table>
                        <TableHeader className="sticky top-0 bg-background z-10">
