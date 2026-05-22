@@ -17,8 +17,8 @@ export function useProjectTree(params: ProjectTreeParams) {
         database: config.database,
         username: config.username,
         password: config.password || '',
-        codCli: params.codCli,
-        proyecto: params.proyecto,
+        codCli: params.codCli.toString(),
+        proyecto: params.proyecto.toString(),
       };
 
       const response = await apiClient.post<{

@@ -733,8 +733,8 @@ app.post('/api/projects-tree', async (req: Request, res: Response) => {
       const query = `
         SET DATEFORMAT dmy;
         EXEC spNETProyectos_TreeProyectos 
-          @pClientes = ${pCodCli ? `'${pCodCli.replace(/'/g, "''")}'` : 'NULL'}, 
-          @pProyectos = ${pProyecto ? `'${pProyecto.replace(/'/g, "''")}'` : 'NULL'}, 
+          @pClientes = ${pCodCli ? `'${pCodCli.toString().replace(/'/g, "''")}'` : 'NULL'}, 
+          @pProyectos = ${pProyecto ? `'${pProyecto.toString().replace(/'/g, "''")}'` : 'NULL'}, 
           @pFecha = ${pFechaSpanish ? `'${pFechaSpanish}'` : 'NULL'}, 
           @pModo = ${pModo};
       `;

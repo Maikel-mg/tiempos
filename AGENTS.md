@@ -52,4 +52,18 @@ web-ui/            Frontend React (wizard de 3 pasos: subir CSV, asignar IDs, ge
 - Backend usa `tsx` para desarrollo, compila a `dist/` para producción
 - Frontend es standalone (no depende del backend para parsear CSV)
 - Archivos de ejemplo en raíz: `ejemplo.csv`, `ejemplo_comas.csv`, `tiemposEnero.csv`
-- **Ver [WEB_ARCHITECTURE.md](./WEB_ARCHITECTURE.md) para estándares de desarrollo frontend**
+- **Ver [WEB_ARCHITECTURE.md](./WEB_ARCHITECTURE.md) para estándares de desarrollo frontend
+
+## Agent skills
+
+### Issue tracker
+
+Issues are tracked in GitHub Issues via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Uses default label vocabulary (needs-triage, needs-info, ready-for-agent, ready-for-human, wontfix). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context layout — `CONTEXT.md` and `docs/adr/` at repo root. See `docs/agents/domain.md`.

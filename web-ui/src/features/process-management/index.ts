@@ -34,5 +34,5 @@ export { useProcessManagement } from './hooks';
 export type { UseProcessManagementReturn, UseProcessManagementOptions } from './hooks';
 
 // Components (UI layer)
-export { ProcessMappingTable } from './components';
-export type { ProcessMappingTableProps } from './components';
+export { ProcessMappingTable, ProcessSelector } from './components';
+export type { ProcessMappingTableProps, ProcessSelectorProps } from './components';
