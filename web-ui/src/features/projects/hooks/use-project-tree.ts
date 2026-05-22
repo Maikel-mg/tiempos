@@ -31,7 +31,7 @@ export function useProjectTree(params: ProjectTreeParams) {
         throw new Error(response.message);
       }
 
-      return response.data?.data;
+      return response.data;
     },
     enabled: !!params.codCli && !!params.proyecto,
   });

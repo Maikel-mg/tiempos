@@ -18,11 +18,13 @@ export interface ProcessSelectorProps {
   usuario?: string;
 }
 
-export function ProcessSelector({ open, onOpenChange, usuario }: ProcessSelectorProps) {
+export function ProcessSelector({ open, onOpenChange, onSelect, usuario }: ProcessSelectorProps) {
   const [view, setView] = useState<'projects' | 'processes'>('projects');
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [projectSearchTerm, setProjectSearchTerm] = useState('');
   const [processSearchTerm, setProcessSearchTerm] = useState('');
+  const [projectSelectedIndex, setProjectSelectedIndex] = useState(0);
+  const [processSelectedIndex, setProcessSelectedIndex] = useState(0);
   
   const queryResult = useProjects(usuario ? { usured: usuario } : undefined);
   const projects = (queryResult.data as Project[] | undefined) ?? [];
@@ -40,12 +42,9 @@ export function ProcessSelector({ open, onOpenChange, usuario }: ProcessSelector
   });
 
   // Extract the actual tree data from the response wrapper
-  const projectTree = treeResponse ?? { disciplinas: [] as any[] };
-  console.log(`TCL ~ ProcessSelector ~ projectTree ~ ssss:`, projectTree)
-  console.log(`TCL ~ ProcessSelector ~ treeResponse ~ ssss:`, treeResponse)
+  const projectTree = treeResponse?.data ?? { disciplinas: [] as any[] };
 
    const flattenedProcesses = useMemo(() => {
-    console.log(`TCL ~ ProcessSelector ~ flattenedProcesses ~ projectTree:`, projectTree)
     const disciplinas = projectTree?.disciplinas;
     if (!disciplinas) return [];
      
@@ -106,29 +105,91 @@ export function ProcessSelector({ open, onOpenChange, usuario }: ProcessSelector
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [open, handleEscape]);
 
-   // Reset view when opening
+// Reset view when opening
    useEffect(() => {
      if (open) {
        setView('projects');
        setSelectedProject(null);
        setProjectSearchTerm('');
        setProcessSearchTerm('');
+       setProjectSelectedIndex(0);
+       setProcessSelectedIndex(0);
      }
    }, [open]);
 
-   // Reset search term of opposite view when view changes
+   // When changing views, clear the search term of the view being left
    useEffect(() => {
-     if (view === 'projects') {
-       setProcessSearchTerm('');
-     } else {
+     if (view === 'processes') {
+       // Going from L1 to L2 - clear L1 search
        setProjectSearchTerm('');
+     } else {
+       // Going from L2 to L1 - clear L2 search
+       setProcessSearchTerm('');
      }
    }, [view]);
 
-  const handleProjectClick = (project: Project) => {
-    setSelectedProject(project);
-    setView('processes');
-  };
+   // Reset project selection index when filter changes
+   useEffect(() => {
+     setProjectSelectedIndex(0);
+   }, [projectSearchTerm]);
+
+   // Reset process selection index when filter changes
+   useEffect(() => {
+     setProcessSelectedIndex(0);
+   }, [processSearchTerm]);
+
+   const handleProjectClick = (project: Project, _index?: number) => {
+     setSelectedProject(project);
+     setView('processes');
+     setProcessSelectedIndex(0);
+   };
+
+   const handleProcessSelect = useCallback((proc: { id: number; nombre: string; ruta: string }) => {
+     if (selectedProject) {
+       onSelect(selectedProject.Proyecto, proc.nombre);
+     }
+   }, [selectedProject, onSelect]);
+
+// Keyboard navigation handler
+   useEffect(() => {
+     const handleKeyDown = (e: KeyboardEvent) => {
+       // Only handle if dialog is open and we're not typing in search
+       if (!open) return;
+       if (e.target instanceof HTMLInputElement) return;
+
+       if (e.key === 'ArrowDown') {
+         e.preventDefault();
+         if (view === 'projects') {
+           setProjectSelectedIndex(prev => Math.min(prev + 1, Math.max(0, filteredProjects.length - 1)));
+         } else {
+           setProcessSelectedIndex(prev => Math.min(prev + 1, Math.max(0, filteredProcesses.length - 1)));
+         }
+       } else if (e.key === 'ArrowUp') {
+         e.preventDefault();
+         if (view === 'projects') {
+           setProjectSelectedIndex(prev => Math.max(prev - 1, 0));
+         } else {
+           setProcessSelectedIndex(prev => Math.max(prev - 1, 0));
+         }
+       } else if (e.key === 'Enter') {
+         e.preventDefault();
+         if (view === 'projects' && filteredProjects.length > 0) {
+           const project = filteredProjects[projectSelectedIndex];
+           setSelectedProject(project);
+           setView('processes');
+           setProcessSelectedIndex(0);
+         } else if (view === 'processes' && filteredProcesses.length > 0) {
+           const proc = filteredProcesses[processSelectedIndex];
+           handleProcessSelect(proc);
+         }
+       } else if (e.key === 'Escape') {
+         handleEscape();
+       }
+     };
+
+     window.addEventListener('keydown', handleKeyDown);
+     return () => window.removeEventListener('keydown', handleKeyDown);
+   }, [open, view, filteredProjects, filteredProcesses, projectSelectedIndex, processSelectedIndex, handleProcessSelect, handleEscape]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -192,11 +253,12 @@ export function ProcessSelector({ open, onOpenChange, usuario }: ProcessSelector
                             </TableCell>
                           </TableRow>
                         ) : (
-                          filteredProjects.map((project: Project) => (
+                          filteredProjects.map((project: Project, idx: number) => (
                             <TableRow
                               key={`${project.CodCli}-${project.Proyecto}`}
                               className="cursor-pointer hover:bg-muted/50"
-                              onClick={() => handleProjectClick(project)}
+                              data-state={idx === projectSelectedIndex ? 'selected' : undefined}
+                              onClick={() => handleProjectClick(project, idx)}
                             >
                               <TableCell>{project.NomCliente}</TableCell>
                               <TableCell>{project.NomProy}</TableCell>
@@ -279,10 +341,15 @@ export function ProcessSelector({ open, onOpenChange, usuario }: ProcessSelector
                             </TableCell>
                           </TableRow>
                         ) : (
-                          filteredProcesses.map((proc) => (
+                          filteredProcesses.map((proc, idx: number) => (
                             <TableRow
                               key={proc.id}
                               className="cursor-pointer hover:bg-muted/50"
+                              data-state={idx === processSelectedIndex ? 'selected' : undefined}
+                              onClick={() => {
+                                setProcessSelectedIndex(idx);
+                                handleProcessSelect(proc);
+                              }}
                             >
                               <TableCell className="font-mono text-xs">{proc.id}</TableCell>
                               <TableCell>{proc.nombre}</TableCell>

@@ -38,7 +38,7 @@ export function ProjectDetailPage() {
       </div>
 
       <ProjectTreeViewer 
-        treeData={data} 
+        treeData={data?.data || []} 
         isLoading={isLoading} 
         error={error}
       />
