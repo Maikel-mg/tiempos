@@ -272,6 +272,7 @@ export function ProcessMappingTable({
         onOpenChange={setSelectorOpen}
         onSelect={handleProcessSelect}
         usuario={config.usuario}
+        value={selectedProcessName ? taskMapping[selectedProcessName] : undefined}
       />
     </>
   );

@@ -16,9 +16,10 @@ export interface ProcessSelectorProps {
   onOpenChange: (open: boolean) => void;
   onSelect: (projectCode: string, processName: string) => void;
   usuario?: string;
+  value?: string;
 }
 
-export function ProcessSelector({ open, onOpenChange, onSelect, usuario }: ProcessSelectorProps) {
+export function ProcessSelector({ open, onOpenChange, onSelect, usuario, value }: ProcessSelectorProps) {
   const [view, setView] = useState<'projects' | 'processes'>('projects');
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [projectSearchTerm, setProjectSearchTerm] = useState('');
