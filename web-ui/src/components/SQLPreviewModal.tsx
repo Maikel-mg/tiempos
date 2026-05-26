@@ -1,21 +1,29 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Copy, Play, Loader2, Check, AlertCircle, Calendar, Clock } from 'lucide-react';
+import { Copy, Play, Loader2, Check, AlertCircle, Calendar, Clock, Flag } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { generateTaskSQL } from '@/lib/sql-generator';
 
 export interface SQLPreviewModalProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    taskData: any;
+    taskData?: any;
     config: {
         usuario: string;
         fase: string;
     } | null;
+    fases?: Array<{ id: string; label: string }>;
     title?: string;
     onExecute?: (sql: string) => void;
     isExecuting?: boolean;
@@ -27,6 +35,7 @@ export function SQLPreviewModal({
     onOpenChange, 
     taskData,
     config,
+    fases,
     title = 'Vista Previa SQL',
     onExecute,
     isExecuting = false,
@@ -37,15 +46,36 @@ export function SQLPreviewModal({
 
     // Initialize edited task when modal opens or taskData changes
     useEffect(() => {
-        if (open && taskData) {
-            setEditedTask({
-                nombre: taskData.name || taskData.nombre,
-                fechaInicio: taskData.fechaInicio,
-                fechaFin: taskData.fechaFin,
-                minutos: taskData.totalMinutes || taskData.minutos || 0,
-                usuario: config?.usuario || '',
-                fase: config?.fase || ''
-            });
+        if (open) {
+            if (taskData) {
+                setEditedTask({
+                    nombre: taskData.name || taskData.nombre,
+                    fechaInicio: taskData.fechaInicio,
+                    fechaFin: taskData.fechaFin,
+                    minutos: taskData.totalMinutes || taskData.minutos || 0,
+                    usuario: config?.usuario || '',
+                    fase: config?.fase || ''
+                });
+            } else {
+                // Initialize with defaults when taskData is null/undefined
+                const today = new Date();
+                const formatDate = (date: Date): string => {
+                    const day = date.getDate().toString().padStart(2, '0');
+                    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+                    const year = date.getFullYear();
+                    return `${day}/${month}/${year}`;
+                };
+                const nextWeek = new Date(today);
+                nextWeek.setDate(today.getDate() + 7);
+                setEditedTask({
+                    nombre: '',
+                    fechaInicio: formatDate(today),
+                    fechaFin: formatDate(nextWeek),
+                    minutos: 0,
+                    usuario: config?.usuario || '',
+                    fase: config?.fase || ''
+                });
+            }
         }
     }, [open, taskData, config]);
 
@@ -99,7 +129,7 @@ export function SQLPreviewModal({
                 
                 <div className="flex-1 overflow-hidden flex flex-col gap-4">
                     {/* Editable Parameters */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-muted/30 rounded-lg border">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-muted/30 rounded-lg border">
                         <div className="space-y-2">
                             <Label className="flex items-center gap-2">
                                 <Calendar className={`w-4 h-4 ${!isDateValid(editedTask?.fechaInicio) ? 'text-destructive' : ''}`} />
@@ -141,6 +171,35 @@ export function SQLPreviewModal({
                                     ({editedTask?.minutos || 0} min)
                                 </span>
                             </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="flex items-center gap-2">
+                                <Flag className="w-4 h-4" />
+                                Fase
+                            </Label>
+                            {fases && fases.length > 0 ? (
+                                <Select 
+                                    value={editedTask?.fase || ''} 
+                                    onValueChange={(value: string) => handleParamChange('fase', value)}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Selecciona una fase" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {fases.map((fase: { id: string; label: string }) => (
+                                            <SelectItem key={fase.id} value={fase.id}>
+                                                {fase.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            ) : (
+                                <Input 
+                                    value={editedTask?.fase || ''}
+                                    onChange={(e) => handleParamChange('fase', e.target.value)}
+                                    placeholder="Código de fase"
+                                />
+                            )}
                         </div>
                     </div>
 

@@ -17,10 +17,13 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { calculateHours } from '@/lib/utils';
-import { processSQLService, processValidation } from '../services';
+import { processValidation } from '../services';
 import type { Process, ProcessFilterType, ProcessConfig } from '../types';
-import { Edit2, Check, AlertCircle, FileCode, Search, ChevronDown, ChevronUp } from 'lucide-react';
+import { Edit2, Check, AlertCircle, Eye, Search, ChevronDown, ChevronUp } from 'lucide-react';
 import { ProcessSelector } from './ProcessSelector';
+import { SQLPreviewModal } from '@/components/SQLPreviewModal';
+import { useCreateProcess } from '@/features/process-management/mutations/useCreateProcess';
+import { formatISOToSQLDate } from '@/lib/sql-generator';
 
 export interface ProcessMappingTableProps {
   processes: Process[];
@@ -28,7 +31,6 @@ export interface ProcessMappingTableProps {
   localErrors: Record<string, string | null>;
   config: ProcessConfig;
   onUpdateProcessId: (processName: string, processId: string) => void;
-  onCopySuccess?: (processName: string) => void;
 }
 
 export function ProcessMappingTable({
@@ -36,18 +38,21 @@ export function ProcessMappingTable({
   taskMapping,
   localErrors,
   config,
-  onUpdateProcessId,
-  onCopySuccess
+  onUpdateProcessId
 }: ProcessMappingTableProps) {
-  const [copiedProcess, setCopiedProcess] = useState<string | null>(null);
+    const [searchTerm, setSearchTerm] = useState('');
+   const [filter, setFilter] = useState<ProcessFilterType>('all');
+   const [isExpanded, setIsExpanded] = useState(true);
 
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filter, setFilter] = useState<ProcessFilterType>('all');
-  const [isExpanded, setIsExpanded] = useState(true);
+   // Selector state
+   const [selectorOpen, setSelectorOpen] = useState(false);
+   const [selectedProcessName, setSelectedProcessName] = useState<string | null>(null);
 
-  // Selector state
-  const [selectorOpen, setSelectorOpen] = useState(false);
-  const [selectedProcessName, setSelectedProcessName] = useState<string | null>(null);
+   // Preview modal state
+   const [previewProcess, setPreviewProcess] = useState<Process | null>(null);
+
+   // Create process mutation
+   const createProcess = useCreateProcess();
 
   // Computed values
   const mappedProcessCount = useMemo(() => 
@@ -77,29 +82,10 @@ export function ProcessMappingTable({
     return filtered;
   }, [processes, taskMapping, filter, searchTerm]);
 
-  // Handlers
-  const handleCopySQL = async (process: Process) => {
-    const sql = processSQLService.generateCreateSQL({
-      nombre: process.name,
-      fechaInicio: processSQLService.formatDateToDDMMYYYY(process.fechaInicio),
-      fechaFin: processSQLService.formatDateToDDMMYYYY(process.fechaFin),
-      minutos: Math.ceil(process.totalMinutes),
-      usuario: config.usuario,
-      fase: config.fase
-    });
-
-    const success = await processSQLService.copyToClipboard(sql);
-    if (success) {
-      setCopiedProcess(process.name);
-      onCopySuccess?.(process.name);
-      setTimeout(() => setCopiedProcess(null), 2000);
-    }
-  };
-
-  const handleInputClick = (processName: string) => {
-    setSelectedProcessName(processName);
-    setSelectorOpen(true);
-  };
+   const handleInputClick = (processName: string) => {
+     setSelectedProcessName(processName);
+     setSelectorOpen(true);
+   };
 
   const handleProcessSelect = (_projectCode: string, processId: string) => {
     if (selectedProcessName) {
@@ -191,8 +177,8 @@ export function ProcessMappingTable({
                       const id = taskMapping[process.name] || '';
                       const hasError = localErrors[process.name];
                       const isValid = processValidation.isProcessAssigned(taskMapping, process.name);
-                      const fechaIni = processSQLService.formatDateToDDMMYYYY(process.fechaInicio);
-                      const fechaFin = processSQLService.formatDateToDDMMYYYY(process.fechaFin);
+                      const fechaIni = formatISOToSQLDate(process.fechaInicio);
+                      const fechaFin = formatISOToSQLDate(process.fechaFin);
 
                       return (
                         <TableRow key={index} className={!isValid ? 'bg-yellow-50/50' : ''}>
@@ -239,14 +225,10 @@ export function ProcessMappingTable({
                                   variant="ghost"
                                   size="icon"
                                   className="h-8 w-8 text-muted-foreground hover:text-primary"
-                                  onClick={() => handleCopySQL(process)}
-                                  title={copiedProcess === process.name ? '¡SQL Copiado!' : 'Copiar SQL de Creación'}
+                                  onClick={() => setPreviewProcess(process)}
+                                  title="Previsualizar SQL de Creación"
                                 >
-                                  {copiedProcess === process.name ? (
-                                    <Check className="w-4 h-4 text-green-500" />
-                                  ) : (
-                                    <FileCode className="w-4 h-4" />
-                                  )}
+                                  <Eye className="w-4 h-4" />
                                 </Button>
                               </div>
                               {hasError && (
@@ -273,6 +255,32 @@ export function ProcessMappingTable({
         onSelect={handleProcessSelect}
         usuario={config.usuario}
         value={selectedProcessName ? taskMapping[selectedProcessName] : undefined}
+      />
+
+      <SQLPreviewModal
+        open={previewProcess !== null}
+        onOpenChange={(open) => { if (!open) setPreviewProcess(null); }}
+        taskData={previewProcess ? {
+          name: previewProcess.name,
+          fechaInicio: previewProcess.fechaInicio,
+          fechaFin: previewProcess.fechaFin,
+          totalMinutes: previewProcess.totalMinutes || 0,
+        } : null}
+        config={{
+          usuario: config.usuario,
+          fase: config.fase,
+        }}
+        title="Crear Proceso"
+        onExecute={(sql) => createProcess.mutateAsync(sql)}
+        isExecuting={createProcess.isPending}
+        executeResult={createProcess.data ? {
+          success: true,
+          message: createProcess.data.message,
+          totalRowsAffected: createProcess.data.totalRowsAffected,
+        } : createProcess.error ? {
+          success: false,
+          message: (createProcess.error as Error).message,
+        } : null}
       />
     </>
   );
