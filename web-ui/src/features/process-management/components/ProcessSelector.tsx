@@ -15,11 +15,12 @@ export interface ProcessSelectorProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSelect: (projectCode: string, processName: string) => void;
+  onCreateNew?: (data: { fases: Array<{ id: string; label: string }>; usuario: string }) => void;
   usuario?: string;
   value?: string;
 }
 
-export function ProcessSelector({ open, onOpenChange, onSelect, usuario, value }: ProcessSelectorProps) {
+export function ProcessSelector({ open, onOpenChange, onSelect, onCreateNew, usuario, value }: ProcessSelectorProps) {
   const [view, setView] = useState<'projects' | 'processes'>('projects');
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [projectSearchTerm, setProjectSearchTerm] = useState('');
@@ -44,6 +45,29 @@ export function ProcessSelector({ open, onOpenChange, onSelect, usuario, value }
 
   // Extract the actual tree data from the response wrapper
   const projectTree = treeResponse?.data ?? { disciplinas: [] as any[] };
+
+   const phases = useMemo(() => {
+    const disciplinas = projectTree?.disciplinas;
+    if (!disciplinas) return [];
+
+    const seen = new Set<string>();
+    const result: Array<{ id: string; label: string }> = [];
+
+    disciplinas.forEach((disciplina: ProjectTreeDisciplina) => {
+      disciplina.fases.forEach((fase: ProjectTreeFase) => {
+        const id = fase.fase.toString();
+        if (!seen.has(id)) {
+          seen.add(id);
+          result.push({
+            id,
+            label: `${disciplina.nombre} / ${fase.nombre}`
+          });
+        }
+      });
+    });
+
+    return result;
+  }, [projectTree]);
 
    const flattenedProcesses = useMemo(() => {
     const disciplinas = projectTree?.disciplinas;
@@ -345,6 +369,14 @@ export function ProcessSelector({ open, onOpenChange, onSelect, usuario, value }
                           className="opacity-0 focus:opacity-100 hover:opacity-100"
                         >
                           <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {onCreateNew && (
+                        <Button
+                          variant="outline"
+                          onClick={() => onCreateNew({ fases: phases, usuario: usuario || '' })}
+                        >
+                          Nueva tarea
                         </Button>
                       )}
                     </div>

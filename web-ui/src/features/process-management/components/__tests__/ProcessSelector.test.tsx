@@ -218,7 +218,7 @@ describe('ProcessSelector', () => {
 
     vi.mocked(useProjectTree).mockReturnValue({
       isLoading: false,
-      data: mockTree
+      data: { data: mockTree }
     } as any);
 
     render(<ProcessSelector open={true} onOpenChange={() => {}} onSelect={() => {}} />);
@@ -436,7 +436,7 @@ describe('ProcessSelector', () => {
 
       vi.mocked(useProjectTree).mockReturnValue({
         isLoading: false,
-        data: mockTree
+        data: { data: mockTree }
       } as any);
 
       render(<ProcessSelector open={true} onOpenChange={() => {}} onSelect={() => {}} />);
@@ -778,7 +778,7 @@ describe('ProcessSelector', () => {
 
       vi.mocked(useProjectTree).mockReturnValue({
         isLoading: false,
-        data: mockTree
+        data: { data: mockTree }
       } as any);
 
       render(<ProcessSelector open={true} onOpenChange={() => {}} onSelect={() => {}} />);
@@ -828,7 +828,7 @@ describe('ProcessSelector', () => {
 
       vi.mocked(useProjectTree).mockReturnValue({
         isLoading: false,
-        data: mockTree
+        data: { data: mockTree }
       } as any);
 
       render(<ProcessSelector open={true} onOpenChange={() => {}} onSelect={() => {}} />);
@@ -888,7 +888,7 @@ describe('ProcessSelector', () => {
 
       vi.mocked(useProjectTree).mockReturnValue({
         isLoading: false,
-        data: mockTree
+        data: { data: mockTree }
       } as any);
 
       render(<ProcessSelector open={true} onOpenChange={() => {}} onSelect={onSelect} />);
@@ -941,7 +941,7 @@ describe('ProcessSelector', () => {
 
       vi.mocked(useProjectTree).mockReturnValue({
         isLoading: false,
-        data: mockTree
+        data: { data: mockTree }
       } as any);
 
       render(<ProcessSelector open={true} onOpenChange={() => {}} onSelect={() => {}} />);
@@ -1021,6 +1021,193 @@ describe('ProcessSelector', () => {
       // ArrowDown when only one row - should stay
       await user.keyboard('{ArrowDown}');
       expect(screen.getByText('Client A')).toBeDefined();
+    });
+  });
+});
+
+describe('onCreateNew callback', () => {
+  beforeEach(() => {
+    vi.mocked(useProjects).mockReturnValue({
+      data: [{ CodCli: '1', NomCliente: 'Client A', NomProy: 'Project Alpha', Proyecto: 'PA' }],
+      isLoading: false,
+      isError: false,
+    } as any);
+
+    vi.mocked(useProjectTree).mockReturnValue({
+      isLoading: false,
+      data: {
+        data: {
+          cliente: { codCli: 1, cliente: 'C1', nomCliente: 'Client 1' },
+          proyecto: { codCli: 1, proyecto: 1, nomProy: 'P1', cerrado: false, cmmi: false, esCM: false, esPET: false },
+          disciplinas: [
+            {
+              idDisciplina: 10,
+              nombre: 'Diseño',
+              sinDisciplina: false,
+              orden: 1,
+              fases: [
+                { fase: 20, nombre: 'Fase 1', cerrado: false, orden: 1, procesos: [{ proceso: 123, nombre: 'Proceso A' }] }
+              ]
+            }
+          ]
+        }
+      }
+    } as any);
+  });
+
+  it('should render "Nueva tarea" button in processes view when onCreateNew is provided', () => {
+    const onCreateNew = vi.fn();
+
+    render(
+      <ProcessSelector
+        open={true}
+        onOpenChange={() => {}}
+        onSelect={() => {}}
+        onCreateNew={onCreateNew}
+        usuario="TESTUSER"
+      />
+    );
+
+    // Navigate to processes view
+    fireEvent.click(screen.getByText('Client A'));
+
+    expect(screen.getByRole('button', { name: /Nueva tarea/i })).toBeInTheDocument();
+  });
+
+  it('should NOT render "Nueva tarea" button when onCreateNew is not provided', () => {
+    render(
+      <ProcessSelector
+        open={true}
+        onOpenChange={() => {}}
+        onSelect={() => {}}
+      />
+    );
+
+    // Navigate to processes view
+    fireEvent.click(screen.getByText('Client A'));
+
+    expect(screen.queryByRole('button', { name: /Nueva tarea/i })).not.toBeInTheDocument();
+  });
+
+  it('should NOT render "Nueva tarea" button in projects view even when onCreateNew is provided', () => {
+    const onCreateNew = vi.fn();
+
+    render(
+      <ProcessSelector
+        open={true}
+        onOpenChange={() => {}}
+        onSelect={() => {}}
+        onCreateNew={onCreateNew}
+        usuario="TESTUSER"
+      />
+    );
+
+    // Stay in projects view (default)
+    expect(screen.getByText('Cliente')).toBeDefined();
+    expect(screen.queryByRole('button', { name: /Nueva tarea/i })).not.toBeInTheDocument();
+  });
+
+  it('should extract phases with correct format and deduplicate by ID', () => {
+    // Override mock with tree that has duplicate phase IDs across disciplines
+    const multiPhaseTree = {
+      cliente: { codCli: 1, cliente: 'C1', nomCliente: 'Client 1' },
+      proyecto: { codCli: 1, proyecto: 1, nomProy: 'P1', cerrado: false, cmmi: false, esCM: false, esPET: false },
+      disciplinas: [
+        {
+          idDisciplina: 10,
+          nombre: 'Diseño',
+          sinDisciplina: false,
+          orden: 1,
+          fases: [
+            { fase: 20, nombre: 'Fase 1', cerrado: false, orden: 1, procesos: [{ proceso: 123, nombre: 'Proceso A' }] },
+            { fase: 21, nombre: 'Fase 2', cerrado: false, orden: 2, procesos: [{ proceso: 124, nombre: 'Proceso B' }] }
+          ]
+        },
+        {
+          idDisciplina: 11,
+          nombre: 'Desarrollo',
+          sinDisciplina: false,
+          orden: 2,
+          fases: [
+            // Same fase ID 20 appears in another discipline (dedup)
+            { fase: 20, nombre: 'Fase 1', cerrado: false, orden: 1, procesos: [{ proceso: 456, nombre: 'Proceso C' }] },
+            { fase: 22, nombre: 'Fase 3', cerrado: false, orden: 2, procesos: [{ proceso: 457, nombre: 'Proceso D' }] }
+          ]
+        }
+      ]
+    };
+
+    vi.mocked(useProjectTree).mockReturnValue({
+      isLoading: false,
+      data: { data: multiPhaseTree }
+    } as any);
+
+    const onCreateNew = vi.fn();
+
+    render(
+      <ProcessSelector
+        open={true}
+        onOpenChange={() => {}}
+        onSelect={() => {}}
+        onCreateNew={onCreateNew}
+        usuario="TESTUSER"
+      />
+    );
+
+    // Navigate to processes view
+    fireEvent.click(screen.getByText('Client A'));
+
+    // Click "Nueva tarea"
+    const button = screen.getByRole('button', { name: /Nueva tarea/i });
+    fireEvent.click(button);
+
+    expect(onCreateNew).toHaveBeenCalledTimes(1);
+
+    const { fases } = onCreateNew.mock.calls[0][0];
+
+    // Should have 3 unique phases (deduplicated from 4)
+    expect(fases).toHaveLength(3);
+
+    // Phase 20 should use the FIRST discipline's label
+    const fase20 = fases.find((f: { id: string }) => f.id === '20');
+    expect(fase20).toBeDefined();
+    expect(fase20.label).toBe('Diseño / Fase 1');
+
+    // Phase 21 should be from Diseño
+    const fase21 = fases.find((f: { id: string }) => f.id === '21');
+    expect(fase21).toBeDefined();
+    expect(fase21.label).toBe('Diseño / Fase 2');
+
+    // Phase 22 should be from Desarrollo
+    const fase22 = fases.find((f: { id: string }) => f.id === '22');
+    expect(fase22).toBeDefined();
+    expect(fase22.label).toBe('Desarrollo / Fase 3');
+  });
+
+  it('should call onCreateNew with fases and usuario when Nueva tarea is clicked', async () => {
+    const onCreateNew = vi.fn();
+
+    render(
+      <ProcessSelector
+        open={true}
+        onOpenChange={() => {}}
+        onSelect={() => {}}
+        onCreateNew={onCreateNew}
+        usuario="TESTUSER"
+      />
+    );
+
+    // Navigate to processes view
+    fireEvent.click(screen.getByText('Client A'));
+
+    // Click "Nueva tarea"
+    const button = screen.getByRole('button', { name: /Nueva tarea/i });
+    fireEvent.click(button);
+
+    expect(onCreateNew).toHaveBeenCalledTimes(1);
+    expect(onCreateNew).toHaveBeenCalledWith({
+      fases: [{ id: '20', label: 'Diseño / Fase 1' }],
+      usuario: 'TESTUSER'
     });
   });
 });
