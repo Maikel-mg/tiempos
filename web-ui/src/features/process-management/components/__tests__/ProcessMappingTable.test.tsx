@@ -1,14 +1,20 @@
-import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ProcessMappingTable } from '../ProcessMappingTable';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 // Mock ProcessSelector to avoid full render complexity here
-// Capture onSelect to verify callback chain works
+// Capture onSelect and onCreateNew to verify callback chain works
 let capturedOnSelect: ((projectCode: string, processId: string) => void) | null = null;
+let capturedOnCreateNew: ((data: { fases: Array<{ id: string; label: string }>; usuario: string }) => void) | null = null;
 vi.mock('../ProcessSelector', () => ({
-  ProcessSelector: ({ open, onSelect }: { open: boolean; onSelect?: (projectCode: string, processId: string) => void }) => {
+  ProcessSelector: ({ open, onSelect, onCreateNew }: { 
+    open: boolean; 
+    onSelect?: (projectCode: string, processId: string) => void;
+    onCreateNew?: (data: { fases: Array<{ id: string; label: string }>; usuario: string }) => void;
+  }) => {
     if (open && onSelect) capturedOnSelect = onSelect;
+    if (open && onCreateNew) capturedOnCreateNew = onCreateNew;
     return open ? <div data-testid="process-selector">Selector Open</div> : null;
   }
 }));
@@ -167,5 +173,97 @@ describe('ProcessMappingTable Integration', () => {
     // Can still type to update
     fireEvent.change(input, { target: { value: 'new-id' } });
     expect(onUpdateProcessId).toHaveBeenCalledWith('Task 1', 'new-id');
+  });
+
+  describe('Create new process flow', () => {
+    const mockFases = [
+      { id: '10', label: 'Diseño / Fase 1' },
+      { id: '20', label: 'Desarrollo / Fase 2' },
+    ];
+
+    beforeEach(() => {
+      // Reset captured callbacks
+      capturedOnCreateNew = null;
+    });
+
+    function openSelectorAndTriggerCreateNew() {
+      const input = screen.getByPlaceholderText('Seleccionar ID...');
+      fireEvent.click(input);
+      expect(screen.getByTestId('process-selector')).toBeDefined();
+      expect(capturedOnCreateNew).not.toBeNull();
+      act(() => {
+        capturedOnCreateNew!({ fases: mockFases, usuario: 'test' });
+      });
+    }
+
+    it('should open SQLPreviewModal in creation mode and close ProcessSelector when onCreateNew is triggered', () => {
+      render(
+        <ProcessMappingTable
+          processes={mockProcesses}
+          taskMapping={{}}
+          localErrors={{}}
+          config={mockConfig}
+          onUpdateProcessId={vi.fn()}
+        />,
+        { wrapper }
+      );
+
+      openSelectorAndTriggerCreateNew();
+
+      // ProcessSelector should be closed
+      expect(screen.queryByTestId('process-selector')).toBeNull();
+
+      // SQLPreviewModal should now be open with title "Crear Proceso"
+      expect(screen.getByText('Crear Proceso')).toBeDefined();
+    });
+
+    it('should render fases as a Select dropdown in the modal (not text input)', async () => {
+      render(
+        <ProcessMappingTable
+          processes={mockProcesses}
+          taskMapping={{}}
+          localErrors={{}}
+          config={mockConfig}
+          onUpdateProcessId={vi.fn()}
+        />,
+        { wrapper }
+      );
+
+      openSelectorAndTriggerCreateNew();
+
+      // Wait for the dialog to render and verify it's open
+      await waitFor(() => {
+        expect(screen.getByText('Crear Proceso')).toBeDefined();
+      });
+
+      // The text input for fase should NOT be present when fases are provided as array
+      expect(screen.queryByPlaceholderText('Código de fase')).toBeNull();
+    });
+
+    it('should not re-open ProcessSelector after successful creation flow is triggered', async () => {
+      render(
+        <ProcessMappingTable
+          processes={mockProcesses}
+          taskMapping={{}}
+          localErrors={{}}
+          config={mockConfig}
+          onUpdateProcessId={vi.fn()}
+        />,
+        { wrapper }
+      );
+
+      openSelectorAndTriggerCreateNew();
+
+      // Wait for modal to open
+      await waitFor(() => {
+        expect(screen.getByText('Crear Proceso')).toBeDefined();
+      });
+
+      // ProcessSelector should remain closed (handleCreateNew called setSelectorOpen(false))
+      expect(screen.queryByTestId('process-selector')).toBeNull();
+
+      // The SQLPreviewModal title is visible, confirming we're in creation mode
+      expect(screen.getByText('Crear Proceso')).toBeDefined();
+    });
   });
 });

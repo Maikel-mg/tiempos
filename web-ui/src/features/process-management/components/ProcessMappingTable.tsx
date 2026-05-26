@@ -51,6 +51,10 @@ export function ProcessMappingTable({
    // Preview modal state
    const [previewProcess, setPreviewProcess] = useState<Process | null>(null);
 
+   // Create new process state
+   const [isCreateNewOpen, setIsCreateNewOpen] = useState(false);
+   const [createNewFases, setCreateNewFases] = useState<Array<{ id: string; label: string }>>([]);
+
    // Create process mutation
    const createProcess = useCreateProcess();
 
@@ -92,6 +96,12 @@ export function ProcessMappingTable({
       onUpdateProcessId(selectedProcessName, processId);
       setSelectorOpen(false);
     }
+  };
+
+  const handleCreateNew = (data: { fases: Array<{ id: string; label: string }>; usuario: string }) => {
+    setSelectorOpen(false);
+    setCreateNewFases(data.fases);
+    setIsCreateNewOpen(true);
   };
 
   const FilterButton = ({ type, label, count }: { type: ProcessFilterType, label: string, count: number }) => (
@@ -253,19 +263,27 @@ export function ProcessMappingTable({
         open={selectorOpen}
         onOpenChange={setSelectorOpen}
         onSelect={handleProcessSelect}
+        onCreateNew={handleCreateNew}
         usuario={config.usuario}
         value={selectedProcessName ? taskMapping[selectedProcessName] : undefined}
       />
 
       <SQLPreviewModal
-        open={previewProcess !== null}
-        onOpenChange={(open) => { if (!open) setPreviewProcess(null); }}
+        open={previewProcess !== null || isCreateNewOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPreviewProcess(null);
+            setIsCreateNewOpen(false);
+            setCreateNewFases([]);
+          }
+        }}
         taskData={previewProcess ? {
           name: previewProcess.name,
           fechaInicio: previewProcess.fechaInicio,
           fechaFin: previewProcess.fechaFin,
           totalMinutes: previewProcess.totalMinutes || 0,
         } : null}
+        fases={isCreateNewOpen ? createNewFases : undefined}
         config={{
           usuario: config.usuario,
           fase: config.fase,
