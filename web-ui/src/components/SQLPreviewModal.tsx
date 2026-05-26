@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Copy, Play, Loader2, Check, AlertCircle, Calendar, Clock, Flag } from 'lucide-react';
+import { Copy, Play, Loader2, Check, AlertCircle, Calendar, Clock, Flag, Edit2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -129,7 +129,20 @@ export function SQLPreviewModal({
                 
                 <div className="flex-1 overflow-hidden flex flex-col gap-4">
                     {/* Editable Parameters */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-muted/30 rounded-lg border">
+                    <div className="p-4 bg-muted/30 rounded-lg border space-y-4">
+                        <div className="space-y-2">
+                            <Label className="flex items-center gap-2">
+                                <Edit2 className="w-4 h-4" />
+                                Nombre de la tarea
+                            </Label>
+                            <Input
+                                value={editedTask?.nombre || ''}
+                                onChange={(e) => handleParamChange('nombre', e.target.value)}
+                                placeholder="Descripción de la tarea"
+                                className="w-full"
+                            />
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div className="space-y-2">
                             <Label className="flex items-center gap-2">
                                 <Calendar className={`w-4 h-4 ${!isDateValid(editedTask?.fechaInicio) ? 'text-destructive' : ''}`} />
@@ -200,6 +213,7 @@ export function SQLPreviewModal({
                                     placeholder="Código de fase"
                                 />
                             )}
+                        </div>
                         </div>
                     </div>
 

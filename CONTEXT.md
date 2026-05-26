@@ -35,3 +35,7 @@ _Avoid_: Phase ID, Fase ID
 **Tipo de Hora**:
 Numeral que identifica el tipo de hora a registrar (default: 11). Se edita en Settings, se muestra read-only en info bar.
 _Avoid_: Hour type, Time type
+
+**Tarea (Proceso)**:
+Entidad que se crea vía `spNETTiempos_Procesos_Mantenimiento`. Tiene un nombre (descripción), fechas previstas, minutos estimados, y una fase. El SQLPreviewModal permite crearlas desde el ProcessSelector (modo creación sin datos pre-cargados) o desde el ProcessMappingTable (modo edición con datos extraídos de la fila).
+_Avoid_: Task, Process (cuando el contexto es el dominio de la app)

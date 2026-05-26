@@ -166,9 +166,9 @@ describe('SQLPreviewModal', () => {
             expect(sqlBlock).toBeTruthy();
             const sql = sqlBlock?.textContent || '';
             expect(sql).toContain('Test Task');
-            // Dates are converted to YYYY-MM-DD in the SQL
-            expect(sql).toContain('2026-01-06');
-            expect(sql).toContain('2026-08-06');
+            // Dates are converted to YYYYMMDD in the SQL (unambiguous for SQL Server)
+            expect(sql).toContain('20260601');
+            expect(sql).toContain('20260608');
             expect(sql).toContain('@pFase');
         });
 

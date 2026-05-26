@@ -155,21 +155,38 @@ export function formatISOToSQLTime(isoDateString: string | undefined | null): st
   return `${hours}:${minutes}:${seconds}`;
 }
 
-function formatToYYYYMMDD(dateString: string | undefined | null): string {
-  if (!dateString) return '';
+function parseDate(dateString: string | undefined | null): Date | null {
+  if (!dateString) return null;
+  // Try DD/MM/YYYY (Spanish format) first
+  const parts = dateString.trim().split('/');
+  if (parts.length === 3) {
+    const day = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const year = parseInt(parts[2], 10);
+    if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+      return new Date(year, month, day);
+    }
+  }
+  // Fallback to JS Date parsing (ISO format)
   const date = new Date(dateString);
+  return isNaN(date.getTime()) ? null : date;
+}
+
+function formatToYYYYMMDD(dateString: string | undefined | null): string {
+  const date = parseDate(dateString);
+  if (!date) return '';
   const year = date.getFullYear();
   const month = (date.getMonth() + 1).toString().padStart(2, '0');
   const day = date.getDate().toString().padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  return `${year}${month}${day}`;
 }
 
 function getFirstDayOfMonthYYYYMMDD(dateString: string | undefined | null): string {
-  if (!dateString) return '';
-  const date = new Date(dateString);
+  const date = parseDate(dateString);
+  if (!date) return '';
   const year = date.getFullYear();
   const month = (date.getMonth() + 1).toString().padStart(2, '0');
-  return `${year}-${month}-01`;
+  return `${year}${month}01`;
 }
 
 export interface TimeEntryParams {
