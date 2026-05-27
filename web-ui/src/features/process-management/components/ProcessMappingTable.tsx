@@ -24,6 +24,7 @@ import { ProcessSelector } from './ProcessSelector';
 import { SQLPreviewModal } from '@/components/SQLPreviewModal';
 import { useCreateProcess } from '@/features/process-management/mutations/useCreateProcess';
 import { formatISOToSQLDate } from '@/lib/sql-generator';
+import type { Project } from '@/features/projects/types';
 
 export interface ProcessMappingTableProps {
   processes: Process[];
@@ -54,6 +55,7 @@ export function ProcessMappingTable({
    // Create new process state
    const [isCreateNewOpen, setIsCreateNewOpen] = useState(false);
    const [createNewFases, setCreateNewFases] = useState<Array<{ id: string; label: string }>>([]);
+   const [createNewProject, setCreateNewProject] = useState<Project | null>(null);
 
    // Create process mutation
    const createProcess = useCreateProcess();
@@ -98,9 +100,10 @@ export function ProcessMappingTable({
     }
   };
 
-  const handleCreateNew = (data: { fases: Array<{ id: string; label: string }>; usuario: string }) => {
+  const handleCreateNew = (data: { fases: Array<{ id: string; label: string }>; usuario: string; projectInfo?: Project }) => {
     setSelectorOpen(false);
     setCreateNewFases(data.fases);
+    setCreateNewProject(data.projectInfo || null);
     setIsCreateNewOpen(true);
   };
 
@@ -275,6 +278,7 @@ export function ProcessMappingTable({
             setPreviewProcess(null);
             setIsCreateNewOpen(false);
             setCreateNewFases([]);
+            setCreateNewProject(null);
           }
         }}
         taskData={previewProcess ? {
@@ -284,6 +288,7 @@ export function ProcessMappingTable({
           totalMinutes: previewProcess.totalMinutes || 0,
         } : null}
         fases={isCreateNewOpen ? createNewFases : undefined}
+        selectedProject={isCreateNewOpen ? createNewProject : undefined}
         config={{
           usuario: config.usuario,
           fase: config.fase,

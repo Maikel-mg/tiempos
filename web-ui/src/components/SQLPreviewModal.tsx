@@ -14,6 +14,8 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { generateTaskSQL } from '@/lib/sql-generator';
+import { SinFasesSelector } from './SinFasesSelector';
+import type { Project } from '@/features/projects/types';
 
 export interface SQLPreviewModalProps {
     open: boolean;
@@ -24,6 +26,7 @@ export interface SQLPreviewModalProps {
         fase: string;
     } | null;
     fases?: Array<{ id: string; label: string }>;
+    selectedProject?: Project | null;
     title?: string;
     onExecute?: (sql: string) => void;
     isExecuting?: boolean;
@@ -39,7 +42,8 @@ export function SQLPreviewModal({
     title = 'Vista Previa SQL',
     onExecute,
     isExecuting = false,
-    executeResult = null
+    executeResult = null,
+    selectedProject,
 }: SQLPreviewModalProps) {
     const [copied, setCopied] = useState(false);
     const [editedTask, setEditedTask] = useState<any>(null);
@@ -54,7 +58,7 @@ export function SQLPreviewModal({
                     fechaFin: taskData.fechaFin,
                     minutos: taskData.totalMinutes || taskData.minutos || 0,
                     usuario: config?.usuario || '',
-                    fase: config?.fase || ''
+                    fase: fases ? config?.fase || '' : ''  // No pre-fill fase in sin-fases mode
                 });
             } else {
                 // Initialize with defaults when taskData is null/undefined
@@ -73,11 +77,11 @@ export function SQLPreviewModal({
                     fechaFin: formatDate(nextWeek),
                     minutos: 0,
                     usuario: config?.usuario || '',
-                    fase: config?.fase || ''
+                    fase: fases ? config?.fase || '' : ''  // No pre-fill fase in sin-fases mode
                 });
             }
         }
-    }, [open, taskData, config]);
+    }, [open, taskData, config, fases]);
 
     // Generate SQL based on edited data
     const sql = useMemo(() => {
@@ -116,7 +120,8 @@ export function SQLPreviewModal({
     const isValid = editedTask && 
                     isDateValid(editedTask.fechaInicio) && 
                     isDateValid(editedTask.fechaFin) && 
-                    !isNaN(editedTask.minutos);
+                    !isNaN(editedTask.minutos) &&
+                    !!editedTask?.fase?.trim();
 
     const currentHours = editedTask ? (editedTask.minutos / 60) : 0;
 
@@ -128,8 +133,77 @@ export function SQLPreviewModal({
                 </DialogHeader>
                 
                 <div className="flex-1 overflow-hidden flex flex-col gap-4">
-                    {/* Editable Parameters */}
-                    <div className="p-4 bg-muted/30 rounded-lg border space-y-4">
+                    {/* Row 1: Proyecto + Fase */}
+                    <div className="p-4 bg-muted/30 rounded-lg border" data-testid="row-proyecto-fase">
+                        {!fases ? (
+                            <SinFasesSelector
+                                config={config}
+                                onTaskChange={(updates) => {
+                                    Object.entries(updates).forEach(([key, value]) => {
+                                        handleParamChange(key, value);
+                                    });
+                                }}
+                                disabled={isExecuting}
+                            />
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label className="flex items-center gap-2">
+                                        <Edit2 className="w-4 h-4" />
+                                        Proyecto
+                                    </Label>
+                                    {selectedProject ? (
+                                        <div
+                                            className="bg-muted/50 border rounded-md p-2 text-sm"
+                                            data-testid="project-info-display"
+                                        >
+                                            {selectedProject.NomCliente} / {selectedProject.NomProy} ({selectedProject.Proyecto})
+                                        </div>
+                                    ) : (
+                                        <Input
+                                            value={editedTask?.usuario || ''}
+                                            onChange={(e) => handleParamChange('usuario', e.target.value)}
+                                            placeholder="Código de proyecto"
+                                            className="w-full"
+                                        />
+                                    )}
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="flex items-center gap-2">
+                                        <Flag className="w-4 h-4" />
+                                        Fase <span className="text-destructive">*</span>
+                                    </Label>
+                                    {fases && fases.length > 0 ? (
+                                        <Select 
+                                            value={editedTask?.fase || ''} 
+                                            onValueChange={(value: string) => handleParamChange('fase', value)}
+                                        >
+                                            <SelectTrigger aria-invalid={!editedTask?.fase?.trim()}>
+                                                <SelectValue placeholder="Selecciona una fase" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {fases.map((fase: { id: string; label: string }) => (
+                                                    <SelectItem key={fase.id} value={fase.id}>
+                                                        {fase.label}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    ) : (
+                                        <Input 
+                                            value={editedTask?.fase || ''}
+                                            onChange={(e) => handleParamChange('fase', e.target.value)}
+                                            placeholder="Código de fase"
+                                            aria-invalid={!editedTask?.fase?.trim()}
+                                        />
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Row 2: Nombre de la tarea */}
+                    <div className="p-4 bg-muted/30 rounded-lg border" data-testid="row-nombre">
                         <div className="space-y-2">
                             <Label className="flex items-center gap-2">
                                 <Edit2 className="w-4 h-4" />
@@ -142,31 +216,40 @@ export function SQLPreviewModal({
                                 className="w-full"
                             />
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div className="space-y-2">
-                            <Label className="flex items-center gap-2">
-                                <Calendar className={`w-4 h-4 ${!isDateValid(editedTask?.fechaInicio) ? 'text-destructive' : ''}`} />
-                                Fecha Inicio (DD/MM/AAAA)
-                            </Label>
-                            <Input 
-                                value={editedTask?.fechaInicio || ''} 
-                                onChange={(e) => handleParamChange('fechaInicio', e.target.value)}
-                                placeholder="DD/MM/AAAA"
-                                className={!isDateValid(editedTask?.fechaInicio) ? 'border-destructive' : ''}
-                            />
+                    </div>
+
+                    {/* Row 3: Fecha inicio + Fecha fin */}
+                    <div className="p-4 bg-muted/30 rounded-lg border" data-testid="row-fechas">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label className="flex items-center gap-2">
+                                    <Calendar className={`w-4 h-4 ${!isDateValid(editedTask?.fechaInicio) ? 'text-destructive' : ''}`} />
+                                    Fecha Inicio (DD/MM/AAAA)
+                                </Label>
+                                <Input 
+                                    value={editedTask?.fechaInicio || ''} 
+                                    onChange={(e) => handleParamChange('fechaInicio', e.target.value)}
+                                    placeholder="DD/MM/AAAA"
+                                    className={!isDateValid(editedTask?.fechaInicio) ? 'border-destructive' : ''}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="flex items-center gap-2">
+                                    <Calendar className={`w-4 h-4 ${!isDateValid(editedTask?.fechaFin) ? 'text-destructive' : ''}`} />
+                                    Fecha Fin (DD/MM/AAAA)
+                                </Label>
+                                <Input 
+                                    value={editedTask?.fechaFin || ''} 
+                                    onChange={(e) => handleParamChange('fechaFin', e.target.value)}
+                                    placeholder="DD/MM/AAAA"
+                                    className={!isDateValid(editedTask?.fechaFin) ? 'border-destructive' : ''}
+                                />
+                            </div>
                         </div>
-                        <div className="space-y-2">
-                            <Label className="flex items-center gap-2">
-                                <Calendar className={`w-4 h-4 ${!isDateValid(editedTask?.fechaFin) ? 'text-destructive' : ''}`} />
-                                Fecha Fin (DD/MM/AAAA)
-                            </Label>
-                            <Input 
-                                value={editedTask?.fechaFin || ''} 
-                                onChange={(e) => handleParamChange('fechaFin', e.target.value)}
-                                placeholder="DD/MM/AAAA"
-                                className={!isDateValid(editedTask?.fechaFin) ? 'border-destructive' : ''}
-                            />
-                        </div>
+                    </div>
+
+                    {/* Row 4: Horas estimadas */}
+                    <div className="p-4 bg-muted/30 rounded-lg border" data-testid="row-horas">
                         <div className="space-y-2">
                             <Label className="flex items-center gap-2">
                                 <Clock className="w-4 h-4" />
@@ -184,36 +267,6 @@ export function SQLPreviewModal({
                                     ({editedTask?.minutos || 0} min)
                                 </span>
                             </div>
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="flex items-center gap-2">
-                                <Flag className="w-4 h-4" />
-                                Fase
-                            </Label>
-                            {fases && fases.length > 0 ? (
-                                <Select 
-                                    value={editedTask?.fase || ''} 
-                                    onValueChange={(value: string) => handleParamChange('fase', value)}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Selecciona una fase" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {fases.map((fase: { id: string; label: string }) => (
-                                            <SelectItem key={fase.id} value={fase.id}>
-                                                {fase.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            ) : (
-                                <Input 
-                                    value={editedTask?.fase || ''}
-                                    onChange={(e) => handleParamChange('fase', e.target.value)}
-                                    placeholder="Código de fase"
-                                />
-                            )}
-                        </div>
                         </div>
                     </div>
 
@@ -237,7 +290,7 @@ export function SQLPreviewModal({
                     )}
 
                     <ScrollArea className="flex-1 border rounded-lg bg-slate-950">
-                        <pre className="p-4 text-sm font-mono whitespace-pre-wrap text-slate-300">
+                        <pre className="p-4 text-sm font-mono whitespace-pre-wrap text-slate-300" data-testid="sql-preview">
                             {sql}
                         </pre>
                     </ScrollArea>

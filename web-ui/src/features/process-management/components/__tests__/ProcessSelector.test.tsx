@@ -1184,7 +1184,7 @@ describe('onCreateNew callback', () => {
     expect(fase22.label).toBe('Desarrollo / Fase 3');
   });
 
-  it('should call onCreateNew with fases and usuario when Nueva tarea is clicked', async () => {
+  it('should call onCreateNew with fases, usuario, and projectInfo when Nueva tarea is clicked', async () => {
     const onCreateNew = vi.fn();
 
     render(
@@ -1207,7 +1207,13 @@ describe('onCreateNew callback', () => {
     expect(onCreateNew).toHaveBeenCalledTimes(1);
     expect(onCreateNew).toHaveBeenCalledWith({
       fases: [{ id: '20', label: 'Diseño / Fase 1' }],
-      usuario: 'TESTUSER'
+      usuario: 'TESTUSER',
+      projectInfo: expect.objectContaining({
+        CodCli: '1',
+        NomCliente: 'Client A',
+        NomProy: 'Project Alpha',
+        Proyecto: 'PA',
+      }),
     });
   });
 });

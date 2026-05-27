@@ -1,6 +1,18 @@
 import { render, screen, fireEvent } from '@testing-library/react';
+import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SQLPreviewModal } from '../SQLPreviewModal';
+import { useProjects } from '@/features/projects/hooks/use-projects';
+import { useProjectTree } from '@/features/projects/hooks/use-project-tree';
+
+// Mock hooks used by SinFasesSelector
+vi.mock('@/features/projects/hooks/use-projects', () => ({
+    useProjects: vi.fn(),
+}));
+
+vi.mock('@/features/projects/hooks/use-project-tree', () => ({
+    useProjectTree: vi.fn(),
+}));
 
 // Helper to format date as used in component
 const formatDate = (date: Date): string => {
@@ -17,6 +29,16 @@ describe('SQLPreviewModal', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
+        // Default mocks for SinFasesSelector hooks — loading state prevents
+        // SinFasesSelector from rendering inputs that would conflict with existing tests.
+        vi.mocked(useProjects).mockReturnValue({
+            data: [],
+            isLoading: true,
+            isError: false,
+        } as any);
+        vi.mocked(useProjectTree).mockReturnValue({
+            isLoading: false,
+        } as any);
     });
 
     const renderModal = (props: Partial<React.ComponentProps<typeof SQLPreviewModal>> = {}) => {
@@ -24,13 +46,100 @@ describe('SQLPreviewModal', () => {
             open: true,
             onOpenChange: mockOnOpenChange,
             config: defaultConfig,
+            // Default to empty array so tests without explicit fases preserve text-input behavior
+            fases: [] as Array<{ id: string; label: string }>,
             ...props,
         };
         return render(<SQLPreviewModal {...defaultProps} />);
     };
 
+    describe('Phase Required Indicator', () => {
+        it('shows required indicator on phase label', () => {
+            renderModal({
+                taskData: {
+                    name: 'Task',
+                    fechaInicio: '01/06/2026',
+                    fechaFin: '08/06/2026',
+                    totalMinutes: 120,
+                },
+            });
+
+            // The phase label should have an asterisk indicating it's required
+            const asteriskEl = screen.getByText('*');
+            expect(asteriskEl).toBeInTheDocument();
+        });
+    });
+
+    describe('Phase Error Styling', () => {
+        it('shows aria-invalid on phase input when phase is empty', () => {
+            renderModal({
+                taskData: {
+                    name: 'Task',
+                    fechaInicio: '01/06/2026',
+                    fechaFin: '08/06/2026',
+                    totalMinutes: 120,
+                },
+                config: { usuario: 'MG01', fase: '' },
+            });
+
+            const phaseInput = screen.getByPlaceholderText('Código de fase');
+            expect(phaseInput.getAttribute('aria-invalid')).toBe('true');
+        });
+
+        it('does not show aria-invalid on phase input when phase is filled', () => {
+            renderModal({
+                taskData: {
+                    name: 'Task',
+                    fechaInicio: '01/06/2026',
+                    fechaFin: '08/06/2026',
+                    totalMinutes: 120,
+                },
+                config: { usuario: 'MG01', fase: '100' },
+            });
+
+            const phaseInput = screen.getByPlaceholderText('Código de fase');
+            expect(phaseInput.getAttribute('aria-invalid')).toBe('false');
+        });
+    });
+
+    describe('Layout Structure', () => {
+        it('renders 4 form rows: Proyecto+Fase, Nombre, Fechas, Horas', () => {
+            renderModal({
+                taskData: {
+                    name: 'Task',
+                    fechaInicio: '01/06/2026',
+                    fechaFin: '08/06/2026',
+                    totalMinutes: 120,
+                },
+            });
+
+            expect(screen.getByTestId('row-proyecto-fase')).toBeInTheDocument();
+            expect(screen.getByTestId('row-nombre')).toBeInTheDocument();
+            expect(screen.getByTestId('row-fechas')).toBeInTheDocument();
+            expect(screen.getByTestId('row-horas')).toBeInTheDocument();
+        });
+    });
+
+    describe('Proyecto Field', () => {
+        it('shows proyecto input with config.usuario value', () => {
+            renderModal({
+                taskData: {
+                    name: 'Task',
+                    fechaInicio: '01/06/2026',
+                    fechaFin: '08/06/2026',
+                    totalMinutes: 120,
+                },
+                config: { usuario: 'PROJ01', fase: '100' },
+            });
+
+            const proyectoInput = screen.getByPlaceholderText('Código de proyecto') as HTMLInputElement;
+            expect(proyectoInput).toBeDefined();
+            expect(proyectoInput.value).toBe('PROJ01');
+        });
+    });
+
     describe('Phase Input Modes', () => {
-        it('renders text input for phase when fases prop is not provided', () => {
+        it('renders text input when fases is an empty array', () => {
             renderModal({
                 taskData: {
                     name: 'Task',
@@ -63,7 +172,7 @@ describe('SQLPreviewModal', () => {
 
             // Should show combobox trigger with placeholder text
             const combobox = screen.getByRole('combobox');
-            expect(combobox).toBeTruthy();
+            expect(combobox).toBeInTheDocument();
 
             // Open the dropdown to see options
             fireEvent.click(combobox);
@@ -146,6 +255,10 @@ describe('SQLPreviewModal', () => {
                 config: { usuario: 'USER01', fase: '200' },
             });
 
+            // Proyecto input should show the usuario code
+            const proyectoInput = screen.getByPlaceholderText('Código de proyecto') as HTMLInputElement;
+            expect(proyectoInput.value).toBe('USER01');
+
             // Phase input should show '200'
             const phaseInput = screen.getByPlaceholderText('Código de fase') as HTMLInputElement;
             expect(phaseInput.value).toBe('200');
@@ -162,8 +275,8 @@ describe('SQLPreviewModal', () => {
             };
             renderModal({ taskData });
 
-            const sqlBlock = document.querySelector('pre');
-            expect(sqlBlock).toBeTruthy();
+            const sqlBlock = screen.getByTestId('sql-preview');
+            expect(sqlBlock).toBeInTheDocument();
             const sql = sqlBlock?.textContent || '';
             expect(sql).toContain('Test Task');
             // Dates are converted to YYYYMMDD in the SQL (unambiguous for SQL Server)
@@ -184,7 +297,7 @@ describe('SQLPreviewModal', () => {
             const hoursInput = document.querySelector('input[type="number"][step="0.25"]') as HTMLInputElement;
             fireEvent.change(hoursInput, { target: { value: '3' } });
 
-            const sqlBlock = document.querySelector('pre');
+            const sqlBlock = screen.getByTestId('sql-preview');
             const sql = sqlBlock?.textContent || '';
             // 3 hours -> 180 minutes
             expect(sql).toContain('180');
@@ -203,13 +316,177 @@ describe('SQLPreviewModal', () => {
             const phaseInput = screen.getByPlaceholderText('Código de fase') as HTMLInputElement;
             fireEvent.change(phaseInput, { target: { value: '999' } });
 
-            const sqlBlock = document.querySelector('pre');
+            const sqlBlock = screen.getByTestId('sql-preview');
             const sql = sqlBlock?.textContent || '';
             expect(sql).toContain('999');
+        });
+
+        it('generates SQL with project code in SinFases mode after selecting a project', () => {
+            vi.mocked(useProjects).mockReturnValue({
+                data: [
+                    {
+                        CodCli: '1',
+                        NomCliente: 'Client A',
+                        NomProy: 'Project A',
+                        Proyecto: 'PA',
+                    },
+                ],
+                isLoading: false,
+                isError: false,
+            } as any);
+            vi.mocked(useProjectTree).mockReturnValue({
+                isLoading: false,
+                data: {
+                    data: {
+                        cliente: { codCli: 1, cliente: 'C1', nomCliente: 'Client 1' },
+                        proyecto: { codCli: 1, proyecto: 1, nomProy: 'P1', cerrado: false, cmmi: false, esCM: false, esPET: false },
+                        disciplinas: [
+                            {
+                                idDisciplina: 10,
+                                nombre: 'Diseño',
+                                sinDisciplina: false,
+                                orden: 1,
+                                fases: [
+                                    { fase: 20, nombre: 'Fase 1', cerrado: false, orden: 1, procesos: [] },
+                                ],
+                            },
+                        ],
+                    },
+                },
+            } as any);
+
+            renderModal({
+                taskData: {
+                    name: 'Task',
+                    fechaInicio: '01/06/2026',
+                    fechaFin: '08/06/2026',
+                    totalMinutes: 120,
+                },
+                fases: undefined as any,
+            });
+
+            // Select project
+            const projectCombobox = screen.getByRole('combobox');
+            fireEvent.click(projectCombobox);
+            fireEvent.click(screen.getByText('Client A / Project A (PA)'));
+
+            const sql = screen.getByTestId('sql-preview').textContent || '';
+            expect(sql).toContain('PA');
+        });
+
+        it('generates SQL with phase ID in SinFases mode after selecting project and phase', () => {
+            vi.mocked(useProjects).mockReturnValue({
+                data: [
+                    {
+                        CodCli: '1',
+                        NomCliente: 'Client A',
+                        NomProy: 'Project A',
+                        Proyecto: 'PA',
+                    },
+                ],
+                isLoading: false,
+                isError: false,
+            } as any);
+            vi.mocked(useProjectTree).mockReturnValue({
+                isLoading: false,
+                data: {
+                    data: {
+                        cliente: { codCli: 1, cliente: 'C1', nomCliente: 'Client 1' },
+                        proyecto: { codCli: 1, proyecto: 1, nomProy: 'P1', cerrado: false, cmmi: false, esCM: false, esPET: false },
+                        disciplinas: [
+                            {
+                                idDisciplina: 10,
+                                nombre: 'Diseño',
+                                sinDisciplina: false,
+                                orden: 1,
+                                fases: [
+                                    { fase: 20, nombre: 'Fase 1', cerrado: false, orden: 1, procesos: [] },
+                                ],
+                            },
+                        ],
+                    },
+                },
+            } as any);
+
+            renderModal({
+                taskData: {
+                    name: 'Task',
+                    fechaInicio: '01/06/2026',
+                    fechaFin: '08/06/2026',
+                    totalMinutes: 120,
+                },
+                fases: undefined as any,
+            });
+
+            // Select project
+            const projectCombobox = screen.getByRole('combobox');
+            fireEvent.click(projectCombobox);
+            fireEvent.click(screen.getByText('Client A / Project A (PA)'));
+
+            // Select phase
+            const phaseCombobox = screen.getAllByRole('combobox')[1];
+            fireEvent.click(phaseCombobox);
+            fireEvent.click(screen.getByText('Diseño / Fase 1'));
+
+            const sql = screen.getByTestId('sql-preview').textContent || '';
+            expect(sql).toContain('20');
+        });
+
+        it('generates SQL with dropdown-selected phase ID in Select mode', () => {
+            renderModal({
+                taskData: {
+                    name: 'Task',
+                    fechaInicio: '01/06/2026',
+                    fechaFin: '08/06/2026',
+                    totalMinutes: 120,
+                },
+                fases: [{ id: '100', label: 'Fase 100' }],
+                config: { usuario: 'MG01', fase: '' },
+            });
+
+            // Open dropdown and select fase
+            const combobox = screen.getByRole('combobox');
+            fireEvent.click(combobox);
+            fireEvent.click(screen.getByText('Fase 100'));
+
+            const sql = screen.getByTestId('sql-preview').textContent || '';
+            expect(sql).toContain('100');
         });
     });
 
     describe('Validation', () => {
+        it('disables execute button when phase is empty', () => {
+            renderModal({
+                taskData: {
+                    name: 'Task',
+                    fechaInicio: '01/06/2026',
+                    fechaFin: '08/06/2026',
+                    totalMinutes: 120,
+                },
+                config: { usuario: 'MG01', fase: '' },
+                onExecute: mockOnExecute,
+            });
+
+            const executeButton = screen.getByRole('button', { name: /Ejecutar en BD/i });
+            expect(executeButton).toBeDisabled();
+        });
+
+        it('disables execute button when phase is whitespace-only', () => {
+            renderModal({
+                taskData: {
+                    name: 'Task',
+                    fechaInicio: '01/06/2026',
+                    fechaFin: '08/06/2026',
+                    totalMinutes: 120,
+                },
+                config: { usuario: 'MG01', fase: '   ' },
+                onExecute: mockOnExecute,
+            });
+
+            const executeButton = screen.getByRole('button', { name: /Ejecutar en BD/i });
+            expect(executeButton).toBeDisabled();
+        });
+
         it('disables execute button when dates are invalid', () => {
             renderModal({
                 taskData: {
@@ -222,7 +499,7 @@ describe('SQLPreviewModal', () => {
             });
 
             const executeButton = screen.getByRole('button', { name: /Ejecutar en BD/i });
-            expect(executeButton.hasAttribute('disabled')).toBe(true);
+            expect(executeButton).toBeDisabled();
         });
 
         it('enables execute button when all fields are valid', () => {
@@ -235,12 +512,163 @@ describe('SQLPreviewModal', () => {
             renderModal({ taskData, onExecute: mockOnExecute });
 
             const executeButton = screen.getByRole('button', { name: /Ejecutar en BD/i });
-            expect(executeButton.hasAttribute('disabled')).toBe(false);
+            expect(executeButton).toBeEnabled();
+        });
+    });
+
+    describe('Validation: SinFases mode', () => {
+        it('disables execute button when no project or phase selected in SinFases mode', () => {
+            vi.mocked(useProjects).mockReturnValue({
+                data: [
+                    {
+                        CodCli: '1',
+                        NomCliente: 'Client A',
+                        NomProy: 'Project A',
+                        Proyecto: 'PA',
+                    },
+                ],
+                isLoading: false,
+                isError: false,
+            } as any);
+            vi.mocked(useProjectTree).mockReturnValue({
+                isLoading: false,
+                data: {
+                    data: {
+                        cliente: { codCli: 1, cliente: 'C1', nomCliente: 'Client 1' },
+                        proyecto: { codCli: 1, proyecto: 1, nomProy: 'P1', cerrado: false, cmmi: false, esCM: false, esPET: false },
+                        disciplinas: [
+                            {
+                                idDisciplina: 10,
+                                nombre: 'Diseño',
+                                sinDisciplina: false,
+                                orden: 1,
+                                fases: [
+                                    { fase: 20, nombre: 'Fase 1', cerrado: false, orden: 1, procesos: [] },
+                                ],
+                            },
+                        ],
+                    },
+                },
+            } as any);
+
+            renderModal({
+                taskData: {
+                    name: 'Task',
+                    fechaInicio: '01/06/2026',
+                    fechaFin: '08/06/2026',
+                    totalMinutes: 120,
+                },
+                fases: undefined as any,
+                onExecute: mockOnExecute,
+            });
+
+            const executeButton = screen.getByRole('button', { name: /Ejecutar en BD/i });
+            expect(executeButton).toBeDisabled();
+        });
+
+        it('enables execute button after selecting project and phase in SinFases mode', () => {
+            vi.mocked(useProjects).mockReturnValue({
+                data: [
+                    {
+                        CodCli: '1',
+                        NomCliente: 'Client A',
+                        NomProy: 'Project A',
+                        Proyecto: 'PA',
+                    },
+                ],
+                isLoading: false,
+                isError: false,
+            } as any);
+            vi.mocked(useProjectTree).mockReturnValue({
+                isLoading: false,
+                data: {
+                    data: {
+                        cliente: { codCli: 1, cliente: 'C1', nomCliente: 'Client 1' },
+                        proyecto: { codCli: 1, proyecto: 1, nomProy: 'P1', cerrado: false, cmmi: false, esCM: false, esPET: false },
+                        disciplinas: [
+                            {
+                                idDisciplina: 10,
+                                nombre: 'Diseño',
+                                sinDisciplina: false,
+                                orden: 1,
+                                fases: [
+                                    { fase: 20, nombre: 'Fase 1', cerrado: false, orden: 1, procesos: [] },
+                                ],
+                            },
+                        ],
+                    },
+                },
+            } as any);
+
+            renderModal({
+                taskData: {
+                    name: 'Task',
+                    fechaInicio: '01/06/2026',
+                    fechaFin: '08/06/2026',
+                    totalMinutes: 120,
+                },
+                fases: undefined as any,
+                onExecute: mockOnExecute,
+            });
+
+            // Open project dropdown and select project
+            const projectCombobox = screen.getByRole('combobox');
+            fireEvent.click(projectCombobox);
+            fireEvent.click(screen.getByText('Client A / Project A (PA)'));
+
+            // Phase dropdown should appear — open and select a phase
+            const phaseCombobox = screen.getAllByRole('combobox')[1];
+            fireEvent.click(phaseCombobox);
+            fireEvent.click(screen.getByText('Diseño / Fase 1'));
+
+            const executeButton = screen.getByRole('button', { name: /Ejecutar en BD/i });
+            expect(executeButton).toBeEnabled();
+        });
+    });
+
+    describe('Validation: WithFases+Select mode', () => {
+        it('disables execute button when no fase is selected in Select mode', () => {
+            renderModal({
+                taskData: {
+                    name: 'Task',
+                    fechaInicio: '01/06/2026',
+                    fechaFin: '08/06/2026',
+                    totalMinutes: 120,
+                },
+                fases: [{ id: '100', label: 'Fase 100' }],
+                config: { usuario: 'MG01', fase: '' },
+                onExecute: mockOnExecute,
+            });
+
+            const executeButton = screen.getByRole('button', { name: /Ejecutar en BD/i });
+            expect(executeButton).toBeDisabled();
+        });
+
+        it('enables execute button after selecting a fase from dropdown in Select mode', () => {
+            renderModal({
+                taskData: {
+                    name: 'Task',
+                    fechaInicio: '01/06/2026',
+                    fechaFin: '08/06/2026',
+                    totalMinutes: 120,
+                },
+                fases: [{ id: '100', label: 'Fase 100' }],
+                config: { usuario: 'MG01', fase: '' },
+                onExecute: mockOnExecute,
+            });
+
+            // Open dropdown and select a fase
+            const combobox = screen.getByRole('combobox');
+            fireEvent.click(combobox);
+            fireEvent.click(screen.getByText('Fase 100'));
+
+            const executeButton = screen.getByRole('button', { name: /Ejecutar en BD/i });
+            expect(executeButton).toBeEnabled();
         });
     });
 
     describe('Integration with Step2Tasks', () => {
-        it('does not break when no fases and taskData provided (existing usage)', () => {
+        it('renders text input mode when fases is an empty array (as used by Step2Tasks)', () => {
             // This is a smoke test that the modal renders without fases and with taskData as used by Step2Tasks
             const taskData = {
                 name: 'Some Task',
@@ -262,8 +690,124 @@ describe('SQLPreviewModal', () => {
             expect(phaseInput.value).toBe('123');
             // Execute button should be visible and enabled
             const executeButton = screen.getByRole('button', { name: /Ejecutar en BD/i });
-            expect(executeButton).toBeTruthy();
-            expect(executeButton.hasAttribute('disabled')).toBe(false);
+            expect(executeButton).toBeInTheDocument();
+            expect(executeButton).toBeEnabled();
+        });
+    });
+
+    describe('Project Info Display (selectedProject prop)', () => {
+  const mockProject = {
+    CodCli: 'CLI1',
+    Cliente: 'Cliente 1',
+    NomCliente: 'Client One',
+    NomProy: 'Project Alpha',
+    Proyecto: 'PA',
+    Abierto: true,
+    IdDpto: 'DPT1',
+    NomDpto: 'Dept 1',
+    IdAplicacion: 'APP1',
+    UsuredRespRev: 'USER1',
+  };
+
+  it('shows read-only project info div when selectedProject and fases are provided', () => {
+    renderModal({
+      taskData: {
+        name: 'Task',
+        fechaInicio: '01/06/2026',
+        fechaFin: '08/06/2026',
+        totalMinutes: 120,
+      },
+      fases: [{ id: '100', label: 'Fase 100' }],
+      selectedProject: mockProject,
+    });
+
+    // Should show project info as formatted text: NomCliente / NomProy (Proyecto)
+    expect(screen.getByText('Client One / Project Alpha (PA)')).toBeDefined();
+    // Should NOT show editable input for proyecto
+    expect(screen.queryByPlaceholderText('Código de proyecto')).toBeNull();
+  });
+
+  it('still shows editable input when fases are provided but selectedProject is undefined', () => {
+    renderModal({
+      taskData: {
+        name: 'Task',
+        fechaInicio: '01/06/2026',
+        fechaFin: '08/06/2026',
+        totalMinutes: 120,
+      },
+      fases: [{ id: '100', label: 'Fase 100' }],
+      // selectedProject is intentionally not provided
+    });
+
+    // Should show editable input
+    const proyectoInput = screen.getByPlaceholderText('Código de proyecto') as HTMLInputElement;
+    expect(proyectoInput).toBeDefined();
+    // Should NOT show read-only div
+    expect(screen.queryByText(/Client One \/ Project Alpha \(PA\)/)).toBeNull();
+  });
+
+  it('still shows editable input when selectedProject is null and fases are provided', () => {
+    renderModal({
+      taskData: {
+        name: 'Task',
+        fechaInicio: '01/06/2026',
+        fechaFin: '08/06/2026',
+        totalMinutes: 120,
+      },
+      fases: [{ id: '100', label: 'Fase 100' }],
+      selectedProject: null,
+    });
+
+    const proyectoInput = screen.getByPlaceholderText('Código de proyecto') as HTMLInputElement;
+    expect(proyectoInput).toBeDefined();
+  });
+});
+
+describe('SinFasesSelector Integration', () => {
+        it('renders SinFasesSelector when fases prop is not provided)', () => {
+            // Mock hooks to return loading state so SinFasesSelector renders cleanly
+            vi.mocked(useProjects).mockReturnValue({
+                data: [],
+                isLoading: false,
+                isError: false,
+            } as any);
+
+            renderModal({
+                taskData: {
+                    name: 'Task',
+                    fechaInicio: '01/06/2026',
+                    fechaFin: '08/06/2026',
+                    totalMinutes: 120,
+                },
+                // Override default fases:[] by passing undefined
+                fases: undefined as any,
+            });
+
+            // SinFasesSelector should appear instead of the traditional row
+            expect(screen.getByTestId('sin-fases-selector')).toBeInTheDocument();
+            // The traditional proyecto input should NOT be present
+            expect(screen.queryByPlaceholderText('Código de proyecto')).toBeNull();
+        });
+
+        it('SinFasesSelector shows loading state when projects are loading (no fases)', () => {
+            vi.mocked(useProjects).mockReturnValue({
+                data: [],
+                isLoading: true,
+                isError: false,
+            } as any);
+
+            renderModal({
+                taskData: {
+                    name: 'Task',
+                    fechaInicio: '01/06/2026',
+                    fechaFin: '08/06/2026',
+                    totalMinutes: 120,
+                },
+                fases: undefined as any,
+            });
+
+            expect(screen.getByTestId('sin-fases-selector')).toBeInTheDocument();
+            expect(screen.getByText('Cargando proyectos...')).toBeInTheDocument();
         });
     });
 });

@@ -15,7 +15,7 @@ export interface ProcessSelectorProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSelect: (projectCode: string, processName: string) => void;
-  onCreateNew?: (data: { fases: Array<{ id: string; label: string }>; usuario: string }) => void;
+  onCreateNew?: (data: { fases: Array<{ id: string; label: string }>; usuario: string; projectInfo?: Project }) => void;
   usuario?: string;
   value?: string;
 }
@@ -374,7 +374,7 @@ export function ProcessSelector({ open, onOpenChange, onSelect, onCreateNew, usu
                       {onCreateNew && (
                         <Button
                           variant="outline"
-                          onClick={() => onCreateNew({ fases: phases, usuario: usuario || '' })}
+                          onClick={() => onCreateNew({ fases: phases, usuario: usuario || '', projectInfo: selectedProject || undefined })}
                         >
                           Nueva tarea
                         </Button>

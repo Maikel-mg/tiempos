@@ -6,12 +6,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 // Mock ProcessSelector to avoid full render complexity here
 // Capture onSelect and onCreateNew to verify callback chain works
 let capturedOnSelect: ((projectCode: string, processId: string) => void) | null = null;
-let capturedOnCreateNew: ((data: { fases: Array<{ id: string; label: string }>; usuario: string }) => void) | null = null;
+let capturedOnCreateNew: ((data: { fases: Array<{ id: string; label: string }>; usuario: string; projectInfo?: any }) => void) | null = null;
 vi.mock('../ProcessSelector', () => ({
   ProcessSelector: ({ open, onSelect, onCreateNew }: { 
     open: boolean; 
     onSelect?: (projectCode: string, processId: string) => void;
-    onCreateNew?: (data: { fases: Array<{ id: string; label: string }>; usuario: string }) => void;
+    onCreateNew?: (data: { fases: Array<{ id: string; label: string }>; usuario: string; projectInfo?: any }) => void;
   }) => {
     if (open && onSelect) capturedOnSelect = onSelect;
     if (open && onCreateNew) capturedOnCreateNew = onCreateNew;
@@ -238,6 +238,46 @@ describe('ProcessMappingTable Integration', () => {
 
       // The text input for fase should NOT be present when fases are provided as array
       expect(screen.queryByPlaceholderText('Código de fase')).toBeNull();
+    });
+
+    it('should pass projectInfo to SQLPreviewModal and show read-only project info', async () => {
+      render(
+        <ProcessMappingTable
+          processes={mockProcesses}
+          taskMapping={{}}
+          localErrors={{}}
+          config={mockConfig}
+          onUpdateProcessId={vi.fn()}
+        />,
+        { wrapper }
+      );
+
+      const input = screen.getByPlaceholderText('Seleccionar ID...');
+      fireEvent.click(input);
+      expect(capturedOnCreateNew).not.toBeNull();
+
+      act(() => {
+        capturedOnCreateNew!({
+          fases: mockFases,
+          usuario: 'test',
+          projectInfo: {
+            CodCli: 'CLI1',
+            NomCliente: 'Client One',
+            NomProy: 'Project Alpha',
+            Proyecto: 'PA',
+          },
+        });
+      });
+
+      // Wait for modal to open
+      await waitFor(() => {
+        expect(screen.getByText('Crear Proceso')).toBeDefined();
+      });
+
+      // Should show read-only project info
+      expect(screen.getByText('Client One / Project Alpha (PA)')).toBeDefined();
+      // Should NOT show editable input for proyecto
+      expect(screen.queryByPlaceholderText('Código de proyecto')).toBeNull();
     });
 
     it('should not re-open ProcessSelector after successful creation flow is triggered', async () => {
