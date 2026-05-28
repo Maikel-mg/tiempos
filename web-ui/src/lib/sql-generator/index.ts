@@ -67,10 +67,11 @@ export const SP_PARAMETERS: Record<string, SpParameterConfig> = {
   }
 };
 
-export function escapeSQL(valor: string | null | undefined): string {
-  if (!valor) return '';
-  validarSeguroSQL(valor);
-  return valor.replace(/'/g, "''").replace(/\\/g, '\\\\');
+export function escapeSQL(valor: string | number | null | undefined): string {
+  if (valor == null || valor === '') return '';
+  const str = String(valor);
+  validarSeguroSQL(str);
+  return str.replace(/'/g, "''").replace(/\\/g, '\\\\');
 }
 
 export function validarSeguroSQL(valor: string): string {
@@ -245,9 +246,12 @@ export function generateTaskSQLInternal(params: TaskSQLParams): string {
   const fechaIniPrevista = formatToYYYYMMDD(fechaInicio);
   const fechaFinPrevista = formatToYYYYMMDD(fechaFin);
   const fechaEstimacion = getFirstDayOfMonthYYYYMMDD(fechaInicio);
-  const faseValue = fase ? `'${escapeSQL(fase)}'` : `'${escapeSQL(usuario)}'`;
+  const faseValue = fase ? `${escapeSQL(fase)}` : `'${escapeSQL(usuario)}'`;
 
-  return `-- INSERT DE UN TAREA = PROCESO
+  return `SET LANGUAGE Spanish;
+SET DATEFORMAT dmy;
+
+-- INSERT DE UN TAREA = PROCESO
 DECLARE @p38 VARCHAR(200)
 SET @p38 = NULL
 
@@ -273,7 +277,7 @@ EXEC spNETTiempos_Procesos_Mantenimiento
     @pUsuredResp = 'BR00',
     @pUsuredRespRev = 'BR00',
     @pRecursos = NULL,
-    @pDiseno = 'N',
+    @pDiseño = 'N',
     @pTecnicos = '${escapeSQL(usuario)}',
     @pIdDpto = 5,
     @pFase = ${faseValue},

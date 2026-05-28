@@ -33,7 +33,10 @@ app.post('/api/test-connection', async (req: Request, res: Response) => {
       password,
       options: {
         encrypt: true,
-        trustServerCertificate: true
+        trustServerCertificate: true,
+        language: 'Spanish',
+        dateFormat: 'dmy',
+        useUTC: false
       }
     };
 
@@ -78,7 +81,10 @@ app.post('/api/execute-sql', async (req: Request, res: Response) => {
         password,
         options: {
             encrypt: true,
-            trustServerCertificate: true
+            trustServerCertificate: true,
+            language: 'Spanish',
+            dateFormat: 'dmy',
+            useUTC: false
         }
     };
 
@@ -350,7 +356,10 @@ app.post('/api/projects', async (req: Request, res: Response) => {
         password,
         options: {
             encrypt: true,
-            trustServerCertificate: true
+            trustServerCertificate: true,
+            language: 'Spanish',
+            dateFormat: 'dmy',
+            useUTC: false
         }
     };
 
@@ -429,7 +438,13 @@ app.post('/api/validate-entries', async (req: Request, res: Response) => {
         database,
         user: username,
         password,
-        options: { encrypt: true, trustServerCertificate: true }
+        options: {
+            encrypt: true,
+            trustServerCertificate: true,
+            language: 'Spanish',
+            dateFormat: 'dmy',
+            useUTC: false
+        }
     };
 
     const currentPool = new sql.ConnectionPool(config);
@@ -684,14 +699,17 @@ app.post('/api/projects-tree', async (req: Request, res: Response) => {
 
   try {
     const config: sql.config = {
-      server: dbServer,
-      database: dbDatabase,
-      user: dbUser,
-      password: dbPassword,
-      options: {
-        encrypt: true,
-        trustServerCertificate: true
-      }
+        server,
+        database,
+        user: username,
+        password,
+        options: {
+            encrypt: true,
+            trustServerCertificate: true,
+            language: 'Spanish',
+            dateFormat: 'dmy',
+            useUTC: false
+        }
     };
 
     const currentPool = new sql.ConnectionPool(config);

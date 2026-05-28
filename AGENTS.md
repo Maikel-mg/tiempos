@@ -54,6 +54,25 @@ web-ui/            Frontend React (wizard de 3 pasos: subir CSV, asignar IDs, ge
 - Archivos de ejemplo en raíz: `ejemplo.csv`, `ejemplo_comas.csv`, `tiemposEnero.csv`
 - **Ver [WEB_ARCHITECTURE.md](./WEB_ARCHITECTURE.md) para estándares de desarrollo frontend
 
+### SQL Server — Fechas y lenguaje de sesión (CRÍTICO)
+
+Cuando se ejecuta SQL desde el backend (driver `mssql`/`tedious`), las sesiones de SQL Server arrancan con idioma `us_english` (MDY), mientras que SSMS hereda el idioma del login (`Spanish` = DMY). Esto hace que las conversiones implícitas `varchar → datetime` fallen con "out-of-range value" aunque el mismo SQL funcione perfectamente en SSMS.
+
+**Regla:** Todo SQL batch que ejecute stored procedures con parámetros de fecha DEBE comenzar con:
+
+```sql
+SET LANGUAGE Spanish;
+SET DATEFORMAT dmy;
+```
+
+**NO confiar en `language: 'Spanish'` en la configuración de conexión del driver** — esa opción solo afecta cómo el driver parsea los resultados que vienen del servidor, **NO** ejecuta `SET LANGUAGE Spanish` en la sesión de SQL Server.
+
+**Formato de fechas:** Usar `YYYYMMDD` (sin separadores) para parámetros datetime. Es inambiguoso en cualquier idioma una vez que la sesión tiene `SET LANGUAGE Spanish`.
+
+**Archivos afectados:**
+- `server.ts` — configuraciones de conexión (se mantiene `language: 'Spanish'` por claridad, pero no es suficiente)
+- `web-ui/src/lib/sql-generator/index.ts` — todo SQL generado debe incluir `SET LANGUAGE Spanish;`
+
 ## Agent skills
 
 ### Issue tracker

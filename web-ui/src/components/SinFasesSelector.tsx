@@ -19,7 +19,7 @@ import type {
 
 export interface SinFasesSelectorProps {
   config: { usuario: string; fase: string } | null;
-  onTaskChange: (updates: Partial<{ usuario: string; fase: string }>) => void;
+  onTaskChange: (updates: Partial<{ proyecto: string; fase: string }>) => void;
   disabled?: boolean;
 }
 
@@ -79,7 +79,7 @@ export function SinFasesSelector({
     setSelectedProject(project);
     setSelectedPhaseId('');
     if (project) {
-      onTaskChange({ usuario: project.Proyecto, fase: '' });
+      onTaskChange({ proyecto: project.Proyecto, fase: '' });
     }
   };
 

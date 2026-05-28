@@ -13,7 +13,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { generateTaskSQL } from '@/lib/sql-generator';
+import { generateTaskSQL, formatISOToSQLDate } from '@/lib/sql-generator';
 import { SinFasesSelector } from './SinFasesSelector';
 import type { Project } from '@/features/projects/types';
 
@@ -52,10 +52,15 @@ export function SQLPreviewModal({
     useEffect(() => {
         if (open) {
             if (taskData) {
+                // Convert ISO dates to DD/MM/YYYY if needed
+                const toDDMMYYYY = (dateStr: string): string => {
+                    if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) return dateStr;
+                    return formatISOToSQLDate(dateStr) || dateStr;
+                };
                 setEditedTask({
                     nombre: taskData.name || taskData.nombre,
-                    fechaInicio: taskData.fechaInicio,
-                    fechaFin: taskData.fechaFin,
+                    fechaInicio: toDDMMYYYY(taskData.fechaInicio),
+                    fechaFin: toDDMMYYYY(taskData.fechaFin),
                     minutos: taskData.totalMinutes || taskData.minutos || 0,
                     usuario: config?.usuario || '',
                     fase: fases ? config?.fase || '' : ''  // No pre-fill fase in sin-fases mode
@@ -85,6 +90,7 @@ export function SQLPreviewModal({
 
     // Generate SQL based on edited data
     const sql = useMemo(() => {
+        console.log(`TCL ~ SQLPreviewModal ~ editedTask:`, editedTask)
         if (!editedTask) return '';
         try {
             return generateTaskSQL(editedTask);
@@ -139,6 +145,7 @@ export function SQLPreviewModal({
                             <SinFasesSelector
                                 config={config}
                                 onTaskChange={(updates) => {
+                                    console.log(`TCL ~ SQLPreviewModal ~ updates:`, updates)
                                     Object.entries(updates).forEach(([key, value]) => {
                                         handleParamChange(key, value);
                                     });
@@ -162,8 +169,8 @@ export function SQLPreviewModal({
                                     ) : (
                                         <Input
                                             value={editedTask?.usuario || ''}
-                                            onChange={(e) => handleParamChange('usuario', e.target.value)}
-                                            placeholder="Código de proyecto"
+                                            onChange={(e) => handleParamChange('proyecto', e.target.value)}
+                                            placeholder="Código de proyecto sin espacios"
                                             className="w-full"
                                         />
                                     )}
