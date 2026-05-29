@@ -9,7 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { generateSQLFromObjects, formatSQLForHighlight, downloadSQL, copyToClipboard, type SQLGenerationResult } from '@/lib/sql-generator';
-import { loadMappings, type TaskMappings } from '@/lib/task-mapping-storage';
+import { loadMappings, saveMappings, type TaskMappings } from '@/lib/task-mapping-storage';
 import { ConfigInfoBar } from '@/components/ConfigInfoBar';
 import { toast } from 'sonner';
 import { ProcessMappingTable } from '@/features/process-management';
@@ -396,10 +396,11 @@ export function LiveTimeEntriesPage() {
 
     // Handle task ID update
     const handleUpdateTaskId = useCallback((taskName: string, taskId: string) => {
-        setTaskMapping(prev => ({
-            ...prev,
-            [taskName]: taskId
-        }));
+        setTaskMapping(prev => {
+            const next = { ...prev, [taskName]: taskId };
+            saveMappings(next);
+            return next;
+        });
     }, []);
 
     // Check if all selected entries have mapped tasks
