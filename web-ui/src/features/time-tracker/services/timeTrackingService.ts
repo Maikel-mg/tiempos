@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { StorageStrategy } from '@/lib/storage/StorageStrategy';
-import type { TimeEntry, TimerState } from '../types';
+import type { TimeEntry, TimerState, Proceso } from '../types';
 
 function formatTimeHHMM(date: Date): string {
   return date.toTimeString().slice(0, 5); // HH:MM
@@ -23,7 +23,7 @@ export class TimeTrackingService {
    * Crea un nuevo registro de tiempo.
    */
   async createEntry(data: {
-    taskId: string;
+    taskId: number;
     taskName: string;
     date: string;
     startTime: string;
@@ -32,15 +32,17 @@ export class TimeTrackingService {
   }): Promise<TimeEntry> {
     const now = new Date().toISOString();
     const duration = calculateDurationSeconds(data.startTime, data.endTime);
+    const proceso: Proceso = { proceso: data.taskId, nombre: data.taskName };
 
     const entry: TimeEntry = {
       id: uuidv4(),
       taskId: data.taskId,
       taskName: data.taskName,
+      proceso,
       date: data.date,
       startTime: data.startTime,
       endTime: data.endTime,
-      duration: duration * 60, // Convertir minutos a segundos
+      duration: duration * 60,
       description: data.description,
       createdAt: now,
       updatedAt: now,
@@ -103,7 +105,7 @@ export class TimeTrackingService {
   /**
    * Inicia el temporizador para una tarea.
    */
-  async startTimer(taskId: string, taskName: string): Promise<TimerState> {
+  async startTimer(taskId: number, taskName: string): Promise<TimerState> {
     const state: TimerState = {
       isRunning: true,
       taskId,

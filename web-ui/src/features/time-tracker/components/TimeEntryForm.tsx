@@ -5,11 +5,11 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TaskSelector } from './TaskSelector';
-import type { TimeEntry } from '../types';
+import type { TimeEntry, Proceso } from '../types';
 
 interface TimeEntryFormProps {
   onSubmit: (data: {
-    taskId: string;
+    taskId: number;
     taskName: string;
     date: string;
     startTime: string;
@@ -37,8 +37,10 @@ function calculateDurationMinutes(startTime: string, endTime: string): number {
 export function TimeEntryForm({ onSubmit, onCancel, initialData, disabled }: TimeEntryFormProps) {
   const today = new Date().toISOString().split('T')[0];
   
-  const [task, setTask] = useState<{ id: string; name: string } | null>(
-    initialData?.taskId ? { id: initialData.taskId, name: initialData.taskName || '' } : null
+  const [task, setTask] = useState<Proceso | null>(
+    initialData?.taskId != null
+      ? { proceso: initialData.taskId, nombre: initialData.taskName || '' }
+      : null
   );
   const [date, setDate] = useState(initialData?.date || today);
   const [startTime, setStartTime] = useState(initialData?.startTime || '09:00');
@@ -62,8 +64,8 @@ export function TimeEntryForm({ onSubmit, onCancel, initialData, disabled }: Tim
     setIsSubmitting(true);
     try {
       await onSubmit({
-        taskId: task.id,
-        taskName: task.name,
+        taskId: task.proceso,
+        taskName: task.nombre,
         date,
         startTime,
         endTime,

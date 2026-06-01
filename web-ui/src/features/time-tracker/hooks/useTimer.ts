@@ -54,7 +54,7 @@ export function useTimer() {
   /**
    * Inicia el temporizador para una tarea.
    */
-  const start = useCallback(async (taskId: string, taskName: string) => {
+  const start = useCallback(async (taskId: number, taskName: string) => {
     try {
       const state = await service.startTimer(taskId, taskName);
       setTimerState(state);

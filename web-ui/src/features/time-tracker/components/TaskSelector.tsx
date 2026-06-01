@@ -4,10 +4,11 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useTasksWithSampleData } from '../hooks/useTasks';
+import type { Proceso } from '../types';
 
 interface TaskSelectorProps {
-  value: { id: string; name: string } | null;
-  onChange: (task: { id: string; name: string } | null) => void;
+  value: Proceso | null;
+  onChange: (task: Proceso | null) => void;
   className?: string;
   disabled?: boolean;
 }
@@ -24,13 +25,13 @@ export function TaskSelector({ value, onChange, className, disabled }: TaskSelec
   const filtered = useMemo(() => {
     if (!search) return tasks;
     const lower = search.toLowerCase();
-    return tasks.filter(t => 
-      t.name.toLowerCase().includes(lower) || 
-      (t.processId || '').toLowerCase().includes(lower)
+    return tasks.filter(t =>
+      t.nombre.toLowerCase().includes(lower) ||
+      String(t.proceso).includes(lower)
     );
   }, [tasks, search]);
 
-  const handleSelect = (task: { id: string; name: string }) => {
+  const handleSelect = (task: Proceso) => {
     onChange(task);
     setOpen(false);
     setSearch('');
@@ -51,7 +52,7 @@ export function TaskSelector({ value, onChange, className, disabled }: TaskSelec
           disabled={disabled}
         >
           {value ? (
-            <span className="truncate">{value.name}</span>
+            <span className="truncate">{value.nombre}</span>
           ) : (
             <span className="text-muted-foreground">Seleccionar tarea...</span>
           )}
@@ -81,14 +82,12 @@ export function TaskSelector({ value, onChange, className, disabled }: TaskSelec
           ) : (
             filtered.map((task) => (
               <button
-                key={task.id}
+                key={task.proceso}
                 className="w-full px-3 py-2.5 text-left hover:bg-muted transition-colors border-b border-transparent hover:border-border/50"
-                onClick={() => handleSelect({ id: task.id, name: task.name })}
+                onClick={() => handleSelect(task)}
               >
-                <div className="font-medium truncate">{task.name}</div>
-                {task.processId && (
-                  <div className="text-xs text-muted-foreground">ID: {task.processId}</div>
-                )}
+                <div className="font-medium truncate">{task.nombre}</div>
+                <div className="text-xs text-muted-foreground">ID: {task.proceso}</div>
               </button>
             ))
           )}

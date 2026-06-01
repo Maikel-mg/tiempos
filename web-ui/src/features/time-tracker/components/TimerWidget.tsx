@@ -3,12 +3,13 @@ import { Play, Square, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { TaskSelector } from './TaskSelector';
+import type { Proceso } from '../types';
 
 interface TimerWidgetProps {
   isRunning: boolean;
   elapsed: number;
   timerTask?: string;
-  onStart: (taskId: string, taskName: string) => Promise<void>;
+  onStart: (taskId: number, taskName: string) => Promise<void>;
   onStop: () => Promise<void>;
   onCancel?: () => Promise<void>;
 }
@@ -28,14 +29,14 @@ function formatDuration(seconds: number): string {
  * Muestra el tiempo transcurrido y permite seleccionar tarea.
  */
 export function TimerWidget({ isRunning, elapsed, timerTask, onStart, onStop, onCancel }: TimerWidgetProps) {
-  const [selectedTask, setSelectedTask] = useState<{ id: string; name: string } | null>(null);
+  const [selectedTask, setSelectedTask] = useState<Proceso | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleStart = async () => {
     if (!selectedTask) return;
     setIsLoading(true);
     try {
-      await onStart(selectedTask.id, selectedTask.name);
+      await onStart(selectedTask.proceso, selectedTask.nombre);
     } finally {
       setIsLoading(false);
     }

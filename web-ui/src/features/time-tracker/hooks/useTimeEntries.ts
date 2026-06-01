@@ -36,7 +36,7 @@ export function useTimeEntries() {
    */
   const createEntry = useCallback(async (
     data: {
-      taskId: string;
+      taskId: number;
       taskName: string;
       date: string;
       startTime: string;

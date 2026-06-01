@@ -22,7 +22,7 @@ export function TimeTrackingPage() {
 
   // Handlers
   const handleCreateEntry = async (data: {
-    taskId: string;
+    taskId: number;
     taskName: string;
     date: string;
     startTime: string;

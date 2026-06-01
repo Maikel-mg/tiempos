@@ -1,28 +1,35 @@
+export interface Proceso {
+  proceso: number;
+  nombre: string;
+  /** Nombre de la fase a la que pertenece el proceso */
+  faseNombre?: string;
+  /** Nombre del proyecto al que pertenece el proceso */
+  proyectoNombre?: string;
+  /** Nombre del cliente al que pertenece el proyecto */
+  clienteNombre?: string;
+}
+
 export interface TimeEntry {
   id: string;
-  taskId: string;
+  taskId: number;
   taskName: string;
-  date: string; // YYYY-MM-DD
-  startTime: string; // HH:MM
-  endTime: string; // HH:MM
-  duration: number; // seconds
+  serverId?: number;
+  proceso: Proceso;
+  date: string;
+  startTime: string;
+  endTime: string;
+  duration: number;
   description?: string;
-  createdAt: string; // ISO timestamp
-  updatedAt: string; // ISO timestamp
+  createdAt: string;
+  updatedAt: string;
   synced: boolean;
-  syncedAt?: string; // ISO timestamp
+  syncedAt?: string;
 }
 
 export interface TimerState {
   isRunning: boolean;
-  taskId: string;
+  taskId: number;
   taskName: string;
-  startTime: string; // ISO timestamp
-  elapsed: number; // seconds accumulated
-}
-
-export interface Task {
-  id: string;
-  name: string;
-  processId?: string;
+  startTime: string;
+  elapsed: number;
 }
