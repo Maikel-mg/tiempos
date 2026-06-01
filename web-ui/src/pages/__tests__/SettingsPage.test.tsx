@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SettingsPage } from '../SettingsPage';
-import { dbConfig, wizardConfig } from '@/config/stores';
+import { dbConfig, wizardConfig, proposalConfig } from '@/config/stores';
 
 // Mock sonner toast
 vi.mock('sonner', () => ({
@@ -54,6 +54,7 @@ describe('SettingsPage - DB Connection Section', () => {
   beforeEach(() => {
     dbConfig.reset();
     wizardConfig.reset();
+    proposalConfig.reset();
     vi.clearAllMocks();
   });
 
@@ -219,6 +220,7 @@ describe('SettingsPage - Wizard Config Section', () => {
   beforeEach(() => {
     dbConfig.reset();
     wizardConfig.reset();
+    proposalConfig.reset();
     vi.clearAllMocks();
   });
 
@@ -313,6 +315,114 @@ describe('SettingsPage - Wizard Config Section', () => {
       fireEvent.click(saveButtons[saveButtons.length - 1]);
 
       expect(toast.success).toHaveBeenCalled();
+    });
+  });
+});
+
+describe('SettingsPage - Proposal Config Section', () => {
+  beforeEach(() => {
+    dbConfig.reset();
+    wizardConfig.reset();
+    proposalConfig.reset();
+    vi.clearAllMocks();
+  });
+
+  const getProposalThresholdInput = () => document.getElementById('proposal-threshold') as HTMLInputElement;
+
+  describe('Renders proposal section', () => {
+    it('should render "Detección de Propuestas" heading', () => {
+      renderPage();
+      expect(screen.getByText(/detección de propuestas/i)).toBeDefined();
+    });
+
+    it('should render "Umbral de horas para propuestas" label', () => {
+      renderPage();
+      expect(screen.getByText(/umbral de horas para propuestas/i)).toBeDefined();
+    });
+  });
+
+  describe('Input has correct attributes', () => {
+    it('should have type="number", min=1, max=100', () => {
+      renderPage();
+      const input = getProposalThresholdInput();
+      expect(input.type).toBe('number');
+      expect(input.min).toBe('1');
+      expect(input.max).toBe('100');
+    });
+  });
+
+  describe('Default value is 8', () => {
+    it('should show 8 when store is empty', () => {
+      renderPage();
+      expect(getProposalThresholdInput().value).toBe('8');
+    });
+  });
+
+  describe('Pre-populated from store', () => {
+    it('should show saved thresholdHours from store', () => {
+      proposalConfig.set({ thresholdHours: 15 });
+      renderPage();
+      expect(getProposalThresholdInput().value).toBe('15');
+    });
+  });
+
+  describe('Guardar persists to store', () => {
+    it('should persist thresholdHours when save is clicked', () => {
+      renderPage();
+
+      fireEvent.change(getProposalThresholdInput(), { target: { value: '25' } });
+
+      const saveButtons = screen.getAllByRole('button', { name: /guardar/i });
+      fireEvent.click(saveButtons[saveButtons.length - 1]);
+
+      const saved = proposalConfig.get();
+      expect(saved?.thresholdHours).toBe(25);
+    });
+  });
+
+  describe('Restablecer reverts to last saved', () => {
+    it('should revert to saved value when reset is clicked', () => {
+      proposalConfig.set({ thresholdHours: 12 });
+      renderPage();
+
+      fireEvent.change(getProposalThresholdInput(), { target: { value: '50' } });
+
+      const resetButtons = screen.getAllByRole('button', { name: /restablecer/i });
+      fireEvent.click(resetButtons[resetButtons.length - 1]);
+
+      expect(getProposalThresholdInput().value).toBe('12');
+    });
+  });
+
+  describe('Input validation clamps values', () => {
+    it('should clamp value to 1 when typing 0', () => {
+      renderPage();
+
+      fireEvent.change(getProposalThresholdInput(), { target: { value: '0' } });
+
+      expect(getProposalThresholdInput().value).toBe('1');
+    });
+
+    it('should clamp value to 100 when typing 200', () => {
+      renderPage();
+
+      fireEvent.change(getProposalThresholdInput(), { target: { value: '200' } });
+
+      expect(getProposalThresholdInput().value).toBe('100');
+    });
+  });
+
+  describe('Toast on save', () => {
+    it('should show success toast when Guardar is clicked', () => {
+      renderPage();
+
+      const saveButtons = screen.getAllByRole('button', { name: /guardar/i });
+      fireEvent.click(saveButtons[saveButtons.length - 1]);
+
+      expect(toast.success).toHaveBeenCalledWith(
+        'Umbral guardado',
+        expect.objectContaining({ description: expect.any(String) })
+      );
     });
   });
 });

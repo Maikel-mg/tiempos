@@ -10,6 +10,7 @@ import {
   Loader2,
   CheckCircle,
   XCircle,
+  Lightbulb,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,7 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { toast } from 'sonner';
-import { dbConfig, wizardConfig } from '@/config/stores';
+import { dbConfig, wizardConfig, proposalConfig } from '@/config/stores';
 import { useTestDbConnection } from '@/features/live-entries/mutations/sql-mutations';
 
 interface DbConfig {
@@ -33,6 +34,10 @@ interface WizardConfig {
   fase: string;
 }
 
+interface ProposalConfig {
+  thresholdHours: number;
+}
+
 export function SettingsPage() {
   const [config, setConfig] = useState<DbConfig>({
     server: '',
@@ -45,6 +50,9 @@ export function SettingsPage() {
     usuario: '',
     tipoHora: '11',
     fase: '',
+  });
+  const [proposalCfg, setProposalCfg] = useState<ProposalConfig>({
+    thresholdHours: 8,
   });
 
   const testMutation = useTestDbConnection();
@@ -64,6 +72,13 @@ export function SettingsPage() {
         usuario: savedWizard.usuario ?? '',
         tipoHora: savedWizard.tipoHora ?? '11',
         fase: savedWizard.fase ?? '',
+      });
+    }
+
+    const savedProposal = proposalConfig.get();
+    if (savedProposal) {
+      setProposalCfg({
+        thresholdHours: savedProposal.thresholdHours ?? 8,
       });
     }
   }, []);
@@ -112,6 +127,25 @@ export function SettingsPage() {
     });
     toast.info('Restablecido', {
       description: 'Se han restablecido las preferencias de importación.',
+    });
+  };
+
+  const handleProposalSave = () => {
+    proposalConfig.set({
+      thresholdHours: proposalCfg.thresholdHours,
+    });
+    toast.success('Umbral guardado', {
+      description: 'El umbral de horas para propuestas se ha guardado correctamente.',
+    });
+  };
+
+  const handleProposalReset = () => {
+    const saved = proposalConfig.get();
+    setProposalCfg({
+      thresholdHours: saved?.thresholdHours ?? 8,
+    });
+    toast.info('Restablecido', {
+      description: 'Se ha restablecido el umbral de horas para propuestas.',
     });
   };
 
@@ -314,6 +348,49 @@ export function SettingsPage() {
                 Guardar
               </Button>
               <Button variant="ghost" onClick={handleWizardReset}>
+                Restablecer
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Lightbulb className="w-5 h-5" />
+              Detección de Propuestas
+            </CardTitle>
+            <CardDescription>
+              Configura el umbral para detectar tareas nuevas en entradas genéricas.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="proposal-threshold">Umbral de horas para propuestas</Label>
+              <Input
+                id="proposal-threshold"
+                type="number"
+                min={1}
+                max={100}
+                placeholder="8"
+                value={proposalCfg.thresholdHours}
+                onChange={(e) => {
+                  const value = parseInt(e.target.value, 10);
+                  if (!isNaN(value)) {
+                    setProposalCfg({ thresholdHours: Math.min(100, Math.max(1, value)) });
+                  }
+                }}
+              />
+              <p className="text-sm text-muted-foreground">
+                Las descripciones con más de N horas en tareas genéricas se propondrán como tareas nuevas
+              </p>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <Button variant="outline" onClick={handleProposalSave}>
+                Guardar
+              </Button>
+              <Button variant="ghost" onClick={handleProposalReset}>
                 Restablecer
               </Button>
             </div>

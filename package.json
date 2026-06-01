@@ -8,7 +8,8 @@
     "start": "node --env-file=.env dist/server.js",
     "dev-backend": "tsx watch --env-file .env server.ts",
     "build:backend": "tsc",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "keywords": [
     "tiempos",
@@ -29,6 +30,7 @@
     "@types/mssql": "^9.1.9",
     "@types/node": "^25.5.0",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.7"
   }
 }

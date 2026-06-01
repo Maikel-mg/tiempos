@@ -7,6 +7,7 @@ export interface DbConfig {
 
 export interface TimeEntry {
   id?: string;
+  _id?: string;
   description: string;
   taskName?: string;
   task?: { name: string };

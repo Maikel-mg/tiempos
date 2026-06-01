@@ -45,3 +45,11 @@ export const uiConfig = defineConfig('ui', {
 export const phaseByMonthConfig = defineConfig('phase-by-month', {
   phases: { type: 'object', default: {} as Record<string, string> }
 });
+
+/**
+ * Proposal detection configuration store
+ * Stores threshold hours for detecting task proposals from generic tasks
+ */
+export const proposalConfig = defineConfig('proposal', {
+  thresholdHours: { type: 'number', default: 8 }
+});

@@ -69,6 +69,15 @@ class ApiClient {
       return this.handleError(error);
     }
   }
+
+  async put<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
+    try {
+      const response = await this.client.put<T>(url, data, config);
+      return this.handleResponse<T>(response);
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
 }
 
 export const apiClient = new ApiClient();

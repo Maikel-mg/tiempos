@@ -61,6 +61,7 @@ export function SQLPreviewModal({
                     nombre: taskData.name || taskData.nombre,
                     fechaInicio: toDDMMYYYY(taskData.fechaInicio),
                     fechaFin: toDDMMYYYY(taskData.fechaFin),
+                    fechaEstimacion: taskData.fechaEstimacion ? toDDMMYYYY(taskData.fechaEstimacion) : '',
                     minutos: taskData.totalMinutes || taskData.minutos || 0,
                     usuario: config?.usuario || '',
                     fase: fases ? config?.fase || '' : ''  // No pre-fill fase in sin-fases mode
@@ -80,6 +81,7 @@ export function SQLPreviewModal({
                     nombre: '',
                     fechaInicio: formatDate(today),
                     fechaFin: formatDate(nextWeek),
+                    fechaEstimacion: formatDate(today),
                     minutos: 0,
                     usuario: config?.usuario || '',
                     fase: fases ? config?.fase || '' : ''  // No pre-fill fase in sin-fases mode
@@ -126,6 +128,7 @@ export function SQLPreviewModal({
     const isValid = editedTask && 
                     isDateValid(editedTask.fechaInicio) && 
                     isDateValid(editedTask.fechaFin) && 
+                    isDateValid(editedTask.fechaEstimacion) &&
                     !isNaN(editedTask.minutos) &&
                     !!editedTask?.fase?.trim();
 
@@ -225,9 +228,9 @@ export function SQLPreviewModal({
                         </div>
                     </div>
 
-                    {/* Row 3: Fecha inicio + Fecha fin */}
+                    {/* Row 3: Fecha inicio + Fecha fin + Fecha estimación */}
                     <div className="p-4 bg-muted/30 rounded-lg border" data-testid="row-fechas">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div className="space-y-2">
                                 <Label className="flex items-center gap-2">
                                     <Calendar className={`w-4 h-4 ${!isDateValid(editedTask?.fechaInicio) ? 'text-destructive' : ''}`} />
@@ -250,6 +253,18 @@ export function SQLPreviewModal({
                                     onChange={(e) => handleParamChange('fechaFin', e.target.value)}
                                     placeholder="DD/MM/AAAA"
                                     className={!isDateValid(editedTask?.fechaFin) ? 'border-destructive' : ''}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="flex items-center gap-2">
+                                    <Calendar className={`w-4 h-4 ${!isDateValid(editedTask?.fechaEstimacion) ? 'text-destructive' : ''}`} />
+                                    Fecha Estimación (DD/MM/AAAA)
+                                </Label>
+                                <Input 
+                                    value={editedTask?.fechaEstimacion || ''} 
+                                    onChange={(e) => handleParamChange('fechaEstimacion', e.target.value)}
+                                    placeholder="DD/MM/AAAA"
+                                    className={!isDateValid(editedTask?.fechaEstimacion) ? 'border-destructive' : ''}
                                 />
                             </div>
                         </div>

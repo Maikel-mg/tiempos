@@ -220,6 +220,7 @@ export interface TaskSQLParams {
   nombre: string;
   fechaInicio: string;
   fechaFin: string;
+  fechaEstimacion?: string;
   minutos: number;
   usuario: string;
   fase?: string | null;
@@ -234,6 +235,7 @@ export function generateTaskSQLInternal(params: TaskSQLParams): string {
     nombre,
     fechaInicio,
     fechaFin,
+    fechaEstimacion: fechaEstimacionParam,
     minutos,
     usuario,
     fase = null,
@@ -245,7 +247,9 @@ export function generateTaskSQLInternal(params: TaskSQLParams): string {
 
   const fechaIniPrevista = formatToYYYYMMDD(fechaInicio);
   const fechaFinPrevista = formatToYYYYMMDD(fechaFin);
-  const fechaEstimacion = getFirstDayOfMonthYYYYMMDD(fechaInicio);
+  const fechaEstimacion = fechaEstimacionParam 
+    ? formatToYYYYMMDD(fechaEstimacionParam) 
+    : getFirstDayOfMonthYYYYMMDD(fechaInicio);
   const faseValue = fase ? `${escapeSQL(fase)}` : `'${escapeSQL(usuario)}'`;
 
   return `SET LANGUAGE Spanish;

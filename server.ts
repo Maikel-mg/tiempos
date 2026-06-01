@@ -245,7 +245,7 @@ app.post('/api/clockify/report', async (req: Request, res: Response) => {
         if (!workspaceId || !/^[0-9a-f]{24}$/i.test(workspaceId)) {
             return res.status(500).json({
                 success: false,
-                error: 'CLOCKIFY_WORKSPACE_ID inválido en .env'
+                message: 'CLOCKIFY_WORKSPACE_ID inválido en .env'
             });
         }
         
@@ -300,7 +300,7 @@ app.post('/api/clockify/report', async (req: Request, res: Response) => {
             const errorData = await response.json().catch(() => ({}));
             return res.status(response.status).json({
                 success: false,
-                error: errorData.message || `Error ${response.status} de Clockify`
+                message: errorData.message || `Error ${response.status} de Clockify`
             });
         }
 
@@ -327,6 +327,161 @@ app.post('/api/clockify/report', async (req: Request, res: Response) => {
         res.status(500).json({
             success: false,
             error: 'Error interno al generar el reporte',
+            details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+});
+
+// --- Clockify: Create Task ---
+app.post('/api/clockify/create-task', async (req: Request, res: Response) => {
+    try {
+        const { projectId, name: taskName } = req.body;
+
+        if (!projectId || !taskName) {
+            return res.status(400).json({
+                success: false,
+                message: 'Los campos projectId y name son requeridos'
+            });
+        }
+
+        const apiKey = process.env.CLOCKIFY_API_KEY;
+        if (!apiKey) throw new Error('CLOCKIFY_API_KEY no configurado');
+
+        const workspaceId = process.env.CLOCKIFY_WORKSPACE_ID?.trim();
+        if (!workspaceId || !/^[0-9a-f]{24}$/i.test(workspaceId)) {
+            return res.status(500).json({
+                success: false,
+                message: 'CLOCKIFY_WORKSPACE_ID inválido en .env'
+            });
+        }
+
+        const url = `https://api.clockify.me/api/v1/workspaces/${workspaceId}/projects/${projectId}/tasks`;
+console.log('url', url);
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'X-Api-Key': apiKey,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ name: taskName })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            const statusMessages: Record<number, string> = {
+                401: 'API key inválida o expirada',
+                403: 'No tienes permisos para crear tareas en este proyecto',
+                404: 'Proyecto no encontrado',
+                429: 'Límite de peticiones alcanzado, intentá más tarde'
+            };
+            return res.status(response.status).json({
+                success: false,
+                message: statusMessages[response.status] || errorData.message || `Error ${response.status} de Clockify`
+            });
+        }
+
+        const task = await response.json();
+
+        res.json({
+            success: true,
+            taskId: task.id,
+            message: 'Tarea creada'
+        });
+    } catch (error: any) {
+        console.error('Error al crear tarea en Clockify:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'Error interno al crear la tarea',
+            details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+});
+
+// --- Clockify: Bulk Update Entries ---
+app.put('/api/clockify/bulk-update-entries', async (req: Request, res: Response) => {
+    try {
+        const { entries, taskId } = req.body;
+
+        if (!entries || !Array.isArray(entries) || entries.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'El campo entries es requerido y debe ser un array no vacío'
+            });
+        }
+
+        if (!taskId) {
+            return res.status(400).json({
+                success: false,
+                message: 'El campo taskId es requerido'
+            });
+        }
+
+        const apiKey = process.env.CLOCKIFY_API_KEY;
+        if (!apiKey) throw new Error('CLOCKIFY_API_KEY no configurado');
+
+        const workspaceId = process.env.CLOCKIFY_WORKSPACE_ID?.trim();
+        if (!workspaceId || !/^[0-9a-f]{24}$/i.test(workspaceId)) {
+            return res.status(500).json({
+                success: false,
+                message: 'CLOCKIFY_WORKSPACE_ID inválido en .env'
+            });
+        }
+
+        const userId = process.env.CLOCKIFY_USER_ID?.trim();
+        if (!userId || !/^[0-9a-f]{24}$/i.test(userId)) {
+            return res.status(500).json({
+                success: false,
+                message: 'CLOCKIFY_USER_ID inválido en .env'
+            });
+        }
+
+        const url = `https://api.clockify.me/api/v1/workspaces/${workspaceId}/user/${userId}/time-entries`;
+        console.log(`TCL ~ url:`, url)
+        console.log(`TCL ~ url:`, url)
+        console.log(`TCL ~ url:`, url)
+
+        const payload = entries.map((entry: { id: string; start: string; end: string; projectId?: string }) => ({
+            id: entry.id,
+            start: entry.start,
+            end: entry.end,
+            taskId,
+            projectId: entry.projectId,
+        }));
+
+        const response = await fetch(url, {
+            method: 'PUT',
+            headers: {
+                'X-Api-Key': apiKey,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            const statusMessages: Record<number, string> = {
+                401: 'API key inválida o expirada',
+                403: 'No tienes permisos para actualizar estas entradas',
+                404: 'Una o más entradas o la tarea no fueron encontradas',
+                429: 'Límite de peticiones alcanzado, intentá más tarde'
+            };
+            return res.status(response.status).json({
+                success: false,
+                message: statusMessages[response.status] || errorData.message || `Error ${response.status} de Clockify`
+            });
+        }
+
+        // Clockify PUT returns 200 with no body on success
+        res.json({
+            success: true,
+            updated: entries.length,
+            message: `${entries.length} entradas reasignadas`
+        });
+    } catch (error: any) {
+        console.error('Error al actualizar entradas en Clockify:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'Error interno al actualizar las entradas',
             details: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
@@ -476,9 +631,14 @@ app.post('/api/validate-entries', async (req: Request, res: Response) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Backend server running on port ${PORT}`);
-});
+// Only start listening when run directly (not when imported for tests)
+if (process.argv[1] && !process.argv[1].includes('vitest')) {
+  app.listen(PORT, () => {
+    console.log(`Backend server running on port ${PORT}`);
+  });
+}
+
+export default app;
 
 // ============================================
 // Phase 1: Tipos e Interfaces
@@ -722,38 +882,45 @@ app.post('/api/projects-tree', async (req: Request, res: Response) => {
       const pFecha = fecha || new Date().toISOString().split('T')[0];
       const pModo = modo ? parseInt(modo, 10) : 1;
 
-      // Convertir fecha a formato español si es necesario
-      // El usuario puede enviar en formato YYYY-MM-DD, DD/MM/YYYY, YYYY/MM/DD o DD-MM-YYYY
-      let pFechaSpanish: string | null = null;
+      // Convertir fecha a formato YYYYMMDD (inambiguo en cualquier idioma de sesión SQL Server)
+      let pFechaYYYYMMDD: string | null = null;
       if (pFecha) {
-        // Normalizar separadores a-guion
+        // Normalizar separadores a guion
         const normalizedFecha = pFecha.replace(/\//g, '-');
         const parts = normalizedFecha.split('-');
         
         if (parts.length === 3) {
           const firstPart = parseInt(parts[0], 10);
           const secondPart = parseInt(parts[1], 10);
+          const thirdPart = parseInt(parts[2], 10);
           
-          if (firstPart > 12) {
-            // Formato DD/MM/YYYY o DD-MM-YYYY - mantener mismo formato para SQL
-            pFechaSpanish = pFecha; // usar formato original con /
+          let year: string, month: string, day: string;
+          
+          if (firstPart > 99) {
+            // Formato YYYY-MM-DD
+            year = parts[0]; month = parts[1]; day = parts[2];
           } else if (secondPart > 12) {
-            // Formato MM/DD/YYYY - convertir a DD/MM/YYYY
-            pFechaSpanish = `${parts[1]}/${parts[0]}/${parts[2]}`;
+            // Formato MM/DD/YYYY
+            year = parts[2]; month = parts[0]; day = parts[1];
+          } else if (thirdPart > 99) {
+            // Formato DD/MM/YYYY
+            year = parts[2]; month = parts[1]; day = parts[0];
           } else {
-            // Asumir YYYY-MM-DD - convertir a DD/MM/YYYY
-            pFechaSpanish = `${parts[2]}/${parts[1]}/${parts[0]}`;
+            // Ambiguo - asumir YYYY-MM-DD (el más común desde JS)
+            year = parts[0]; month = parts[1]; day = parts[2];
           }
+          
+          pFechaYYYYMMDD = `${year}${month.padStart(2, '0')}${day.padStart(2, '0')}`;
         }
       }
 
       // Llamar al SP con los 5 resultados
+      // YYYYMMDD es inambiguo - no necesita SET LANGUAGE ni SET DATEFORMAT
       const query = `
-        SET DATEFORMAT dmy;
         EXEC spNETProyectos_TreeProyectos 
           @pClientes = ${pCodCli ? `'${pCodCli.toString().replace(/'/g, "''")}'` : 'NULL'}, 
           @pProyectos = ${pProyecto ? `'${pProyecto.toString().replace(/'/g, "''")}'` : 'NULL'}, 
-          @pFecha = ${pFechaSpanish ? `'${pFechaSpanish}'` : 'NULL'}, 
+          @pFecha = ${pFechaYYYYMMDD ? `'${pFechaYYYYMMDD}'` : 'NULL'}, 
           @pModo = ${pModo};
       `;
       

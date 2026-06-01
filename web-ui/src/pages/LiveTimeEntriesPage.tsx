@@ -16,7 +16,11 @@ import { ProcessMappingTable } from '@/features/process-management';
 import { processExtractor, processValidation } from '@/features/process-management';
 import type { Process } from '@/features/process-management';
 import type { DbConfig } from '@/components/DBConnection';
-import { wizardConfig, dbConfig as dbConfigStore, phaseByMonthConfig } from '@/config/stores';
+import { wizardConfig, dbConfig as dbConfigStore, phaseByMonthConfig, proposalConfig } from '@/config/stores';
+import { extractProposals, type TaskProposal } from '@/domain/proposals/extract-proposals';
+import { TaskProposalCard } from '@/features/proposal-ui/components/TaskProposalCard';
+import { TaskProposalModal } from '@/features/proposal-ui/components/TaskProposalModal';
+import { useClockifySync, SyncConfirmationDialog } from '@/features/clockify-sync';
 
 interface TimeEntry {
     id?: string;
@@ -118,9 +122,21 @@ export function LiveTimeEntriesPage() {
   const [dbConfig, setDbConfig] = useState<DbConfig | null>(null);
   const [selectedMonth, setSelectedMonth] = useState(() => new Date());
   
+  // Proposal detection config
+  const [proposalThreshold, setProposalThreshold] = useState(8);
+  const [proposals, setProposals] = useState<TaskProposal[]>([]);
+  const [proposalModalOpen, setProposalModalOpen] = useState(false);
+  
   // Process management state
   const [processes, setProcesses] = useState<Process[]>([]);
   const [localErrors, setLocalErrors] = useState<Record<string, string | null>>({});
+
+  // Clockify sync
+  const { progress: syncProgress, dialogOpen: syncDialogOpen, pendingProposal: syncProposal, requestSync, cancelSync, confirmSync } = useClockifySync({
+    onSuccess: () => {
+      fetchReport();
+    },
+  });
 
     // Load config and mappings on mount
     useEffect(() => {
@@ -145,6 +161,11 @@ export function LiveTimeEntriesPage() {
                     username: storedDbConfig.username,
                     password: storedDbConfig.password || ''
                 });
+            }
+
+            const storedProposalConfig = proposalConfig.get();
+            if (storedProposalConfig) {
+                setProposalThreshold(storedProposalConfig.thresholdHours ?? 8);
             }
         } catch (e) {
             console.error('Error loading config:', e);
@@ -245,6 +266,16 @@ export function LiveTimeEntriesPage() {
              setProcesses(processExtractor.extractFromEntries(entries));
          }
      }, [entries]);
+
+    // Extract proposals when entries or threshold changes
+    useEffect(() => {
+        if (entries.length > 0) {
+            const extracted = extractProposals(entries, proposalThreshold);
+            setProposals(extracted);
+        } else {
+            setProposals([]);
+        }
+    }, [entries, proposalThreshold]);
 
     const isAlreadyCreated = (entry: TimeEntry) => {
         if (!validatedEntries.length) return false;
@@ -540,6 +571,39 @@ export function LiveTimeEntriesPage() {
         localErrors={localErrors}
         config={config}
         onUpdateProcessId={handleUpdateTaskId}
+      />
+
+      {/* Task Proposals Section - only show when there are proposals */}
+      {proposals.length > 0 && (
+        <TaskProposalCard
+          proposals={proposals}
+          onOpenModal={() => setProposalModalOpen(true)}
+        />
+      )}
+
+      <TaskProposalModal
+        open={proposalModalOpen}
+        onOpenChange={setProposalModalOpen}
+        proposals={proposals}
+        config={config}
+        onAccept={(proposal, proposedName, processId) => {
+          // Save mapping and trigger Clockify sync
+          handleUpdateTaskId(proposedName, processId);
+          toast.success('Propuesta aceptada', {
+            description: `Tarea "${proposedName}" mapeada con ID ${processId}`,
+          });
+          // Trigger Clockify sync for this proposal
+          requestSync(proposal);
+        }}
+      />
+
+      <SyncConfirmationDialog
+        open={syncDialogOpen}
+        onOpenChange={(open) => open ? null : cancelSync()}
+        proposal={syncProposal}
+        isSyncing={syncProgress.isSyncing}
+        onConfirm={confirmSync}
+        onCancel={cancelSync}
       />
 
                         <Card>
