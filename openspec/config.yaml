@@ -1,20 +1,43 @@
 schema: spec-driven
 
-# Project context (optional)
-# This is shown to AI when creating artifacts.
-# Add your tech stack, conventions, style guides, domain knowledge, etc.
-# Example:
-#   context: |
-#     Tech stack: TypeScript, React, Node.js
-#     We use conventional commits
-#     Domain: e-commerce platform
+context: |
+  Tech stack: Node.js + Express + TypeScript (backend), React 18 + Vite + TailwindCSS (frontend)
+  Database: SQL Server via mssql driver
+  External API: Clockify (time entries + reports)
+  Testing: Vitest (unit + integration with @testing-library/react, jsdom)
+  Style: TypeScript strict mode, no linter/formatter configured
+  Domain: Time tracking import tool — CSV/JSON → SQL Server inserts via web UI
 
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always include a "Non-goals" section
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
+testing:
+  strict_tdd: true
+  test_command: "vitest run"
+  test_command_watch: "vitest"
+  framework: vitest
+  coverage_command: "vitest --coverage"
+  layers:
+    unit: true
+    integration: true
+    e2e: false
+
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+  specs:
+    - Use Given/When/Then for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+  design:
+    - Include sequence diagrams for complex flows
+    - Document architecture decisions with rationale
+  tasks:
+    - Group by phase, use hierarchical numbering
+    - Keep tasks completable in one session
+  apply:
+    - Follow existing code patterns
+    tdd: true
+    test_command: "vitest run"
+  verify:
+    test_command: "vitest run"
+    build_command: "tsc && vite build"
+    coverage_threshold: 0
+  archive:
+    - Warn before merging destructive deltas

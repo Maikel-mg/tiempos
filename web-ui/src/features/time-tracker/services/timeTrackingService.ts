@@ -12,6 +12,13 @@ function calculateDurationSeconds(startTime: string, endTime: string): number {
   return (eh * 60 + em) - (sh * 60 + sm);
 }
 
+export interface StopTimerResult {
+  start: Date;
+  end: Date;
+  taskId: number;
+  taskName: string;
+}
+
 /**
  * Servicio de lógica de negocio para el TimeTracker.
  * Maneja CRUD de registros, control del temporizador y sincronización.
@@ -118,15 +125,22 @@ export class TimeTrackingService {
   }
 
   /**
-   * Detiene el temporizador y crea un registro de tiempo.
-   * @returns El TimeEntry creado, o null si no había un temporizador activo.
+   * Detiene el temporizador y opcionalmente crea un registro de tiempo.
+   * @param options.persist Si es false, retorna start/end sin crear entrada. Default: true.
+   * @returns TimeEntry creado, StopTimerResult si persist=false, o null si no había temporizador.
    */
-  async stopTimer(): Promise<TimeEntry | null> {
+  async stopTimer(options?: { persist?: boolean }): Promise<TimeEntry | StopTimerResult | null> {
     const state = await this.storage.getTimerState();
     if (!state || !state.isRunning) return null;
 
     const start = new Date(state.startTime);
     const end = new Date();
+    const persist = options?.persist ?? true;
+
+    if (!persist) {
+      await this.storage.clearTimerState();
+      return { start, end, taskId: state.taskId, taskName: state.taskName };
+    }
 
     // Calcular duración real desde el inicio
     const durationSeconds = Math.floor((end.getTime() - start.getTime()) / 1000);

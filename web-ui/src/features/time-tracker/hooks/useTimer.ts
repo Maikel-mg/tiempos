@@ -67,14 +67,20 @@ export function useTimer() {
 
   /**
    * Detiene el temporizador y crea un registro de tiempo.
-   * @returns El TimeEntry creado
+   * @param options.persist Si es false, retorna start/end sin crear entrada.
+   * @returns El TimeEntry creado, StopTimerResult si persist=false, o null
    */
-  const stop = useCallback(async () => {
+  const stop = useCallback(async (options?: { persist?: boolean }) => {
     try {
-      const entry = await service.stopTimer();
+      const result = await service.stopTimer(options);
+      if (options?.persist === false) {
+        setTimerState(null);
+        setElapsed(0);
+        return result;
+      }
       setTimerState(null);
       setElapsed(0);
-      return entry;
+      return result;
     } catch (error) {
       console.error('Error stopping timer:', error);
       throw error;

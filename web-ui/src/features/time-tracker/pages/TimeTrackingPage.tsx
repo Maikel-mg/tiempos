@@ -1,12 +1,16 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Plus, List } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TimerWidget } from '../components/TimerWidget';
 import { TimeEntryForm } from '../components/TimeEntryForm';
 import { TimeEntryList } from '../components/TimeEntryList';
 import { OverlapAlert } from '../components/OverlapAlert';
+import { MidnightSplitModal } from '../components/MidnightSplitModal';
 import { useTimer } from '../hooks/useTimer';
 import { useTimeEntries } from '../hooks/useTimeEntries';
+import { detectCrossing } from '../lib/timerCrossingDetector';
+import type { SplitProposal } from '../lib/timerCrossingDetector';
+import type { StopTimerResult } from '../services/timeTrackingService';
 
 /**
  * Página principal de Mi TimeTracker.
@@ -15,6 +19,11 @@ import { useTimeEntries } from '../hooks/useTimeEntries';
 export function TimeTrackingPage() {
   const [activeTab, setActiveTab] = useState<'new' | 'list'>('new');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // Midnight split modal state
+  const [splitModalOpen, setSplitModalOpen] = useState(false);
+  const [splitProposal, setSplitProposal] = useState<SplitProposal[]>([]);
+  const [pendingStop, setPendingStop] = useState<StopTimerResult | null>(null);
 
   // Hooks
   const { entries, createEntry, deleteEntry, refresh } = useTimeEntries();
@@ -41,11 +50,55 @@ export function TimeTrackingPage() {
     setSelectedIds(newSelected);
   };
 
+  const createEntryFromStop = useCallback(async (result: StopTimerResult) => {
+    const date = result.end.toLocaleDateString('sv-SE'); // YYYY-MM-DD in local tz — attributed to end day
+    await createEntry({
+      taskId: result.taskId,
+      taskName: result.taskName,
+      date,
+      startTime: result.start.toTimeString().slice(0, 5),
+      endTime: result.end.toTimeString().slice(0, 5),
+    });
+    await refresh();
+  }, [createEntry, refresh]);
+
   const handleTimerStop = async () => {
-    const entry = await stop();
-    if (entry) {
-      await refresh();
+    const result = await stop({ persist: false });
+    if (!result || !('start' in result)) return;
+
+    const crossing = detectCrossing(result.start, result.end);
+    if (crossing.crossed && crossing.splits) {
+      setSplitProposal(crossing.splits);
+      setPendingStop(result);
+      setSplitModalOpen(true);
+    } else {
+      await createEntryFromStop(result);
     }
+  };
+
+  const handleSplitConfirm = async () => {
+    if (!pendingStop) return;
+    for (const split of splitProposal) {
+      await createEntry({
+        taskId: pendingStop.taskId,
+        taskName: pendingStop.taskName,
+        date: split.date,
+        startTime: split.startTime,
+        endTime: split.endTime,
+      });
+    }
+    await refresh();
+    setSplitModalOpen(false);
+    setPendingStop(null);
+    setSplitProposal([]);
+  };
+
+  const handleKeepSingle = async () => {
+    if (!pendingStop) return;
+    await createEntryFromStop(pendingStop);
+    setSplitModalOpen(false);
+    setPendingStop(null);
+    setSplitProposal([]);
   };
 
   return (
@@ -101,6 +154,15 @@ export function TimeTrackingPage() {
           onDelete={handleDeleteEntry}
         />
       )}
+
+      {/* Midnight Split Modal */}
+      <MidnightSplitModal
+        open={splitModalOpen}
+        onOpenChange={setSplitModalOpen}
+        proposal={splitProposal}
+        onSplit={handleSplitConfirm}
+        onKeepSingle={handleKeepSingle}
+      />
     </main>
   );
 }
