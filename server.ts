@@ -778,6 +778,103 @@ app.post('/api/sync-time-entries', async (req: Request, res: Response) => {
   }
 });
 
+// --- Execute Time Entries: insert time entries via spNETTiempos_Alta ---
+interface ExecuteTimeEntriesParams extends DbConnectionParams {
+  entries: Array<{
+    entryId: string;
+    Usured: string;
+    Fecha: string;       // YYYYMMDD
+    HoraDesde: string;
+    HoraHasta: string;
+    Minutos: number;
+    Proceso: number;
+    pTipoHora: number;   // default 11
+    Comentario?: string;
+  }>;
+}
+
+app.post('/api/execute-time-entries', async (req: Request, res: Response) => {
+  const { server, database, username, password, entries } = req.body as ExecuteTimeEntriesParams;
+
+  if (!entries || !Array.isArray(entries)) {
+    return res.status(400).json({ success: false, message: 'entries is required and must be an array' });
+  }
+  if (!server) {
+    return res.status(400).json({ success: false, message: 'server is required' });
+  }
+  if (!database) {
+    return res.status(400).json({ success: false, message: 'database is required' });
+  }
+
+  const dbConfig: sql.config = {
+    server,
+    database,
+    user: username,
+    password,
+    options: {
+      encrypt: true,
+      trustServerCertificate: true,
+      language: 'Spanish',
+      dateFormat: 'dmy',
+      useUTC: false
+    }
+  };
+
+  const pool = new sql.ConnectionPool(dbConfig);
+  let poolConnected = false;
+
+  try {
+    await pool.connect();
+    poolConnected = true;
+
+    const transaction = new sql.Transaction(pool);
+    await transaction.begin();
+
+    const results: Array<{
+      entryId: string;
+      success: boolean;
+      serverId?: number;
+      error?: string;
+    }> = [];
+
+    // Session settings via transaction request
+    const setupReq = transaction.request();
+    await setupReq.query('SET LANGUAGE Spanish;\nSET DATEFORMAT dmy;');
+
+    for (const entry of entries) {
+      try {
+        const req = transaction.request();
+        const result = await req.query(
+          `EXEC spNETTiempos_Alta @Usured='${entry.Usured.replace(/'/g, "''")}', @Fecha='${entry.Fecha}', @HoraDesde='${entry.HoraDesde}', @HoraHasta='${entry.HoraHasta}', @Minutos=${entry.Minutos}, @Proceso=${entry.Proceso}, @pTipoHora=${entry.pTipoHora ?? 11}${entry.Comentario ? `, @Comentario='${entry.Comentario.replace(/'/g, "''")}'` : ''}`
+        );
+
+        const serverId = result.recordset?.[0]?.Id;
+        results.push({
+          entryId: entry.entryId,
+          success: true,
+          serverId: serverId !== undefined ? Number(serverId) : undefined,
+        });
+      } catch (err: any) {
+        results.push({
+          entryId: entry.entryId,
+          success: false,
+          error: err.message,
+        });
+      }
+    }
+
+    await transaction.commit();
+
+    res.json({ success: true, results });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  } finally {
+    if (poolConnected) {
+      await pool.close();
+    }
+  }
+});
+
 // Only start listening when run directly (not when imported for tests)
 if (process.argv[1] && !process.argv[1].includes('vitest')) {
   app.listen(PORT, () => {
