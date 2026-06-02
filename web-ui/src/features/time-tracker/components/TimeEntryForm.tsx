@@ -4,7 +4,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { TaskSelector } from './TaskSelector';
+import { ProcessSelectorButton } from './ProcessSelectorButton';
+import { db } from '@/lib/storage/IndexedDBStorage';
+import { processCacheClient } from '../repositories/processCacheClient';
 import type { TimeEntry, Proceso } from '../types';
 
 interface TimeEntryFormProps {
@@ -92,9 +94,11 @@ export function TimeEntryForm({ onSubmit, onCancel, initialData, disabled }: Tim
         {/* Task Selector */}
         <div className="space-y-2">
           <Label>Tarea</Label>
-          <TaskSelector
+          <ProcessSelectorButton
             value={task}
             onChange={setTask}
+            db={db as any}
+            apiClient={processCacheClient as any}
             disabled={disabled}
             className="w-full"
           />

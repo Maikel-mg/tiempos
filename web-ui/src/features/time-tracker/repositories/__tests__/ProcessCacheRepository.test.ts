@@ -234,11 +234,11 @@ describe('ProcessCacheRepository', () => {
 
       await repo.getAll();
       // Mark processes with time gaps to ensure ordering
-      await repo.markUsed(101);
+      await repo.markUsed(FLATTENED_PROCESSES[0]); // 101
       await new Promise(r => setTimeout(r, 10));
-      await repo.markUsed(301);
+      await repo.markUsed(FLATTENED_PROCESSES[3]); // 301
       await new Promise(r => setTimeout(r, 10));
-      await repo.markUsed(201);
+      await repo.markUsed(FLATTENED_PROCESSES[2]); // 201
 
       const result = await repo.getRecent(2);
 
@@ -255,7 +255,7 @@ describe('ProcessCacheRepository', () => {
 
       await repo.getAll();
       for (const p of FLATTENED_PROCESSES) {
-        await repo.markUsed(p.proceso);
+        await repo.markUsed(p);
       }
 
       const result = await repo.getRecent();
@@ -321,19 +321,24 @@ describe('ProcessCacheRepository', () => {
   });
 
   describe('markUsed', () => {
-    it('upserts into processRecents with lastUsedAt', async () => {
+    it('upserts into processRecents with lastUsedAt and caches process', async () => {
       const db = createTestDB();
       const apiClient = createMockApiClient(MOCK_API_RESPONSE);
       const repo = new ProcessCacheRepository(db, apiClient as any);
 
       const before = Date.now();
-      await repo.markUsed(101);
+      await repo.markUsed(FLATTENED_PROCESSES[0]);
       const after = Date.now();
 
       const recent = await db.table('processRecents').get(101);
       expect(recent).toBeDefined();
       expect(recent!.lastUsedAt).toBeGreaterThanOrEqual(before);
       expect(recent!.lastUsedAt).toBeLessThanOrEqual(after);
+
+      // Process should also be cached in the processes table
+      const cached = await db.table('processes').get(101);
+      expect(cached).toBeDefined();
+      expect(cached!.nombre).toBe('Desarrollo Frontend');
       db.close();
     });
 
@@ -342,11 +347,11 @@ describe('ProcessCacheRepository', () => {
       const apiClient = createMockApiClient(MOCK_API_RESPONSE);
       const repo = new ProcessCacheRepository(db, apiClient as any);
 
-      await repo.markUsed(101);
+      await repo.markUsed(FLATTENED_PROCESSES[0]);
       const first = (await db.table('processRecents').get(101))!.lastUsedAt;
 
       await new Promise(r => setTimeout(r, 10));
-      await repo.markUsed(101);
+      await repo.markUsed(FLATTENED_PROCESSES[0]);
       const second = (await db.table('processRecents').get(101))!.lastUsedAt;
 
       expect(second).toBeGreaterThan(first);

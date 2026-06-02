@@ -154,13 +154,16 @@ export class ProcessCacheRepository {
   }
 
   /**
-   * Marks a process as recently used by upserting into processRecents
-   * with the current timestamp.
+   * Marks a process as recently used and ensures it's cached in the processes table.
+   * Accepts the full Proceso so it can be persisted for later use.
    */
-  async markUsed(procesoId: number): Promise<void> {
+  async markUsed(process: Proceso): Promise<void> {
+    // Ensure the process is in the main cache
+    await this.processes.put(process, process.proceso);
+    // Update recency
     await this.processRecents.put(
-      { proceso: procesoId, lastUsedAt: Date.now() },
-      procesoId
+      { proceso: process.proceso, lastUsedAt: Date.now() },
+      process.proceso
     );
   }
 

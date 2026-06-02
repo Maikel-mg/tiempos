@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { Play, Square, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { TaskSelector } from './TaskSelector';
+import { ProcessSelectorButton } from './ProcessSelectorButton';
+import { db } from '@/lib/storage/IndexedDBStorage';
+import { processCacheClient } from '../repositories/processCacheClient';
 import type { Proceso } from '../types';
 
 interface TimerWidgetProps {
@@ -81,9 +83,11 @@ export function TimerWidget({ isRunning, elapsed, timerTask, onStart, onStop, on
           {/* Task Selector or Current Task */}
           <div className="flex-1 min-w-0">
             {!isRunning ? (
-              <TaskSelector
+              <ProcessSelectorButton
                 value={selectedTask}
                 onChange={setSelectedTask}
+                db={db as any}
+                apiClient={processCacheClient as any}
                 className="w-full max-w-md"
               />
             ) : timerTask ? (
