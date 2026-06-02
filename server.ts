@@ -631,6 +631,153 @@ app.post('/api/validate-entries', async (req: Request, res: Response) => {
   }
 });
 
+// --- Sync Time Entries: classify entries as new or existing ---
+interface TimeEntry {
+  id: string;
+  taskId: number;
+  taskName: string;
+  date: string;        // YYYY-MM-DD
+  startTime: string;   // HH:MM:SS
+  endTime: string;     // HH:MM:SS
+  duration: number;
+  description?: string;
+  synced: boolean;
+}
+
+interface SyncTimeEntriesParams extends DbConnectionParams {
+  entries: TimeEntry[];
+  usuario: string;
+}
+
+app.post('/api/sync-time-entries', async (req: Request, res: Response) => {
+  const { server, database, username, password, entries, usuario } = req.body as any;
+
+  // --- Validation ---
+  if (!entries || !Array.isArray(entries)) {
+    return res.status(400).json({ success: false, message: 'entries is required and must be an array' });
+  }
+  if (!server) {
+    return res.status(400).json({ success: false, message: 'server is required' });
+  }
+  if (!database) {
+    return res.status(400).json({ success: false, message: 'database is required' });
+  }
+
+  // --- Empty entries shortcut ---
+  if (entries.length === 0) {
+    return res.json({ success: true, willInsert: [], alreadyExists: [] });
+  }
+
+  // --- Helper: extract unique year/month pairs from entries ---
+  const getYearMonthPairs = (items: any[]) => {
+    const seen = new Set<string>();
+    const pairs: { year: number; month: number }[] = [];
+    for (const entry of items) {
+      const [y, m] = entry.date.split('-');
+      const key = `${y}-${m}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        pairs.push({ year: parseInt(y, 10), month: parseInt(m, 10) });
+      }
+    }
+    return pairs;
+  };
+
+  // --- Helper: normalise a DB Fecha to YYYY-MM-DD string ---
+  const fechaToYMD = (fecha: any): string => {
+    if (!fecha) return '';
+    if (typeof fecha === 'string') {
+      if (/^\d{4}-\d{2}-\d{2}/.test(fecha)) return fecha.slice(0, 10);
+      const parts = fecha.split('/');
+      if (parts.length === 3) {
+        const [dd, mm, yyyy] = parts;
+        return `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
+      }
+      return fecha;
+    }
+    const d = new Date(fecha);
+    if (!isNaN(d.getTime())) {
+      const dd = String(d.getDate()).padStart(2, '0');
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const yyyy = d.getFullYear();
+      return `${yyyy}-${mm}-${dd}`;
+    }
+    return String(fecha);
+  };
+
+  // --- Helper: truncate HH:MM:SS → HH:MM ---
+  const toHHMM = (time: string) => time.slice(0, 5);
+
+  const dbConfig: sql.config = {
+    server,
+    database,
+    user: username,
+    password,
+    options: {
+      encrypt: true,
+      trustServerCertificate: true,
+      language: 'Spanish',
+      dateFormat: 'dmy',
+      useUTC: false
+    }
+  };
+
+  const pool = new sql.ConnectionPool(dbConfig);
+  let poolConnected = false;
+
+  try {
+    await pool.connect();
+    poolConnected = true;
+
+    const pairs = getYearMonthPairs(entries);
+    const allDbRows: any[] = [];
+
+    for (const pair of pairs) {
+      const query = `SET LANGUAGE Spanish;\nSET DATEFORMAT dmy;\nEXEC spNETTiempos_ListaImputaciones @pUsured='${usuario}', @pAnio=${pair.year}, @pMes=${pair.month}, @pDia=NULL, @pOrder=' ORDER BY TC.Fecha DESC, CONVERT(char(5), TL.[Desde Hora], 108)', @pWhere=NULL`;
+      const result = await pool.request().query(query);
+      allDbRows.push(...(result.recordset || []));
+    }
+
+    // --- Classify each entry ---
+    const alreadyExists: any[] = [];
+    const willInsert: any[] = [];
+
+    for (const entry of entries) {
+      const entryDate = entry.date;
+      const entryStart = toHHMM(entry.startTime);
+      const entryEnd = toHHMM(entry.endTime);
+
+      const matched = allDbRows.some((row: any) => {
+        const rowDate = fechaToYMD(row.Fecha);
+        const rowStart = toHHMM(String(row.Desde));
+        const rowEnd = toHHMM(String(row.Hasta));
+        const rowProcess = row.IdProceso ?? row.Proceso;
+
+        return (
+          rowDate === entryDate &&
+          rowStart === entryStart &&
+          rowEnd === entryEnd &&
+          rowProcess === entry.taskId
+        );
+      });
+
+      if (matched) {
+        alreadyExists.push(entry);
+      } else {
+        willInsert.push(entry);
+      }
+    }
+
+    res.json({ success: true, willInsert, alreadyExists });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  } finally {
+    if (poolConnected) {
+      await pool.close();
+    }
+  }
+});
+
 // Only start listening when run directly (not when imported for tests)
 if (process.argv[1] && !process.argv[1].includes('vitest')) {
   app.listen(PORT, () => {
