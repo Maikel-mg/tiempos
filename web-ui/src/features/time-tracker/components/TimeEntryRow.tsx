@@ -1,6 +1,7 @@
-import { CheckCircle2, Circle, XCircle, Trash2 } from 'lucide-react';
+import { CheckCircle2, Circle, XCircle, Trash2, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TableCell, TableRow } from '@/components/ui/table';
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 import type { TimeEntry } from '../types';
 
 interface TimeEntryRowProps {
@@ -8,17 +9,15 @@ interface TimeEntryRowProps {
   selected: boolean;
   onToggle: () => void;
   onDelete: () => void;
+  onEdit?: () => void;
 }
 
 /**
  * Formatea duración en segundos a formato legible.
  */
 function formatDuration(seconds: number): string {
-  console.log(`TCL ~ formatDuration ~ seconds:`, seconds)
   const h = Math.floor(seconds / 3600);
-  console.log(`TCL ~ formatDuration ~  h:`,  h)
   const m = Math.floor((seconds % 3600) / 60);
-  console.log(`TCL ~ formatDuration ~ m:`, m)
   if (h > 0) {
     return `${h}h ${m}m`;
   }
@@ -36,9 +35,12 @@ function formatDate(dateStr: string): string {
 /**
  * Fila individual del listado de registros de tiempo.
  */
-export function TimeEntryRow({ entry, selected, onToggle, onDelete }: TimeEntryRowProps) {
+export function TimeEntryRow({ entry, selected, onToggle, onDelete, onEdit }: TimeEntryRowProps) {
+  const SYNCED_TOOLTIP = 'Ya sincronizado con la BD — no se puede editar desde aquí';
+
   return (
-    <TableRow className={selected ? 'bg-green-50' : ''}>
+    <TooltipProvider>
+      <TableRow className={selected ? 'bg-green-50' : ''}>
       {/* Checkbox */}
       <TableCell className="w-12">
         <button
@@ -103,15 +105,43 @@ export function TimeEntryRow({ entry, selected, onToggle, onDelete }: TimeEntryR
 
       {/* Actions */}
       <TableCell className="w-20">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onDelete}
-          className="text-muted-foreground hover:text-destructive"
-        >
-          <Trash2 className="w-4 h-4" />
-        </Button>
+        {entry.synced ? (
+          <div className="flex gap-1">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>
+                  <Button variant="ghost" size="icon" disabled className="text-muted-foreground">
+                    <Pencil className="w-4 h-4" />
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>{SYNCED_TOOLTIP}</TooltipContent>
+            </Tooltip>
+          </div>
+        ) : (
+          <div className="flex gap-1">
+            {onEdit && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onEdit}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <Pencil className="w-4 h-4" />
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onDelete}
+              className="text-muted-foreground hover:text-destructive"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </div>
+        )}
       </TableCell>
     </TableRow>
+    </TooltipProvider>
   );
 }

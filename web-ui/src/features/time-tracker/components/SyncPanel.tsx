@@ -7,6 +7,8 @@ import type { TimeEntry } from '../types';
 import type { SyncResultEntry } from '../services/timeEntrySyncService';
 import { syncTimeEntries } from '../services/timeEntrySyncService';
 import { wizardConfig, dbConfig } from '@/config/stores';
+import { useConfigGuard } from '../hooks/useConfigGuard';
+import { ConfigGuardPanel } from './ConfigGuardPanel';
 
 interface SyncPanelProps {
   selectedEntries: TimeEntry[];
@@ -22,6 +24,7 @@ export function SyncPanel({ selectedEntries, onSyncComplete }: SyncPanelProps) {
   const [syncResults, setSyncResults] = useState<SyncResultEntry[] | null>(null);
   const [overallSuccess, setOverallSuccess] = useState<boolean | null>(null);
   const [autoSyncEnabled, setAutoSyncEnabled] = useState(false);
+  const { isReady } = useConfigGuard();
 
   const config = useMemo(() => {
     try {
@@ -88,26 +91,31 @@ export function SyncPanel({ selectedEntries, onSyncComplete }: SyncPanelProps) {
           </Label>
         </div>
 
-        {/* Execute button */}
-        <div className="flex gap-2">
-          <Button
-            onClick={handleExecute}
-            disabled={isExecuting || selectedEntries.length === 0}
-            size="sm"
-          >
-            {isExecuting ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Ejecutando...
-              </>
-            ) : (
-              <>
-                <Play className="w-4 h-4 mr-2" />
-                Ejecutar en BBDD
-              </>
-            )}
-          </Button>
-        </div>
+        {/* Config guard: replace execute button when config is incomplete */}
+        {!isReady ? (
+          <ConfigGuardPanel />
+        ) : (
+          /* Execute button */
+          <div className="flex gap-2">
+            <Button
+              onClick={handleExecute}
+              disabled={isExecuting || selectedEntries.length === 0}
+              size="sm"
+            >
+              {isExecuting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Ejecutando...
+                </>
+              ) : (
+                <>
+                  <Play className="w-4 h-4 mr-2" />
+                  Ejecutar en BBDD
+                </>
+              )}
+            </Button>
+          </div>
+        )}
 
         {/* Per-entry results */}
         {syncResults && syncResults.length > 0 && (

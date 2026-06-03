@@ -80,7 +80,7 @@ export class TimeTrackingService {
       updated.duration = calculateDurationSeconds(
         data.startTime || existing.startTime,
         data.endTime || existing.endTime
-      ) * 60;
+      );
     }
 
     await this.storage.updateEntry(updated);

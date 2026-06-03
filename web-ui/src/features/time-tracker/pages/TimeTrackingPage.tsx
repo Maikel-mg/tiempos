@@ -1,6 +1,8 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import { Plus, List, Database, ChevronDown, ChevronRight } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { TimerWidget } from '../components/TimerWidget';
 import { TimeEntryForm } from '../components/TimeEntryForm';
 import { TimeEntryList } from '../components/TimeEntryList';
@@ -12,6 +14,7 @@ import { useTimeEntries } from '../hooks/useTimeEntries';
 import { detectCrossing } from '../lib/timerCrossingDetector';
 import type { SplitProposal } from '../lib/timerCrossingDetector';
 import type { StopTimerResult } from '../services/timeTrackingService';
+import type { TimeEntry } from '../types';
 
 /**
  * Página principal de Mi TimeTracker.
@@ -28,8 +31,14 @@ export function TimeTrackingPage() {
   const [pendingStop, setPendingStop] = useState<StopTimerResult | null>(null);
 
   // Hooks
-  const { entries, createEntry, deleteEntry, markSynced, refresh } = useTimeEntries();
+  const { entries, createEntry, updateEntry, deleteEntry, markSynced, refresh } = useTimeEntries();
   const { isRunning, elapsed, start, stop, cancel, timerState } = useTimer();
+
+  // Edit dialog state
+  const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
+
+  // Undoable delete buffer — stores entry temporarily for undo
+  const undoBuffer = useRef<Map<string, TimeEntry>>(new Map());
 
   // Pending entries for sync
   const pendingEntries = useMemo(
@@ -51,11 +60,42 @@ export function TimeTrackingPage() {
   };
 
   const handleDeleteEntry = async (id: string) => {
+    const entry = entries.find((e) => e.id === id);
+    if (!entry) return;
+
+    // Remove from state optimistically
     await deleteEntry(id);
     // Remove from selected if exists
     const newSelected = new Set(selectedIds);
     newSelected.delete(id);
     setSelectedIds(newSelected);
+
+    // Store in undo buffer
+    undoBuffer.current.set(id, entry);
+
+    // Show undo toast — sonner replaces previous toasts automatically
+    toast('Entrada eliminada', {
+      action: {
+        label: 'Deshacer',
+        onClick: async () => {
+          // Re-insert with original UUID
+          await createEntry({
+            taskId: entry.taskId,
+            taskName: entry.taskName,
+            date: entry.date,
+            startTime: entry.startTime,
+            endTime: entry.endTime,
+            description: entry.description,
+          });
+          undoBuffer.current.delete(id);
+          toast.success('Entrada restaurada');
+        },
+      },
+      onAutoClose: () => {
+        // Entry already removed from IndexedDB — buffer cleanup
+        undoBuffer.current.delete(id);
+      },
+    });
   };
 
   const createEntryFromStop = useCallback(async (result: StopTimerResult) => {
@@ -107,6 +147,28 @@ export function TimeTrackingPage() {
     setSplitModalOpen(false);
     setPendingStop(null);
     setSplitProposal([]);
+  };
+
+  // Edit handlers
+  const handleEditEntry = (entry: TimeEntry) => {
+    setEditingEntry(entry);
+  };
+
+  const handleEditSave = async (data: {
+    taskId: number;
+    taskName: string;
+    date: string;
+    startTime: string;
+    endTime: string;
+    description?: string;
+  }) => {
+    if (!editingEntry) return;
+    await updateEntry(editingEntry.id, data);
+    setEditingEntry(null);
+  };
+
+  const handleEditCancel = () => {
+    setEditingEntry(null);
   };
 
   return (
@@ -161,6 +223,7 @@ export function TimeTrackingPage() {
             selectedIds={selectedIds}
             onSelect={setSelectedIds}
             onDelete={handleDeleteEntry}
+            onEdit={handleEditEntry}
           />
 
           {/* Sync Panel — only when pending entries exist */}
@@ -189,6 +252,22 @@ export function TimeTrackingPage() {
           )}
         </>
       )}
+
+      {/* Edit Dialog */}
+      <Dialog open={editingEntry !== null} onOpenChange={(open) => { if (!open) setEditingEntry(null); }}>
+        <DialogContent onClose={handleEditCancel}>
+          <DialogHeader>
+            <DialogTitle>Editar Registro</DialogTitle>
+          </DialogHeader>
+          {editingEntry && (
+            <TimeEntryForm
+              initialData={editingEntry}
+              onSubmit={handleEditSave}
+              onCancel={handleEditCancel}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Midnight Split Modal */}
       <MidnightSplitModal

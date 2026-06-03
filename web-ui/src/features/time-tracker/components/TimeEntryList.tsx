@@ -12,13 +12,14 @@ interface TimeEntryListProps {
   selectedIds: Set<string>;
   onSelect: (ids: Set<string>) => void;
   onDelete: (id: string) => Promise<void>;
+  onEdit?: (entry: TimeEntry) => void;
   loading?: boolean;
 }
 
 /**
  * Listado de registros de tiempo con filtros y selección.
  */
-export function TimeEntryList({ entries, selectedIds, onSelect, onDelete, loading }: TimeEntryListProps) {
+export function TimeEntryList({ entries, selectedIds, onSelect, onDelete, onEdit, loading }: TimeEntryListProps) {
   const [filterDate, setFilterDate] = useState('');
   const [filterTask, setFilterTask] = useState('');
   const [sortBy, setSortBy] = useState<'date' | 'duration' | 'task'>('date');
@@ -184,6 +185,7 @@ export function TimeEntryList({ entries, selectedIds, onSelect, onDelete, loadin
                   selected={selectedIds.has(entry.id)}
                   onToggle={() => toggleSelect(entry.id)}
                   onDelete={() => onDelete(entry.id)}
+                  onEdit={onEdit ? () => onEdit(entry) : undefined}
                 />
               ))}
             </TableBody>

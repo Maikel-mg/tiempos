@@ -41,6 +41,7 @@ describe('TimeEntryList sync status filter', () => {
         selectedIds={new Set()}
         onSelect={vi.fn()}
         onDelete={vi.fn()}
+        onEdit={vi.fn()}
       />
     );
 
@@ -57,6 +58,7 @@ describe('TimeEntryList sync status filter', () => {
         selectedIds={new Set()}
         onSelect={vi.fn()}
         onDelete={vi.fn()}
+        onEdit={vi.fn()}
       />
     );
 
@@ -77,6 +79,7 @@ describe('TimeEntryList sync status filter', () => {
         selectedIds={new Set()}
         onSelect={vi.fn()}
         onDelete={vi.fn()}
+        onEdit={vi.fn()}
       />
     );
 
@@ -97,6 +100,7 @@ describe('TimeEntryList sync status filter', () => {
         selectedIds={new Set()}
         onSelect={vi.fn()}
         onDelete={vi.fn()}
+        onEdit={vi.fn()}
       />
     );
 

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import '@testing-library/jest-dom';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import { SyncPanel } from '../SyncPanel';
 import type { TimeEntry } from '../../types';
 import type { SyncOutcome } from '../../services/timeEntrySyncService';
@@ -10,17 +11,20 @@ vi.mock('../../services/timeEntrySyncService', () => ({
   syncTimeEntries: vi.fn(),
 }));
 
+const mockDbConfigGet = vi.fn(() => ({
+  server: 'localhost',
+  database: 'testdb',
+  username: 'sa',
+  password: 'pass',
+}));
+
 vi.mock('@/config/stores', () => ({
   wizardConfig: {
     get: () => ({ usuario: 'MG01', fase: '1', tipoHora: '11' }),
   },
   dbConfig: {
-    get: () => ({
-      server: 'localhost',
-      database: 'testdb',
-      username: 'sa',
-      password: 'pass',
-    }),
+    get: (...args: unknown[]) => mockDbConfigGet(...args),
+    subscribe: vi.fn(() => vi.fn()),
   },
 }));
 
@@ -171,5 +175,50 @@ describe('SyncPanel', () => {
     });
 
     expect(onSyncComplete).not.toHaveBeenCalled();
+  });
+
+  describe('Config guard — missing dbConfig', () => {
+    beforeEach(() => {
+      mockDbConfigGet.mockReturnValue({
+        server: '',
+        database: '',
+        username: '',
+        password: '',
+      });
+    });
+
+    it('replaces execute button with warning panel when config is incomplete', () => {
+      render(
+        <MemoryRouter>
+          <SyncPanel
+            selectedEntries={[makeEntry({ id: 'e1' })]}
+            onSyncComplete={vi.fn()}
+          />
+        </MemoryRouter>
+      );
+
+      expect(screen.queryByRole('button', { name: /ejecutar en bbdd/i })).not.toBeInTheDocument();
+      expect(screen.getByText(/configuración de base de datos/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /ir a settings/i })).toBeInTheDocument();
+    });
+
+    it('does not call syncTimeEntries when config is incomplete', async () => {
+      const user = userEvent.setup();
+
+      render(
+        <MemoryRouter>
+          <SyncPanel
+            selectedEntries={[makeEntry({ id: 'e1' })]}
+            onSyncComplete={vi.fn()}
+          />
+        </MemoryRouter>
+      );
+
+      // The execute button should not be present
+      expect(screen.queryByRole('button', { name: /ejecutar en bbdd/i })).not.toBeInTheDocument();
+
+      // syncTimeEntries should never have been called
+      expect(mockSyncTimeEntries).not.toHaveBeenCalled();
+    });
   });
 });

@@ -52,7 +52,6 @@ export function TimeEntryForm({ onSubmit, onCancel, initialData, disabled }: Tim
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const durationMinutes = startTime && endTime ? calculateDurationMinutes(startTime, endTime) : 0;
-  console.log(`TCL ~ TimeEntryForm ~ durationMinutes:`, durationMinutes)
   const isValid = task && date && startTime && endTime && durationMinutes > 0;
 
   const handleSubmit = async () => {
