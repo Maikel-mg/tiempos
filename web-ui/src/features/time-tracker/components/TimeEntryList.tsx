@@ -22,6 +22,7 @@ export function TimeEntryList({ entries, selectedIds, onSelect, onDelete, loadin
   const [filterDate, setFilterDate] = useState('');
   const [filterTask, setFilterTask] = useState('');
   const [sortBy, setSortBy] = useState<'date' | 'duration' | 'task'>('date');
+  const [filterSync, setFilterSync] = useState<'all' | 'pending' | 'synced' | 'failed'>('all');
 
   const filtered = useMemo(() => {
     let result = [...entries];
@@ -34,6 +35,13 @@ export function TimeEntryList({ entries, selectedIds, onSelect, onDelete, loadin
         e.taskName.toLowerCase().includes(filterTask.toLowerCase())
       );
     }
+    if (filterSync === 'pending') {
+      result = result.filter(e => !e.synced && !e.syncError);
+    } else if (filterSync === 'synced') {
+      result = result.filter(e => e.synced);
+    } else if (filterSync === 'failed') {
+      result = result.filter(e => !e.synced && !!e.syncError);
+    }
     
     // Sort
     result.sort((a, b) => {
@@ -43,7 +51,7 @@ export function TimeEntryList({ entries, selectedIds, onSelect, onDelete, loadin
     });
     
     return result;
-  }, [entries, filterDate, filterTask, sortBy]);
+  }, [entries, filterDate, filterTask, filterSync, sortBy]);
 
   const toggleSelect = (id: string) => {
     const newSet = new Set(selectedIds);
@@ -125,6 +133,19 @@ export function TimeEntryList({ entries, selectedIds, onSelect, onDelete, loadin
               <option value="date">Fecha</option>
               <option value="duration">Duración</option>
               <option value="task">Tarea</option>
+            </select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Estado sincronización</Label>
+            <select
+              value={filterSync}
+              onChange={(e) => setFilterSync(e.target.value as 'all' | 'pending' | 'synced' | 'failed')}
+              className="h-10 px-3 rounded-md border border-input bg-background text-sm"
+            >
+              <option value="all">Todos</option>
+              <option value="pending">Pendiente</option>
+              <option value="synced">Sincronizado</option>
+              <option value="failed">Fallido</option>
             </select>
           </div>
         </div>

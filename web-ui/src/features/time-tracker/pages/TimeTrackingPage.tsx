@@ -1,11 +1,12 @@
-import { useState, useCallback } from 'react';
-import { Plus, List } from 'lucide-react';
+import { useState, useCallback, useMemo } from 'react';
+import { Plus, List, Database, ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TimerWidget } from '../components/TimerWidget';
 import { TimeEntryForm } from '../components/TimeEntryForm';
 import { TimeEntryList } from '../components/TimeEntryList';
 import { OverlapAlert } from '../components/OverlapAlert';
 import { MidnightSplitModal } from '../components/MidnightSplitModal';
+import { SyncPanel } from '../components/SyncPanel';
 import { useTimer } from '../hooks/useTimer';
 import { useTimeEntries } from '../hooks/useTimeEntries';
 import { detectCrossing } from '../lib/timerCrossingDetector';
@@ -19,6 +20,7 @@ import type { StopTimerResult } from '../services/timeTrackingService';
 export function TimeTrackingPage() {
   const [activeTab, setActiveTab] = useState<'new' | 'list'>('new');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [syncPanelOpen, setSyncPanelOpen] = useState(false);
 
   // Midnight split modal state
   const [splitModalOpen, setSplitModalOpen] = useState(false);
@@ -26,8 +28,14 @@ export function TimeTrackingPage() {
   const [pendingStop, setPendingStop] = useState<StopTimerResult | null>(null);
 
   // Hooks
-  const { entries, createEntry, deleteEntry, refresh } = useTimeEntries();
+  const { entries, createEntry, deleteEntry, markSynced, refresh } = useTimeEntries();
   const { isRunning, elapsed, start, stop, cancel, timerState } = useTimer();
+
+  // Pending entries for sync
+  const pendingEntries = useMemo(
+    () => entries.filter((e) => !e.synced),
+    [entries]
+  );
 
   // Handlers
   const handleCreateEntry = async (data: {
@@ -147,12 +155,39 @@ export function TimeTrackingPage() {
           onSubmit={handleCreateEntry}
         />
       ) : (
-        <TimeEntryList
-          entries={entries}
-          selectedIds={selectedIds}
-          onSelect={setSelectedIds}
-          onDelete={handleDeleteEntry}
-        />
+        <>
+          <TimeEntryList
+            entries={entries}
+            selectedIds={selectedIds}
+            onSelect={setSelectedIds}
+            onDelete={handleDeleteEntry}
+          />
+
+          {/* Sync Panel — only when pending entries exist */}
+          {pendingEntries.length > 0 && (
+            <div className="space-y-2">
+              <Button
+                variant="outline"
+                onClick={() => setSyncPanelOpen((prev) => !prev)}
+                className="gap-2"
+              >
+                <Database className="w-4 h-4" />
+                Sincronizar {pendingEntries.length} registros
+                {syncPanelOpen ? (
+                  <ChevronDown className="w-4 h-4" />
+                ) : (
+                  <ChevronRight className="w-4 h-4" />
+                )}
+              </Button>
+              {syncPanelOpen && (
+                <SyncPanel
+                  selectedEntries={pendingEntries}
+                  onSyncComplete={markSynced}
+                />
+              )}
+            </div>
+          )}
+        </>
       )}
 
       {/* Midnight Split Modal */}

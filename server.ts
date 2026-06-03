@@ -845,7 +845,7 @@ app.post('/api/execute-time-entries', async (req: Request, res: Response) => {
       try {
         const req = transaction.request();
         const result = await req.query(
-          `EXEC spNETTiempos_Alta @Usured='${entry.Usured.replace(/'/g, "''")}', @Fecha='${entry.Fecha}', @HoraDesde='${entry.HoraDesde}', @HoraHasta='${entry.HoraHasta}', @Minutos=${entry.Minutos}, @Proceso=${entry.Proceso}, @pTipoHora=${entry.pTipoHora ?? 11}${entry.Comentario ? `, @Comentario='${entry.Comentario.replace(/'/g, "''")}'` : ''}`
+          `EXEC spNETTiempos_Alta @Usured='${entry.Usured.replace(/'/g, "''")}', @Fecha='${entry.Fecha}', @HoraDesde='${entry.HoraDesde}', @HoraHasta='${entry.HoraHasta}', @Minutos=${entry.Minutos}, @Proceso=${entry.Proceso}, @pParteSalida=NULL, @pGastos=0, @pKms=0, @pTipoHora=${entry.pTipoHora ?? 11}, @ClienteComercial=NULL, @Comentario='${(entry.Comentario ?? '').replace(/'/g, "''")}', @pCambio=NULL, @pTeleTrabajo=0, @ObservacionesCalidad=NULL, @Rapport=0, @RapportCheck=0, @VBPermisoUsured=NULL, @VBPermisoFechaHora=NULL, @ObservacionesPermiso=NULL, @Ticket=NULL, @EsTeleTrabajo=1, @pMarcajeIP_INI=0, @pMarcajeIP_FIN=0, @pObservacionesPseudoMarcaje=NULL, @pTiempoNoReconocido=0, @pObservacionesRegistroHorario=NULL`
         );
 
         const serverId = result.recordset?.[0]?.Id;

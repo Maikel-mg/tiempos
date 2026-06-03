@@ -24,16 +24,19 @@ export async function syncTimeEntries(
   usuario: string,
 ): Promise<SyncOutcome> {
   try {
-    const payload = entries.map((entry) => ({
+    const payload = entries.map((entry) => {
+      return {
       entryId: entry.id,
       Usured: usuario,
       Fecha: entry.date.replace(/-/g, ''),
       HoraDesde: entry.startTime.slice(0, 5),
       HoraHasta: entry.endTime.slice(0, 5),
-      Minutos: entry.duration,
+      Minutos: entry.duration / 60,
       Proceso: entry.taskId,
+      Comentario: entry.description,
       pTipoHora: 11,
-    }));
+    };
+    });
 
     const result = await apiClient.post<{
       success: boolean;

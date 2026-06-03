@@ -7,9 +7,11 @@ function formatTimeHHMM(date: Date): string {
 }
 
 function calculateDurationSeconds(startTime: string, endTime: string): number {
-  const [sh, sm] = startTime.split(':').map(Number);
-  const [eh, em] = endTime.split(':').map(Number);
-  return (eh * 60 + em) - (sh * 60 + sm);
+   const toMinutes = (time: string) => {
+        const [h, m] = time.split(':').map(Number);
+        return h * 60 + m;
+    };
+  return (toMinutes(endTime)  - toMinutes(startTime)) * 60;
 }
 
 export interface StopTimerResult {
@@ -38,7 +40,7 @@ export class TimeTrackingService {
     description?: string;
   }): Promise<TimeEntry> {
     const now = new Date().toISOString();
-    const duration = calculateDurationSeconds(data.startTime, data.endTime);
+    const durationInSecond = calculateDurationSeconds(data.startTime, data.endTime);
     const proceso: Proceso = { proceso: data.taskId, nombre: data.taskName };
 
     const entry: TimeEntry = {
@@ -49,7 +51,7 @@ export class TimeTrackingService {
       date: data.date,
       startTime: data.startTime,
       endTime: data.endTime,
-      duration: duration * 60,
+      duration: durationInSecond ,
       description: data.description,
       createdAt: now,
       updatedAt: now,

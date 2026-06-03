@@ -1,4 +1,4 @@
-import { CheckCircle2, Circle, Trash2 } from 'lucide-react';
+import { CheckCircle2, Circle, XCircle, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TableCell, TableRow } from '@/components/ui/table';
 import type { TimeEntry } from '../types';
@@ -14,8 +14,11 @@ interface TimeEntryRowProps {
  * Formatea duración en segundos a formato legible.
  */
 function formatDuration(seconds: number): string {
+  console.log(`TCL ~ formatDuration ~ seconds:`, seconds)
   const h = Math.floor(seconds / 3600);
+  console.log(`TCL ~ formatDuration ~  h:`,  h)
   const m = Math.floor((seconds % 3600) / 60);
+  console.log(`TCL ~ formatDuration ~ m:`, m)
   if (h > 0) {
     return `${h}h ${m}m`;
   }
@@ -81,6 +84,14 @@ export function TimeEntryRow({ entry, selected, onToggle, onDelete }: TimeEntryR
           <span className="inline-flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full">
             <CheckCircle2 className="w-3 h-3" />
             Sincronizado
+          </span>
+        ) : entry.syncError ? (
+          <span
+            className="inline-flex items-center gap-1 text-xs text-red-600 bg-red-50 px-2 py-1 rounded-full"
+            title={entry.syncError}
+          >
+            <XCircle className="w-3 h-3" />
+            Fallido
           </span>
         ) : (
           <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">

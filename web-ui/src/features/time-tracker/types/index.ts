@@ -24,6 +24,7 @@ export interface TimeEntry {
   updatedAt: string;
   synced: boolean;
   syncedAt?: string;
+  syncError?: string;
 }
 
 export interface TimerState {
