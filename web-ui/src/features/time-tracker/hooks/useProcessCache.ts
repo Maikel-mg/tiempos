@@ -26,7 +26,7 @@ export function useProcessCache() {
       setError(null);
 
       const response = await apiClient.get<Proceso[]>(
-        `/api/processes?usured=${encodeURIComponent(usuario)}`
+        `/processes?usured=${encodeURIComponent(usuario)}`
       );
 
       if (response.success) {

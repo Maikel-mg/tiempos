@@ -43,7 +43,7 @@ describe('useProcessCache', () => {
     expect(result.current.processes).toHaveLength(2);
     expect(result.current.processes[0].nombre).toBe('Desarrollo Frontend');
     expect(result.current.error).toBeNull();
-    expect(mockApiClientGet).toHaveBeenCalledWith('/api/processes?usured=MG01');
+    expect(mockApiClientGet).toHaveBeenCalledWith('/processes?usured=MG01');
   });
 
   it('returns empty processes without fetch when usuario is empty', async () => {
