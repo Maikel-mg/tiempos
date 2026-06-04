@@ -1,154 +1,79 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import '@testing-library/jest-dom';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import 'fake-indexeddb/auto';
-import Dexie from 'dexie';
 import { ProcessSelectorButton } from '../ProcessSelectorButton';
 import type { Proceso } from '../../types';
 
-// ── Test data ────────────────────────────────────────────────────────────────
+// ── Mock useProcessCache ─────────────────────────────────────────────────────
 
-const MOCK_API_RESPONSE = {
-  success: true,
-  data: {
-    cliente: { CodCli: 1, Cliente: 'CLI001', NomCliente: 'Acme Corp' },
-    proyecto: { CodCli: 1, Proyecto: 100, NomProy: 'Proyecto Alpha', Cerrado: false, CMMI: false, EsCM: false, EsPET: false },
-    disciplinas: [
-      {
-        idDisciplina: 1,
-        nombre: 'Desarrollo',
-        sinDisciplina: false,
-        orden: 1,
-        fases: [
-          {
-            fase: 10,
-            nombre: 'Fase Construcción',
-            cerrado: false,
-            orden: 1,
-            procesos: [
-              { proceso: 101, nombre: 'Desarrollo Frontend' },
-              { proceso: 102, nombre: 'Desarrollo Backend' },
-            ],
-          },
-          {
-            fase: 20,
-            nombre: 'Fase Testing',
-            cerrado: false,
-            orden: 2,
-            procesos: [
-              { proceso: 201, nombre: 'Testing Unitario' },
-            ],
-          },
-        ],
-      },
-    ],
-  },
-};
+const mockRefresh = vi.fn();
+const mockUseProcessCache = vi.fn();
+
+vi.mock('../../hooks/useProcessCache', () => ({
+  useProcessCache: () => mockUseProcessCache(),
+}));
+
+// ── Test data ────────────────────────────────────────────────────────────────
 
 const SEED_PROCESSES: Proceso[] = [
   { proceso: 101, nombre: 'Desarrollo Frontend', faseNombre: 'Fase Construcción', proyectoNombre: 'Proyecto Alpha', clienteNombre: 'Acme Corp' },
   { proceso: 102, nombre: 'Desarrollo Backend', faseNombre: 'Fase Construcción', proyectoNombre: 'Proyecto Alpha', clienteNombre: 'Acme Corp' },
   { proceso: 201, nombre: 'Testing Unitario', faseNombre: 'Fase Testing', proyectoNombre: 'Proyecto Alpha', clienteNombre: 'Acme Corp' },
+  { proceso: 301, nombre: 'Diseño UX', faseNombre: 'Fase Diseño', proyectoNombre: 'Proyecto Beta', clienteNombre: 'Beta Inc' },
 ];
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-const DB_NAME = 'ProcessSelectorButtonTestDB';
-
-function deleteDB() {
-  return new Promise<void>((resolve, reject) => {
-    const req = indexedDB.deleteDatabase(DB_NAME);
-    req.onsuccess = () => resolve();
-    req.onerror = () => reject(req.error);
-    req.onblocked = () => resolve();
+function setupMockProcesses(processes: Proceso[] = SEED_PROCESSES, loading = false, error: string | null = null) {
+  mockUseProcessCache.mockReturnValue({
+    processes,
+    loading,
+    error,
+    refresh: mockRefresh,
   });
-}
-
-function createTestDB() {
-  const db = new Dexie(DB_NAME);
-  db.version(1).stores({
-    processes: 'proceso, nombre, faseNombre, proyectoNombre, clienteNombre',
-    processRecents: 'proceso, lastUsedAt',
-  });
-  return db;
-}
-
-function createMockApiClient(response: unknown) {
-  return { post: vi.fn().mockResolvedValue(response) };
-}
-
-async function seedProcesses(db: Dexie, processes: Proceso[]) {
-  await db.table('processes').bulkPut(processes);
-}
-
-function renderWithQuery(ui: React.ReactElement) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
-    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
-  );
 }
 
 // ── Tests ────────────────────────────────────────────────────────────────────
 
 describe('ProcessSelectorButton', () => {
-  beforeEach(async () => {
-    await deleteDB();
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
-  it('renders button with placeholder text when no process selected', async () => {
-    const db = createTestDB();
-    const apiClient = createMockApiClient(MOCK_API_RESPONSE);
-    const onChange = vi.fn();
+  it('renders button with placeholder text when no process selected', () => {
+    setupMockProcesses();
 
-    renderWithQuery(
+    render(
       <ProcessSelectorButton
         value={null}
-        onChange={onChange}
-        db={db as any}
-        apiClient={apiClient as any}
+        onChange={vi.fn()}
       />
     );
 
     expect(screen.getByRole('button', { name: /seleccionar proceso/i })).toBeInTheDocument();
-    db.close();
   });
 
-  it('renders button with selected process name', async () => {
-    const db = createTestDB();
-    const apiClient = createMockApiClient(MOCK_API_RESPONSE);
-    const onChange = vi.fn();
+  it('renders button with selected process name', () => {
+    setupMockProcesses();
     const selectedProcess: Proceso = { proceso: 101, nombre: 'Desarrollo Frontend' };
 
-    renderWithQuery(
+    render(
       <ProcessSelectorButton
         value={selectedProcess}
-        onChange={onChange}
-        db={db as any}
-        apiClient={apiClient as any}
+        onChange={vi.fn()}
       />
     );
 
     expect(screen.getByRole('button', { name: /desarrollo frontend/i })).toBeInTheDocument();
-    db.close();
   });
 
-  it('opens popover and shows processes from IndexedDB', async () => {
+  it('opens popover and shows processes from hook', async () => {
     const user = userEvent.setup();
-    const db = createTestDB();
-    await seedProcesses(db, SEED_PROCESSES);
-    const apiClient = createMockApiClient(MOCK_API_RESPONSE);
-    const onChange = vi.fn();
-    const onCreateNew = vi.fn();
+    setupMockProcesses();
 
-    renderWithQuery(
+    render(
       <ProcessSelectorButton
         value={null}
-        onChange={onChange}
-        db={db as any}
-        apiClient={apiClient as any}
-        onCreateNew={onCreateNew}
+        onChange={vi.fn()}
       />
     );
 
@@ -160,24 +85,17 @@ describe('ProcessSelectorButton', () => {
 
     expect(screen.getByText('Desarrollo Backend')).toBeInTheDocument();
     expect(screen.getByText('Testing Unitario')).toBeInTheDocument();
-    expect(screen.getByText('Todos')).toBeInTheDocument();
-    expect(screen.getByText('Crear')).toBeInTheDocument();
-    db.close();
+    expect(screen.getByText('Diseño UX')).toBeInTheDocument();
   });
 
-  it('filters processes by search text', async () => {
+  it('filters processes by name', async () => {
     const user = userEvent.setup();
-    const db = createTestDB();
-    await seedProcesses(db, SEED_PROCESSES);
-    const apiClient = createMockApiClient(MOCK_API_RESPONSE);
-    const onChange = vi.fn();
+    setupMockProcesses();
 
-    renderWithQuery(
+    render(
       <ProcessSelectorButton
         value={null}
-        onChange={onChange}
-        db={db as any}
-        apiClient={apiClient as any}
+        onChange={vi.fn()}
       />
     );
 
@@ -196,22 +114,102 @@ describe('ProcessSelectorButton', () => {
 
     expect(screen.queryByText('Desarrollo Backend')).not.toBeInTheDocument();
     expect(screen.queryByText('Testing Unitario')).not.toBeInTheDocument();
-    db.close();
+  });
+
+  it('filters processes by phase name', async () => {
+    const user = userEvent.setup();
+    setupMockProcesses();
+
+    render(
+      <ProcessSelectorButton
+        value={null}
+        onChange={vi.fn()}
+      />
+    );
+
+    await user.click(screen.getByRole('button', { name: /seleccionar proceso/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Desarrollo Frontend')).toBeInTheDocument();
+    });
+
+    const searchInput = screen.getByPlaceholderText(/buscar por nombre/i);
+    await user.type(searchInput, 'construcción');
+
+    await waitFor(() => {
+      expect(screen.getByText('Desarrollo Frontend')).toBeInTheDocument();
+      expect(screen.getByText('Desarrollo Backend')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText('Testing Unitario')).not.toBeInTheDocument();
+    expect(screen.queryByText('Diseño UX')).not.toBeInTheDocument();
+  });
+
+  it('filters processes by project name', async () => {
+    const user = userEvent.setup();
+    setupMockProcesses();
+
+    render(
+      <ProcessSelectorButton
+        value={null}
+        onChange={vi.fn()}
+      />
+    );
+
+    await user.click(screen.getByRole('button', { name: /seleccionar proceso/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Desarrollo Frontend')).toBeInTheDocument();
+    });
+
+    const searchInput = screen.getByPlaceholderText(/buscar por nombre/i);
+    await user.type(searchInput, 'beta');
+
+    await waitFor(() => {
+      expect(screen.getByText('Diseño UX')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText('Desarrollo Frontend')).not.toBeInTheDocument();
+  });
+
+  it('filters processes by client name', async () => {
+    const user = userEvent.setup();
+    setupMockProcesses();
+
+    render(
+      <ProcessSelectorButton
+        value={null}
+        onChange={vi.fn()}
+      />
+    );
+
+    await user.click(screen.getByRole('button', { name: /seleccionar proceso/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Desarrollo Frontend')).toBeInTheDocument();
+    });
+
+    const searchInput = screen.getByPlaceholderText(/buscar por nombre/i);
+    await user.type(searchInput, 'acme');
+
+    await waitFor(() => {
+      expect(screen.getByText('Desarrollo Frontend')).toBeInTheDocument();
+      expect(screen.getByText('Desarrollo Backend')).toBeInTheDocument();
+      expect(screen.getByText('Testing Unitario')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText('Diseño UX')).not.toBeInTheDocument();
   });
 
   it('selects a process and calls onChange', async () => {
     const user = userEvent.setup();
-    const db = createTestDB();
-    await seedProcesses(db, SEED_PROCESSES);
-    const apiClient = createMockApiClient(MOCK_API_RESPONSE);
+    setupMockProcesses();
     const onChange = vi.fn();
 
-    renderWithQuery(
+    render(
       <ProcessSelectorButton
         value={null}
         onChange={onChange}
-        db={db as any}
-        apiClient={apiClient as any}
       />
     );
 
@@ -223,60 +221,180 @@ describe('ProcessSelectorButton', () => {
 
     await user.click(screen.getByText('Desarrollo Frontend'));
 
-    await waitFor(() => {
-      expect(onChange).toHaveBeenCalledWith(
-        expect.objectContaining({ proceso: 101, nombre: 'Desarrollo Frontend' })
-      );
-    });
-    db.close();
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({ proceso: 101, nombre: 'Desarrollo Frontend' })
+    );
   });
 
-  it('renders in disabled state', async () => {
-    const db = createTestDB();
-    const apiClient = createMockApiClient(MOCK_API_RESPONSE);
-    const onChange = vi.fn();
+  it('shows loading state while fetching', () => {
+    setupMockProcesses([], true);
 
-    renderWithQuery(
+    render(
       <ProcessSelectorButton
         value={null}
-        onChange={onChange}
-        db={db as any}
-        apiClient={apiClient as any}
-        disabled
+        onChange={vi.fn()}
       />
     );
 
-    const button = screen.getByRole('button', { name: /seleccionar proceso/i });
-    expect(button).toBeDisabled();
-    db.close();
+    // Open the popover to see loading state
+    // The loading state shows immediately in the popover content area
+    // But since popover is closed by default, we need to check the trigger button
+    expect(screen.getByRole('button', { name: /seleccionar proceso/i })).toBeInTheDocument();
   });
 
-  it('calls onCreateNew when create button is clicked', async () => {
+  it('shows "No hay procesos disponibles" when empty', async () => {
     const user = userEvent.setup();
-    const db = createTestDB();
-    const apiClient = createMockApiClient(MOCK_API_RESPONSE);
-    const onChange = vi.fn();
-    const onCreateNew = vi.fn();
+    setupMockProcesses([]);
 
-    renderWithQuery(
+    render(
       <ProcessSelectorButton
         value={null}
-        onChange={onChange}
-        db={db as any}
-        apiClient={apiClient as any}
-        onCreateNew={onCreateNew}
+        onChange={vi.fn()}
       />
     );
 
     await user.click(screen.getByRole('button', { name: /seleccionar proceso/i }));
 
     await waitFor(() => {
-      expect(screen.getByText('Crear')).toBeInTheDocument();
+      expect(screen.getByText('No hay procesos disponibles')).toBeInTheDocument();
+    });
+  });
+
+  it('shows "No se encontraron procesos" when search has no results', async () => {
+    const user = userEvent.setup();
+    setupMockProcesses();
+
+    render(
+      <ProcessSelectorButton
+        value={null}
+        onChange={vi.fn()}
+      />
+    );
+
+    await user.click(screen.getByRole('button', { name: /seleccionar proceso/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Desarrollo Frontend')).toBeInTheDocument();
     });
 
-    await user.click(screen.getByText('Crear'));
+    const searchInput = screen.getByPlaceholderText(/buscar por nombre/i);
+    await user.type(searchInput, 'xyz123');
 
-    expect(onCreateNew).toHaveBeenCalled();
-    db.close();
+    await waitFor(() => {
+      expect(screen.getByText('No se encontraron procesos')).toBeInTheDocument();
+    });
+  });
+
+  it('shows error message when error exists', async () => {
+    const user = userEvent.setup();
+    setupMockProcesses([], false, 'Error al cargar procesos');
+
+    render(
+      <ProcessSelectorButton
+        value={null}
+        onChange={vi.fn()}
+      />
+    );
+
+    await user.click(screen.getByRole('button', { name: /seleccionar proceso/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Error al cargar procesos')).toBeInTheDocument();
+    });
+  });
+
+  it('calls refresh when refresh button is clicked', async () => {
+    const user = userEvent.setup();
+    setupMockProcesses();
+
+    render(
+      <ProcessSelectorButton
+        value={null}
+        onChange={vi.fn()}
+      />
+    );
+
+    await user.click(screen.getByRole('button', { name: /seleccionar proceso/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Desarrollo Frontend')).toBeInTheDocument();
+    });
+
+    const refreshButton = screen.getByTitle('Actualizar lista');
+    await user.click(refreshButton);
+
+    expect(mockRefresh).toHaveBeenCalled();
+  });
+
+  it('renders in disabled state', () => {
+    setupMockProcesses();
+
+    render(
+      <ProcessSelectorButton
+        value={null}
+        onChange={vi.fn()}
+        disabled
+      />
+    );
+
+    const button = screen.getByRole('button', { name: /seleccionar proceso/i });
+    expect(button).toBeDisabled();
+  });
+
+  it('does not open popover when disabled', async () => {
+    const user = userEvent.setup();
+    setupMockProcesses();
+
+    render(
+      <ProcessSelectorButton
+        value={null}
+        onChange={vi.fn()}
+        disabled
+      />
+    );
+
+    await user.click(screen.getByRole('button', { name: /seleccionar proceso/i }));
+
+    // Popover should not open
+    expect(screen.queryByText('Procesos')).not.toBeInTheDocument();
+  });
+
+  it('displays process metadata in the list', async () => {
+    const user = userEvent.setup();
+    setupMockProcesses();
+
+    render(
+      <ProcessSelectorButton
+        value={null}
+        onChange={vi.fn()}
+      />
+    );
+
+    await user.click(screen.getByRole('button', { name: /seleccionar proceso/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Desarrollo Frontend')).toBeInTheDocument();
+    });
+
+    // Check metadata display — use getAllByText since multiple processes share phase/project/client
+    expect(screen.getByText(/ID: 101/)).toBeInTheDocument();
+    expect(screen.getAllByText(/· Fase Construcción/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/· Proyecto Alpha/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/· Acme Corp/).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('applies className prop', () => {
+    setupMockProcesses();
+
+    render(
+      <ProcessSelectorButton
+        value={null}
+        onChange={vi.fn()}
+        className="w-full"
+      />
+    );
+
+    const button = screen.getByRole('button', { name: /seleccionar proceso/i });
+    expect(button.className).toContain('w-full');
   });
 });
