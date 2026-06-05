@@ -19,6 +19,7 @@ import {
   FolderOpen,
   Settings,
 } from "lucide-react"
+import { ThemeToggle } from "@/components/ThemeToggle"
 import { Separator } from "@/components/ui/separator"
 import { uiConfig } from "@/config/stores"
 
@@ -86,6 +87,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               )}
             </div>
             <SidebarTrigger className="h-5 w-5 p-1" />
+            <ThemeToggle />
           </div>
         </SidebarHeader>
           <SidebarContent>
