@@ -12,12 +12,6 @@ vi.mock('../../hooks/useTimeEntries');
 vi.mock('../../lib/timerCrossingDetector', () => ({
   detectCrossing: () => ({ crossed: false }),
 }));
-vi.mock('../../components/TimerWidget', () => ({
-  TimerWidget: () => <div data-testid="timer-widget" />,
-}));
-vi.mock('../../components/TimeEntryForm', () => ({
-  TimeEntryForm: () => <div data-testid="time-entry-form" />,
-}));
 vi.mock('../../components/OverlapAlert', () => ({
   OverlapAlert: () => <div data-testid="overlap-alert" />,
 }));
