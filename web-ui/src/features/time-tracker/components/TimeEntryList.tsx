@@ -171,6 +171,7 @@ export function TimeEntryList({ entries, selectedIds, onSelect, onDelete, onEdit
                 <TableHead className="w-12"></TableHead>
                 <TableHead>Fecha</TableHead>
                 <TableHead>Tarea</TableHead>
+                <TableHead>Descripción</TableHead>
                 <TableHead>Inicio</TableHead>
                 <TableHead>Fin</TableHead>
                 <TableHead>Duración</TableHead>

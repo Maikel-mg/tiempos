@@ -66,6 +66,11 @@ export function TimeEntryRow({ entry, selected, onToggle, onDelete, onEdit, onPl
         {entry.taskName}
       </TableCell>
 
+      {/* Description */}
+      <TableCell className="text-muted-foreground text-sm truncate max-w-[200px]" title={entry.description}>
+        {entry.description || '—'}
+      </TableCell>
+
       {/* Start Time */}
       <TableCell className="font-mono text-muted-foreground">
         {entry.startTime}
