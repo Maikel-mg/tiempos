@@ -1205,8 +1205,8 @@ app.post('/api/projects-tree', async (req: Request, res: Response) => {
 // Endpoint /api/processes
 // ============================================
 
-app.get('/api/processes', async (req: Request, res: Response) => {
-  const usured = req.query.usured as string;
+app.post('/api/processes', async (req: Request, res: Response) => {
+  const { usured, server, database, username, password } = req.body;
 
   if (!usured || usured.trim() === '') {
     res.status(400).json({
@@ -1216,18 +1216,12 @@ app.get('/api/processes', async (req: Request, res: Response) => {
     return;
   }
 
-  // DB config from query params or env vars (GET endpoints can't use body)
-  const dbServer = (req.query.server as string) || process.env.DB_SERVER || 'localhost';
-  const dbDatabase = (req.query.database as string) || process.env.DB_NAME || 'Tiempos';
-  const dbUser = (req.query.username as string) || process.env.DB_USER || '';
-  const dbPassword = (req.query.password as string) || process.env.DB_PASSWORD || '';
-
   try {
     const config: sql.config = {
-      server: dbServer,
-      database: dbDatabase,
-      user: dbUser,
-      password: dbPassword,
+      server,
+      database,
+      user: username,
+      password,
       options: {
         encrypt: true,
         trustServerCertificate: true,

@@ -5,18 +5,27 @@ import type { Proceso } from '../../types';
 
 // ── Mocks ────────────────────────────────────────────────────────────────────
 
-const mockGet = vi.fn();
-const mockApiClientGet = vi.fn();
+const mockWizardGet = vi.fn();
+const mockDbGet = vi.fn();
+const mockApiClientPost = vi.fn();
 
 vi.mock('@/lib/api/client', () => ({
-  apiClient: { get: (...args: unknown[]) => mockApiClientGet(...args) },
+  apiClient: { post: (...args: unknown[]) => mockApiClientPost(...args) },
 }));
 
 vi.mock('@/config/stores', () => ({
-  wizardConfig: { get: () => mockGet() },
+  wizardConfig: { get: () => mockWizardGet() },
+  dbConfig: { get: () => mockDbGet() },
 }));
 
 // ── Test data ────────────────────────────────────────────────────────────────
+
+const DB_CONFIG = {
+  server: 'test-server',
+  database: 'test-db',
+  username: 'test-user',
+  password: 'test-pass',
+};
 
 const PROCESOS: Proceso[] = [
   { proceso: 101, nombre: 'Desarrollo Frontend', faseNombre: 'Fase Construccion' },
@@ -28,11 +37,12 @@ const PROCESOS: Proceso[] = [
 describe('useProcessCache', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockDbGet.mockReturnValue(DB_CONFIG);
   });
 
   it('fetches processes on mount when usuario is set', async () => {
-    mockGet.mockReturnValue({ usuario: 'MG01' });
-    mockApiClientGet.mockResolvedValue({ success: true, data: PROCESOS });
+    mockWizardGet.mockReturnValue({ usuario: 'MG01' });
+    mockApiClientPost.mockResolvedValue({ success: true, data: PROCESOS });
 
     const { result } = renderHook(() => useProcessCache());
 
@@ -43,11 +53,17 @@ describe('useProcessCache', () => {
     expect(result.current.processes).toHaveLength(2);
     expect(result.current.processes[0].nombre).toBe('Desarrollo Frontend');
     expect(result.current.error).toBeNull();
-    expect(mockApiClientGet).toHaveBeenCalledWith('/processes?usured=MG01');
+    expect(mockApiClientPost).toHaveBeenCalledWith('/processes', {
+      usured: 'MG01',
+      server: 'test-server',
+      database: 'test-db',
+      username: 'test-user',
+      password: 'test-pass',
+    });
   });
 
   it('returns empty processes without fetch when usuario is empty', async () => {
-    mockGet.mockReturnValue({ usuario: '' });
+    mockWizardGet.mockReturnValue({ usuario: '' });
 
     const { result } = renderHook(() => useProcessCache());
 
@@ -57,11 +73,11 @@ describe('useProcessCache', () => {
 
     expect(result.current.processes).toHaveLength(0);
     expect(result.current.error).toBeNull();
-    expect(mockApiClientGet).not.toHaveBeenCalled();
+    expect(mockApiClientPost).not.toHaveBeenCalled();
   });
 
   it('returns empty processes without fetch when usuario is null', async () => {
-    mockGet.mockReturnValue(null);
+    mockWizardGet.mockReturnValue(null);
 
     const { result } = renderHook(() => useProcessCache());
 
@@ -70,12 +86,12 @@ describe('useProcessCache', () => {
     });
 
     expect(result.current.processes).toHaveLength(0);
-    expect(mockApiClientGet).not.toHaveBeenCalled();
+    expect(mockApiClientPost).not.toHaveBeenCalled();
   });
 
   it('sets error when endpoint fails', async () => {
-    mockGet.mockReturnValue({ usuario: 'MG01' });
-    mockApiClientGet.mockResolvedValue({
+    mockWizardGet.mockReturnValue({ usuario: 'MG01' });
+    mockApiClientPost.mockResolvedValue({
       success: false,
       message: 'Server error',
     });
@@ -91,8 +107,8 @@ describe('useProcessCache', () => {
   });
 
   it('sets error when network call throws', async () => {
-    mockGet.mockReturnValue({ usuario: 'MG01' });
-    mockApiClientGet.mockRejectedValue(new Error('Network failure'));
+    mockWizardGet.mockReturnValue({ usuario: 'MG01' });
+    mockApiClientPost.mockRejectedValue(new Error('Network failure'));
 
     const { result } = renderHook(() => useProcessCache());
 
@@ -105,8 +121,8 @@ describe('useProcessCache', () => {
   });
 
   it('refresh re-fetches and updates processes', async () => {
-    mockGet.mockReturnValue({ usuario: 'MG01' });
-    mockApiClientGet.mockResolvedValueOnce({ success: true, data: PROCESOS });
+    mockWizardGet.mockReturnValue({ usuario: 'MG01' });
+    mockApiClientPost.mockResolvedValueOnce({ success: true, data: PROCESOS });
 
     const { result } = renderHook(() => useProcessCache());
 
@@ -116,18 +132,17 @@ describe('useProcessCache', () => {
 
     expect(result.current.processes).toHaveLength(2);
 
-    // Now set up a different response for refresh
     const moreProcesos: Proceso[] = [
       ...PROCESOS,
       { proceso: 103, nombre: 'Code Review' },
     ];
-    mockApiClientGet.mockResolvedValueOnce({ success: true, data: moreProcesos });
+    mockApiClientPost.mockResolvedValueOnce({ success: true, data: moreProcesos });
 
     await act(async () => {
       await result.current.refresh();
     });
 
     expect(result.current.processes).toHaveLength(3);
-    expect(mockApiClientGet).toHaveBeenCalledTimes(2);
+    expect(mockApiClientPost).toHaveBeenCalledTimes(2);
   });
 });

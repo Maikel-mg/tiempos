@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { apiClient } from '@/lib/api/client';
-import { wizardConfig } from '@/config/stores';
+import { wizardConfig, dbConfig } from '@/config/stores';
 import type { Proceso } from '../types';
 
 /**
@@ -25,12 +25,21 @@ export function useProcessCache() {
       setLoading(true);
       setError(null);
 
-      const response = await apiClient.get<Proceso[]>(
-        `/processes?usured=${encodeURIComponent(usuario)}`
+      const dbConf = dbConfig.get();
+      const response = await apiClient.post<Proceso[]>(
+        '/processes',
+        {
+          usured: usuario,
+          server: dbConf?.server,
+          database: dbConf?.database,
+          username: dbConf?.username,
+          password: dbConf?.password,
+        }
       );
 
       if (response.success) {
-        setProcesses(response.data);
+        console.log(`TCL ~ useProcessCache ~ response:`, response)
+        setProcesses(response.data?.data || []);
       } else {
         setError(response.message || 'Error al cargar procesos');
         setProcesses([]);
