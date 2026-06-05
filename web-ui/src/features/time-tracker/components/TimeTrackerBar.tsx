@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Clock, List } from 'lucide-react';
 import { ProcessSelectorButton } from './ProcessSelectorButton';
 import { MidnightSplitModal } from './MidnightSplitModal';
 import { useTimer } from '../hooks/useTimer';
@@ -170,34 +171,6 @@ export function TimeTrackerBar({ onSubmit, initialData, disabled, defaultMode = 
   return (
     <>
       <div className="flex items-center gap-2 w-full">
-        {/* Mode toggle */}
-        <div className="flex rounded-md border border-input bg-muted p-0.5 text-muted-foreground shrink-0">
-          <button
-            type="button"
-            onClick={() => setMode('timer')}
-            disabled={disabled || timer.isRunning}
-            className={`px-2.5 py-1 text-xs font-medium rounded-sm transition-colors ${
-              mode === 'timer'
-                ? 'bg-background text-foreground shadow-sm'
-                : 'hover:text-foreground'
-            }`}
-          >
-            Timer
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode('manual')}
-            disabled={disabled || timer.isRunning}
-            className={`px-2.5 py-1 text-xs font-medium rounded-sm transition-colors ${
-              mode === 'manual'
-                ? 'bg-background text-foreground shadow-sm'
-                : 'hover:text-foreground'
-            }`}
-          >
-            Manual
-          </button>
-        </div>
-
         {/* Description — shared across modes */}
         <Input
           value={description}
@@ -292,6 +265,36 @@ export function TimeTrackerBar({ onSubmit, initialData, disabled, defaultMode = 
             </Button>
           </>
         )}
+
+        {/* Stacked mode icons */}
+        <div className="flex flex-col gap-0.5 shrink-0">
+          <button
+            type="button"
+            onClick={() => setMode('timer')}
+            disabled={disabled || timer.isRunning}
+            title="Timer"
+            className={`p-1 rounded transition-colors ${
+              mode === 'timer'
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Clock className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('manual')}
+            disabled={disabled || timer.isRunning}
+            title="Manual"
+            className={`p-1 rounded transition-colors ${
+              mode === 'manual'
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <List className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
       {/* Midnight split modal */}
