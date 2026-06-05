@@ -1,5 +1,3 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import '@testing-library/jest-dom';
 import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { TimeTrackerBar } from '../TimeTrackerBar';
@@ -12,6 +10,19 @@ const mockUseProcessCache = vi.fn();
 
 vi.mock('../../hooks/useProcessCache', () => ({
   useProcessCache: () => mockUseProcessCache(),
+}));
+
+const timerMock = {
+  timerState: null,
+  isRunning: false,
+  elapsed: 0,
+  start: vi.fn().mockResolvedValue(undefined),
+  stop: vi.fn(),
+  cancel: vi.fn().mockResolvedValue(undefined),
+};
+
+vi.mock('../../hooks/useTimer', () => ({
+  useTimer: () => timerMock,
 }));
 
 const SEED_PROCESSES: Proceso[] = [
@@ -47,8 +58,8 @@ describe('TimeTrackerBar', () => {
     mockOnSubmit.mockResolvedValue(undefined);
   });
 
-  it('renders all input fields', () => {
-    const { container } = render(<TimeTrackerBar onSubmit={mockOnSubmit} />);
+  it('renders all input fields in manual mode', () => {
+    const { container } = render(<TimeTrackerBar onSubmit={mockOnSubmit} defaultMode="manual" />);
 
     expect(screen.getByPlaceholderText(/en qué estás trabajando/i)).toBeInTheDocument();
     expect(screen.getByDisplayValue('09:00')).toBeInTheDocument();
@@ -57,20 +68,20 @@ describe('TimeTrackerBar', () => {
   });
 
   it('disables AÑADIR button when required fields are empty', () => {
-    render(<TimeTrackerBar onSubmit={mockOnSubmit} />);
+    render(<TimeTrackerBar onSubmit={mockOnSubmit} defaultMode="manual" />);
 
     const addBtn = screen.getByRole('button', { name: /añadir/i });
     expect(addBtn).toBeDisabled();
   });
 
   it('shows duration as 00:00:00 when no end time', () => {
-    render(<TimeTrackerBar onSubmit={mockOnSubmit} />);
+    render(<TimeTrackerBar onSubmit={mockOnSubmit} defaultMode="manual" />);
 
     expect(screen.getByText('00:00:00')).toBeInTheDocument();
   });
 
   it('computes duration live when times change', () => {
-    const { container } = render(<TimeTrackerBar onSubmit={mockOnSubmit} />);
+    const { container } = render(<TimeTrackerBar onSubmit={mockOnSubmit} defaultMode="manual" />);
 
     const timeInputs = getTimeInputs(container);
     setTimeValue(timeInputs[1], '12:00');
@@ -79,7 +90,7 @@ describe('TimeTrackerBar', () => {
   });
 
   it('shows disabled button when end < start (negative duration)', () => {
-    const { container } = render(<TimeTrackerBar onSubmit={mockOnSubmit} />);
+    const { container } = render(<TimeTrackerBar onSubmit={mockOnSubmit} defaultMode="manual" />);
 
     const timeInputs = getTimeInputs(container);
     setTimeValue(timeInputs[1], '08:00');
@@ -90,7 +101,7 @@ describe('TimeTrackerBar', () => {
 
   it('calls onSubmit with correct data when form is valid', async () => {
     const user = userEvent.setup();
-    const { container } = render(<TimeTrackerBar onSubmit={mockOnSubmit} />);
+    const { container } = render(<TimeTrackerBar onSubmit={mockOnSubmit} defaultMode="manual" />);
 
     // Select a task
     const selectBtn = screen.getByRole('button', { name: /seleccionar proceso/i });
@@ -118,7 +129,7 @@ describe('TimeTrackerBar', () => {
 
   it('clears description and times after successful submit', async () => {
     const user = userEvent.setup();
-    const { container } = render(<TimeTrackerBar onSubmit={mockOnSubmit} />);
+    const { container } = render(<TimeTrackerBar onSubmit={mockOnSubmit} defaultMode="manual" />);
 
     // Select a task
     const selectBtn = screen.getByRole('button', { name: /seleccionar proceso/i });
@@ -144,16 +155,17 @@ describe('TimeTrackerBar', () => {
   });
 
   it('renders disabled state', () => {
-    render(<TimeTrackerBar onSubmit={mockOnSubmit} disabled />);
+    render(<TimeTrackerBar onSubmit={mockOnSubmit} defaultMode="manual" disabled />);
 
     expect(screen.getByPlaceholderText(/en qué estás trabajando/i)).toBeDisabled();
     expect(screen.getByRole('button', { name: /añadir/i })).toBeDisabled();
   });
 
-  it('initializes with initialData', () => {
+  it('initializes with initialData in manual mode', () => {
     render(
       <TimeTrackerBar
         onSubmit={mockOnSubmit}
+        defaultMode="manual"
         initialData={{
           taskId: 102,
           taskName: 'Desarrollo Backend',
