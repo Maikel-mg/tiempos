@@ -1,4 +1,4 @@
-import { CheckCircle2, Circle, XCircle, Trash2, Pencil } from 'lucide-react';
+import { CheckCircle2, Circle, XCircle, Trash2, Pencil, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
@@ -10,6 +10,7 @@ interface TimeEntryRowProps {
   onToggle: () => void;
   onDelete: () => void;
   onEdit?: () => void;
+  onPlay?: () => void;
 }
 
 /**
@@ -35,7 +36,7 @@ function formatDate(dateStr: string): string {
 /**
  * Fila individual del listado de registros de tiempo.
  */
-export function TimeEntryRow({ entry, selected, onToggle, onDelete, onEdit }: TimeEntryRowProps) {
+export function TimeEntryRow({ entry, selected, onToggle, onDelete, onEdit, onPlay }: TimeEntryRowProps) {
   const SYNCED_TOOLTIP = 'Ya sincronizado con la BD — no se puede editar desde aquí';
 
   return (
@@ -104,9 +105,12 @@ export function TimeEntryRow({ entry, selected, onToggle, onDelete, onEdit }: Ti
       </TableCell>
 
       {/* Actions */}
-      <TableCell className="w-20">
+      <TableCell className="w-24">
         {entry.synced ? (
           <div className="flex gap-1">
+            <Button variant="ghost" size="icon" onClick={onPlay} className="text-green-600 hover:text-green-700">
+              <Play className="w-4 h-4" />
+            </Button>
             <Tooltip>
               <TooltipTrigger asChild>
                 <span>
@@ -120,6 +124,9 @@ export function TimeEntryRow({ entry, selected, onToggle, onDelete, onEdit }: Ti
           </div>
         ) : (
           <div className="flex gap-1">
+            <Button variant="ghost" size="icon" onClick={onPlay} className="text-green-600 hover:text-green-700">
+              <Play className="w-4 h-4" />
+            </Button>
             {onEdit && (
               <Button
                 variant="ghost"

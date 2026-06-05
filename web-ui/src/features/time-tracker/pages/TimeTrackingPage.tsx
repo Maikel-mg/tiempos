@@ -39,6 +39,7 @@ export function TimeTrackingPage() {
 
   // Undoable delete buffer — stores entry temporarily for undo
   const undoBuffer = useRef<Map<string, TimeEntry>>(new Map());
+  const pendingDescription = useRef<string | undefined>(undefined);
 
   // Pending entries for sync
   const pendingEntries = useMemo(
@@ -171,6 +172,25 @@ export function TimeTrackingPage() {
     setEditingEntry(null);
   };
 
+  const handlePlayEntry = useCallback(async (entry: TimeEntry) => {
+    if (isRunning) {
+      const result = await stop({ persist: false });
+      if (result && 'start' in result) {
+        await createEntry({
+          taskId: result.taskId,
+          taskName: result.taskName,
+          date: result.end.toLocaleDateString('sv-SE'),
+          startTime: result.start.toTimeString().slice(0, 5),
+          endTime: result.end.toTimeString().slice(0, 5),
+          description: pendingDescription.current,
+        });
+        toast('Timer de ' + result.taskName + ' detenido. Iniciando ' + entry.taskName + '.');
+      }
+    }
+    pendingDescription.current = entry.description;
+    await start(entry.taskId, entry.taskName);
+  }, [isRunning, stop, createEntry, start]);
+
   return (
     <main className="container mx-auto px-4 py-6 space-y-6">
       {/* Timer Widget */}
@@ -224,6 +244,7 @@ export function TimeTrackingPage() {
             onSelect={setSelectedIds}
             onDelete={handleDeleteEntry}
             onEdit={handleEditEntry}
+            onPlay={handlePlayEntry}
           />
 
           {/* Sync Panel — only when pending entries exist */}
