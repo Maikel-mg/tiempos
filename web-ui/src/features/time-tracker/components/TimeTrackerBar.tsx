@@ -67,6 +67,22 @@ export function TimeTrackerBar({ onSubmit, initialData, disabled, defaultMode = 
     }
   }, [timer.timerState]);
 
+  // Sync form state when initialData changes (edit mode)
+  useEffect(() => {
+    if (initialData) {
+      setTask(
+        initialData.taskId != null
+          ? { proceso: initialData.taskId, nombre: initialData.taskName || '' }
+          : null
+      );
+      setDescription(initialData.description || '');
+      setDate(initialData.date || today);
+      setStartTime(initialData.startTime || '09:00');
+      setEndTime(initialData.endTime || '');
+      setMode('manual');
+    }
+  }, [initialData]);
+
   const durationSeconds = useMemo(
     () => computeDurationSeconds(startTime, endTime),
     [startTime, endTime]
