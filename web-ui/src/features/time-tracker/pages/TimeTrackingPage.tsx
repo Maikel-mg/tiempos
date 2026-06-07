@@ -23,7 +23,7 @@ export function TimeTrackingPage() {
   const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
 
   const { entries, createEntry, updateEntry, deleteEntry, markSynced } = useTimeEntries();
-  const { isRunning, stop, start } = useTimer();
+  const timerHook = useTimer();
 
   const undoBuffer = useRef<Map<string, TimeEntry>>(new Map());
   const pendingDescription = useRef<string | undefined>(undefined);
@@ -115,8 +115,8 @@ export function TimeTrackingPage() {
   }, []);
 
   const handlePlayEntry = useCallback(async (entry: TimeEntry) => {
-    if (isRunning) {
-      const result = await stop({ persist: false });
+    if (timerHook.isRunning) {
+      const result = await timerHook.stop({ persist: false });
       if (result && 'start' in result) {
         await createEntry({
           taskId: result.taskId,
@@ -130,8 +130,8 @@ export function TimeTrackingPage() {
       }
     }
     pendingDescription.current = entry.description;
-    await start(entry.taskId, entry.taskName);
-  }, [isRunning, stop, createEntry, start]);
+    await timerHook.start(entry.taskId, entry.taskName);
+  }, [timerHook, createEntry]);
 
   return (
     <main className="container mx-auto px-4 py-6 space-y-6">
@@ -140,6 +140,7 @@ export function TimeTrackingPage() {
         initialData={editingEntry ?? undefined}
         defaultMode={editingEntry ? 'manual' : 'timer'}
         disabled={false}
+        timer={timerHook}
       />
 
       {/* Cancel editing indicator */}

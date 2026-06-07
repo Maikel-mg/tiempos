@@ -4,11 +4,10 @@ import { Input } from '@/components/ui/input';
 import { Clock, List } from 'lucide-react';
 import { ProcessSelectorButton } from './ProcessSelectorButton';
 import { MidnightSplitModal } from './MidnightSplitModal';
-import { useTimer } from '../hooks/useTimer';
 import { detectCrossing } from '../lib/timerCrossingDetector';
 import type { SplitProposal } from '../lib/timerCrossingDetector';
 import type { StopTimerResult } from '../services/timeTrackingService';
-import type { TimeEntry, Proceso } from '../types';
+import type { TimeEntry, Proceso, TimerState } from '../types';
 
 interface TimeTrackerBarProps {
   onSubmit: (data: {
@@ -22,6 +21,14 @@ interface TimeTrackerBarProps {
   initialData?: Partial<TimeEntry>;
   disabled?: boolean;
   defaultMode?: 'timer' | 'manual';
+  timer: {
+    isRunning: boolean;
+    elapsed: number;
+    timerState: TimerState | null;
+    start: (taskId: number, taskName: string) => Promise<void>;
+    stop: (options?: { persist?: boolean }) => Promise<TimeEntry | StopTimerResult | null>;
+    cancel: () => Promise<void>;
+  };
 }
 
 function formatDuration(seconds: number): string {
@@ -38,9 +45,8 @@ function computeDurationSeconds(startTime: string, endTime: string): number {
   return ((eh * 60 + em) - (sh * 60 + sm)) * 60;
 }
 
-export function TimeTrackerBar({ onSubmit, initialData, disabled, defaultMode = 'timer' }: TimeTrackerBarProps) {
+export function TimeTrackerBar({ onSubmit, initialData, disabled, defaultMode = 'timer', timer }: TimeTrackerBarProps) {
   const today = new Date().toISOString().split('T')[0];
-  const timer = useTimer();
 
   const [mode, setMode] = useState<'timer' | 'manual'>(defaultMode);
   const [task, setTask] = useState<Proceso | null>(
