@@ -71,7 +71,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider open={open} onOpenChange={setOpen}>
-      <div className="min-h-screen flex">
+      <div className="min-h-screen flex flex-grow">
         <Sidebar collapsible="icon">
         <SidebarHeader>
           <div className={`flex items-center ${open ? 'justify-between gap-2 p-2' : 'justify-center gap-0 p-1'}`}>
@@ -144,7 +144,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             </SidebarGroup>
           </SidebarContent>
         </Sidebar>
-        <main className="flex-1 bg-background">
+        <main className="flex-1 min-w-0 bg-background">
           {children}
         </main>
       </div>

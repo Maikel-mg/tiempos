@@ -21,6 +21,7 @@ const timerMock = {
   start: vi.fn().mockResolvedValue(undefined),
   stop: vi.fn(),
   cancel: vi.fn().mockResolvedValue(undefined),
+  updateStartTime: vi.fn().mockResolvedValue(undefined),
 };
 
 vi.mock('../../hooks/useTimer', () => ({
@@ -55,6 +56,11 @@ function resetTimerMock() {
 describe('TimeTrackerBar — Timer Mode', () => {
   const mockOnSubmit = vi.fn().mockResolvedValue(undefined);
 
+  /** Helper: renders TimeTrackerBar with the mock timer prop */
+  function renderBar(props: Record<string, unknown> = {}) {
+    return render(<TimeTrackerBar onSubmit={mockOnSubmit} timer={timerMock} {...props} />);
+  }
+
   beforeEach(() => {
     vi.clearAllMocks();
     setupMockProcesses();
@@ -63,7 +69,7 @@ describe('TimeTrackerBar — Timer Mode', () => {
   });
 
   it('renders clock display and INICIO button by default', () => {
-    render(<TimeTrackerBar onSubmit={mockOnSubmit} />);
+    renderBar();
 
     expect(screen.getByText('00:00:00')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /inicio/i })).toBeInTheDocument();
@@ -72,14 +78,14 @@ describe('TimeTrackerBar — Timer Mode', () => {
   });
 
   it('does not render date/time fields in timer mode', () => {
-    render(<TimeTrackerBar onSubmit={mockOnSubmit} />);
+    renderBar();
 
     expect(screen.queryByDisplayValue('09:00')).not.toBeInTheDocument();
     expect(screen.queryByDisplayValue('2026-06-05')).not.toBeInTheDocument();
   });
 
   it('disables INICIO when no task is selected', () => {
-    render(<TimeTrackerBar onSubmit={mockOnSubmit} />);
+    renderBar();
 
     const inicioBtn = screen.getByRole('button', { name: /inicio/i });
     expect(inicioBtn).toBeDisabled();
@@ -88,7 +94,7 @@ describe('TimeTrackerBar — Timer Mode', () => {
 
   it('enables INICIO after selecting a task', async () => {
     const user = userEvent.setup();
-    render(<TimeTrackerBar onSubmit={mockOnSubmit} />);
+    renderBar();
 
     const selectBtn = screen.getByRole('button', { name: /seleccionar proceso/i });
     await user.click(selectBtn);
@@ -100,7 +106,7 @@ describe('TimeTrackerBar — Timer Mode', () => {
 
   it('calls useTimer.start when INICIO is clicked', async () => {
     const user = userEvent.setup();
-    render(<TimeTrackerBar onSubmit={mockOnSubmit} />);
+    renderBar();
 
     // Select task first
     const selectBtn = screen.getByRole('button', { name: /seleccionar proceso/i });
@@ -118,7 +124,7 @@ describe('TimeTrackerBar — Timer Mode', () => {
     timerMock.elapsed = 65;
     timerMock.timerState = { isRunning: true, taskId: 101, taskName: 'Desarrollo Frontend', startTime: new Date().toISOString(), elapsed: 65 };
 
-    render(<TimeTrackerBar onSubmit={mockOnSubmit} />);
+    renderBar();
 
     expect(screen.getByRole('button', { name: /detener/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /inicio/i })).not.toBeInTheDocument();
@@ -129,7 +135,7 @@ describe('TimeTrackerBar — Timer Mode', () => {
     timerMock.isRunning = true;
     timerMock.timerState = { isRunning: true, taskId: 101, taskName: 'Desarrollo Frontend', startTime: new Date().toISOString(), elapsed: 3661 };
 
-    render(<TimeTrackerBar onSubmit={mockOnSubmit} />);
+    renderBar();
 
     expect(screen.getByText('01:01:01')).toBeInTheDocument();
   });
@@ -147,7 +153,7 @@ describe('TimeTrackerBar — Timer Mode', () => {
     timerMock.isRunning = true;
     timerMock.timerState = { isRunning: true, taskId: 101, taskName: 'Desarrollo Frontend', startTime: stopResult.start.toISOString(), elapsed: 5400 };
 
-    render(<TimeTrackerBar onSubmit={mockOnSubmit} />);
+    renderBar();
 
     await user.click(screen.getByRole('button', { name: /detener/i }));
 
@@ -167,7 +173,7 @@ describe('TimeTrackerBar — Timer Mode', () => {
     timerMock.isRunning = true;
     timerMock.timerState = { isRunning: true, taskId: 101, taskName: 'Desarrollo Frontend', startTime: stopResult.start.toISOString(), elapsed: 5400 };
 
-    render(<TimeTrackerBar onSubmit={mockOnSubmit} />);
+    renderBar();
 
     await user.click(screen.getByRole('button', { name: /detener/i }));
 
@@ -195,7 +201,7 @@ describe('TimeTrackerBar — Timer Mode', () => {
     timerMock.isRunning = true;
     timerMock.timerState = { isRunning: true, taskId: 101, taskName: 'Desarrollo Frontend', startTime: stopResult.start.toISOString(), elapsed: 7200 };
 
-    render(<TimeTrackerBar onSubmit={mockOnSubmit} />);
+    renderBar();
 
     await user.click(screen.getByRole('button', { name: /detener/i }));
 
@@ -218,7 +224,7 @@ describe('TimeTrackerBar — Timer Mode', () => {
     timerMock.isRunning = true;
     timerMock.timerState = { isRunning: true, taskId: 101, taskName: 'Desarrollo Frontend', startTime: stopResult.start.toISOString(), elapsed: 7200 };
 
-    render(<TimeTrackerBar onSubmit={mockOnSubmit} />);
+    renderBar();
 
     await user.click(screen.getByRole('button', { name: /detener/i }));
 
@@ -243,7 +249,7 @@ describe('TimeTrackerBar — Timer Mode', () => {
     timerMock.isRunning = true;
     timerMock.timerState = { isRunning: true, taskId: 101, taskName: 'Desarrollo Frontend', startTime: stopResult.start.toISOString(), elapsed: 7200 };
 
-    render(<TimeTrackerBar onSubmit={mockOnSubmit} />);
+    renderBar();
 
     await user.click(screen.getByRole('button', { name: /detener/i }));
 
@@ -264,7 +270,7 @@ describe('TimeTrackerBar — Timer Mode', () => {
     timerMock.isRunning = true;
     timerMock.timerState = { isRunning: true, taskId: 101, taskName: 'Desarrollo Frontend', startTime: new Date().toISOString(), elapsed: 300 };
 
-    render(<TimeTrackerBar onSubmit={mockOnSubmit} />);
+    renderBar();
 
     await user.click(screen.getByTitle('Cancelar'));
 
@@ -276,7 +282,7 @@ describe('TimeTrackerBar — Timer Mode', () => {
     timerMock.isRunning = true;
     timerMock.timerState = { isRunning: true, taskId: 101, taskName: 'Desarrollo Frontend', startTime: new Date().toISOString(), elapsed: 60 };
 
-    render(<TimeTrackerBar onSubmit={mockOnSubmit} />);
+    renderBar();
 
     expect(screen.getByPlaceholderText(/en qué estás trabajando/i)).toBeDisabled();
     expect(screen.getByRole('button', { name: /desarrollo frontend/i })).toBeDisabled();
@@ -293,7 +299,7 @@ describe('TimeTrackerBar — Timer Mode', () => {
     timerMock.stop.mockResolvedValue(stopResult);
 
     // Start with timer NOT running — so description input is editable
-    const { rerender } = render(<TimeTrackerBar onSubmit={mockOnSubmit} />);
+    const { rerender } = renderBar();
 
     // Type description while timer is idle
     const descInput = screen.getByPlaceholderText(/en qué estás trabajando/i);
@@ -302,7 +308,7 @@ describe('TimeTrackerBar — Timer Mode', () => {
     // Now simulate timer starting — update mock and re-render
     timerMock.isRunning = true;
     timerMock.timerState = { isRunning: true, taskId: 101, taskName: 'Desarrollo Frontend', startTime: stopResult.start.toISOString(), elapsed: 5400 };
-    rerender(<TimeTrackerBar onSubmit={mockOnSubmit} />);
+    rerender(<TimeTrackerBar onSubmit={mockOnSubmit} timer={timerMock} />);
 
     // Stop timer
     await user.click(screen.getByRole('button', { name: /detener/i }));
@@ -316,7 +322,7 @@ describe('TimeTrackerBar — Timer Mode', () => {
 
   it('switches to manual mode when toggle is clicked', async () => {
     const user = userEvent.setup();
-    render(<TimeTrackerBar onSubmit={mockOnSubmit} />);
+    renderBar();
 
     // Switch to manual
     await user.click(screen.getByRole('button', { name: /manual/i }));
@@ -327,7 +333,7 @@ describe('TimeTrackerBar — Timer Mode', () => {
 
   it('switches to timer mode when toggle is clicked', async () => {
     const user = userEvent.setup();
-    render(<TimeTrackerBar onSubmit={mockOnSubmit} defaultMode="manual" />);
+    renderBar({ defaultMode: 'manual' });
 
     // Start in manual mode
     expect(screen.getByRole('button', { name: /añadir/i })).toBeInTheDocument();

@@ -88,6 +88,23 @@ export function useTimer() {
   }, []);
 
   /**
+   * Actualiza la hora de inicio del temporizador.
+   * Recalcula elapsed y persiste en IndexedDB.
+   */
+  const updateStartTime = useCallback(async (newStartTime: string) => {
+    try {
+      const newElapsed = await service.updateTimerStartTime(newStartTime);
+      setTimerState((prev) =>
+        prev ? { ...prev, startTime: newStartTime, elapsed: newElapsed } : prev
+      );
+      setElapsed(newElapsed);
+    } catch (error) {
+      console.error('Error updating start time:', error);
+      throw error;
+    }
+  }, []);
+
+  /**
    * Cancela el temporizador sin crear registro.
    */
   const cancel = useCallback(async () => {
@@ -107,6 +124,7 @@ export function useTimer() {
     elapsed,
     start,
     stop,
+    updateStartTime,
     cancel
   };
 }

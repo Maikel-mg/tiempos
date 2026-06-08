@@ -19,6 +19,7 @@ const timerMock = {
   start: vi.fn().mockResolvedValue(undefined),
   stop: vi.fn(),
   cancel: vi.fn().mockResolvedValue(undefined),
+  updateStartTime: vi.fn().mockResolvedValue(undefined),
 };
 
 vi.mock('../../hooks/useTimer', () => ({

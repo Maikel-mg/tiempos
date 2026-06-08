@@ -27,6 +27,7 @@ interface TimeTrackerBarProps {
     timerState: TimerState | null;
     start: (taskId: number, taskName: string) => Promise<void>;
     stop: (options?: { persist?: boolean }) => Promise<TimeEntry | StopTimerResult | null>;
+    updateStartTime: (newStartTime: string) => Promise<void>;
     cancel: () => Promise<void>;
   };
 }
@@ -59,6 +60,9 @@ export function TimeTrackerBar({ onSubmit, initialData, disabled, defaultMode = 
   const [startTime, setStartTime] = useState(initialData?.startTime || '09:00');
   const [endTime, setEndTime] = useState(initialData?.endTime || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Start time editing state
+  const [editingStartTime, setEditingStartTime] = useState(false);
 
   // Midnight split modal state
   const [splitModalOpen, setSplitModalOpen] = useState(false);
@@ -190,6 +194,13 @@ export function TimeTrackerBar({ onSubmit, initialData, disabled, defaultMode = 
     }
   }, [timer.isRunning]);
 
+  // Reset editing state when timer stops
+  useEffect(() => {
+    if (!timer.isRunning) {
+      setEditingStartTime(false);
+    }
+  }, [timer.isRunning]);
+
   return (
     <>
       <div className="flex items-center gap-2 w-full">
@@ -207,7 +218,7 @@ export function TimeTrackerBar({ onSubmit, initialData, disabled, defaultMode = 
           value={task}
           onChange={setTask}
           disabled={disabled || isSubmitting || timer.isRunning}
-          className="w-48"
+          className="w-96"
         />
 
         {mode === 'timer' ? (
@@ -216,6 +227,61 @@ export function TimeTrackerBar({ onSubmit, initialData, disabled, defaultMode = 
             <span className="font-mono text-sm tabular-nums whitespace-nowrap w-20 text-center">
               {formatDuration(timer.elapsed)}
             </span>
+
+            {/* Start time display / edit */}
+            {timer.isRunning && (
+              (() => {
+                // Convertir startTime UTC a componentes locales para mostrar/editar
+                const getLocalTimeHHMM = (isoString: string): string => {
+                  const d = new Date(isoString);
+                  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+                };
+
+                const handleSave = (val: string) => {
+                  if (!val || !timer.timerState?.startTime) return;
+                  const [hours, minutes] = val.split(':').map(Number);
+                  const d = new Date(timer.timerState.startTime);
+                  d.setHours(hours, minutes, 0, 0);
+                  timer.updateStartTime(d.toISOString());
+                };
+
+                return editingStartTime ? (
+                  <Input
+                    type="time"
+                    defaultValue={
+                      timer.timerState?.startTime
+                        ? getLocalTimeHHMM(timer.timerState.startTime)
+                        : ''
+                    }
+                    className="w-24 font-mono text-xs"
+                    autoFocus
+                    onBlur={(e) => {
+                      handleSave(e.target.value);
+                      setEditingStartTime(false);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleSave((e.target as HTMLInputElement).value);
+                        setEditingStartTime(false);
+                      } else if (e.key === 'Escape') {
+                        setEditingStartTime(false);
+                      }
+                    }}
+                  />
+                ) : (
+                  <span
+                    className="text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors whitespace-nowrap"
+                    onClick={() => setEditingStartTime(true)}
+                    title="Click para editar hora de inicio"
+                  >
+                    HORA DE INICIO{' '}
+                    {timer.timerState?.startTime
+                      ? getLocalTimeHHMM(timer.timerState.startTime)
+                      : '--:--'}
+                  </span>
+                );
+              })()
+            )}
 
             {/* INICIO / DETENER */}
             {timer.isRunning ? (

@@ -134,7 +134,7 @@ export function TimeTrackingPage() {
   }, [timerHook, createEntry]);
 
   return (
-    <main className="container mx-auto px-4 py-6 space-y-6">
+    <main className="w-full px-4 py-6 space-y-6">
       <TimeTrackerBar
         onSubmit={handleSubmit}
         initialData={editingEntry ?? undefined}

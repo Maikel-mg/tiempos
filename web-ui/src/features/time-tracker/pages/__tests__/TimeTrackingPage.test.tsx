@@ -65,6 +65,7 @@ function setupMocks(options: { stopResult?: unknown; crossingResult?: ReturnType
     start: vi.fn(),
     stop: mockStop.mockResolvedValue(options.stopResult ?? null),
     cancel: vi.fn(),
+    updateStartTime: vi.fn(),
   });
 
   vi.mocked(useTimeEntries).mockReturnValue({

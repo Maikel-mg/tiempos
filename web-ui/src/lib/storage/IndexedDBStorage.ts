@@ -149,12 +149,18 @@ export class IndexedDBStorage implements StorageStrategy {
   }
 
   // Timer State
+  // Dexie schema defines timerState with keyPath 'id', but TimerState
+  // doesn't have an id field. We inject id:'current' on write and
+  // strip it on read so IndexedDB's keyPath evaluation succeeds.
   async saveTimerState(state: TimerState): Promise<void> {
-    await db.timerState.put(state, 'current');
+    await db.timerState.put({ ...state, id: 'current' } as TimerState & { id: string });
   }
 
   async getTimerState(): Promise<TimerState | null> {
-    return await db.timerState.get('current') || null;
+    const row = await db.timerState.get('current');
+    if (!row) return null;
+    const { id: _id, ...timerState } = row as TimerState & { id: string };
+    return timerState;
   }
 
   async clearTimerState(): Promise<void> {

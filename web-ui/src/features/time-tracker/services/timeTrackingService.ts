@@ -189,6 +189,42 @@ export class TimeTrackingService {
   }
 
   /**
+   * Actualiza la hora de inicio del temporizador en ejecución.
+   * Recalcula elapsed y persiste en IndexedDB.
+   * @returns El nuevo valor de elapsed en segundos.
+   */
+  async updateTimerStartTime(newStartTime: string): Promise<number> {
+    const state = await this.storage.getTimerState();
+    if (!state || !state.isRunning) return 0;
+
+    // Clampear si es futuro
+    const newStart = new Date(newStartTime);
+    const now = new Date();
+    if (newStart.getTime() > now.getTime()) {
+      newStartTime = now.toISOString();
+    }
+
+    // No-op si el tiempo no cambió (comparar hasta minutos, ignorar milisegundos)
+    if (newStartTime.slice(0, 16) === state.startTime.slice(0, 16)) {
+      return state.elapsed;
+    }
+
+    // Recalcular elapsed
+    const elapsed = Math.floor(
+      (Date.now() - new Date(newStartTime).getTime()) / 1000
+    );
+
+    const updated: TimerState = {
+      ...state,
+      startTime: newStartTime,
+      elapsed
+    };
+
+    await this.storage.saveTimerState(updated);
+    return elapsed;
+  }
+
+  /**
    * Cancela el temporizador sin crear un registro.
    */
   async cancelTimer(): Promise<void> {

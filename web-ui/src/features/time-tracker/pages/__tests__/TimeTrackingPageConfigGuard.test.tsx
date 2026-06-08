@@ -53,6 +53,7 @@ function setupMocks(entries: unknown[] = []) {
     start: vi.fn(),
     stop: vi.fn(),
     cancel: vi.fn(),
+    updateStartTime: vi.fn(),
   });
 
   vi.mocked(useTimeEntries).mockReturnValue({
