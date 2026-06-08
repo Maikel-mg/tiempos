@@ -25,9 +25,10 @@ interface TimeTrackerBarProps {
     isRunning: boolean;
     elapsed: number;
     timerState: TimerState | null;
-    start: (taskId: number, taskName: string) => Promise<void>;
+    start: (taskId: number, taskName: string, description?: string) => Promise<void>;
     stop: (options?: { persist?: boolean }) => Promise<TimeEntry | StopTimerResult | null>;
     updateStartTime: (newStartTime: string) => Promise<void>;
+    updateDescription: (description: string) => Promise<void>;
     cancel: () => Promise<void>;
   };
 }
@@ -74,6 +75,9 @@ export function TimeTrackerBar({ onSubmit, initialData, disabled, defaultMode = 
     if (timer.timerState?.isRunning && !task) {
       setTask({ proceso: timer.timerState.taskId, nombre: timer.timerState.taskName });
       setMode('timer');
+    }
+    if (timer.timerState?.isRunning && timer.timerState.description && !description) {
+      setDescription(timer.timerState.description);
     }
   }, [timer.timerState]);
 
@@ -127,8 +131,8 @@ export function TimeTrackerBar({ onSubmit, initialData, disabled, defaultMode = 
   // Timer handlers
   const handleStart = useCallback(async () => {
     if (!task) return;
-    await timer.start(task.proceso, task.nombre);
-  }, [task, timer]);
+    await timer.start(task.proceso, task.nombre, description || undefined);
+  }, [task, timer, description]);
 
   const handleStop = useCallback(async () => {
     const result = await timer.stop({ persist: false });
@@ -201,6 +205,13 @@ export function TimeTrackerBar({ onSubmit, initialData, disabled, defaultMode = 
     }
   }, [timer.isRunning]);
 
+  // Persist description to IndexedDB when it changes while timer is running
+  useEffect(() => {
+    if (timer.isRunning && description) {
+      timer.updateDescription(description);
+    }
+  }, [description, timer.isRunning]);
+
   return (
     <>
       <div className="flex items-center gap-2 w-full">
@@ -209,7 +220,7 @@ export function TimeTrackerBar({ onSubmit, initialData, disabled, defaultMode = 
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="¿En qué estás trabajando?"
-          disabled={disabled || isSubmitting || timer.isRunning}
+          disabled={disabled || isSubmitting}
           className="flex-1 min-w-0"
         />
 

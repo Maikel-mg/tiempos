@@ -45,4 +45,5 @@ export interface TimerState {
   taskName: string;
   startTime: string;
   elapsed: number;
+  description?: string;
 }

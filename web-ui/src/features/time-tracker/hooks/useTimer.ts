@@ -54,9 +54,9 @@ export function useTimer() {
   /**
    * Inicia el temporizador para una tarea.
    */
-  const start = useCallback(async (taskId: number, taskName: string) => {
+  const start = useCallback(async (taskId: number, taskName: string, description?: string) => {
     try {
-      const state = await service.startTimer(taskId, taskName);
+      const state = await service.startTimer(taskId, taskName, description);
       setTimerState(state);
       setElapsed(0);
     } catch (error) {
@@ -88,7 +88,22 @@ export function useTimer() {
   }, []);
 
   /**
-   * Actualiza la hora de inicio del temporizador.
+   * Actualiza la descripción del temporizador en ejecución.
+   * Persiste en IndexedDB para que sobreviva navegación.
+   */
+  const updateDescription = useCallback(async (description: string) => {
+    try {
+      await service.updateTimerDescription(description);
+      setTimerState((prev) =>
+        prev ? { ...prev, description } : prev
+      );
+    } catch (error) {
+      console.error('Error updating timer description:', error);
+    }
+  }, []);
+
+  /**
+   * Actualiza la hora de inicio del temporizador en ejecución.
    * Recalcula elapsed y persiste en IndexedDB.
    */
   const updateStartTime = useCallback(async (newStartTime: string) => {
@@ -125,6 +140,7 @@ export function useTimer() {
     start,
     stop,
     updateStartTime,
+    updateDescription,
     cancel
   };
 }

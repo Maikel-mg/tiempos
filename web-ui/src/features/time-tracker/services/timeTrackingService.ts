@@ -114,13 +114,14 @@ export class TimeTrackingService {
   /**
    * Inicia el temporizador para una tarea.
    */
-  async startTimer(taskId: number, taskName: string): Promise<TimerState> {
+  async startTimer(taskId: number, taskName: string, description?: string): Promise<TimerState> {
     const state: TimerState = {
       isRunning: true,
       taskId,
       taskName,
       startTime: new Date().toISOString(),
-      elapsed: 0
+      elapsed: 0,
+      description
     };
     await this.storage.saveTimerState(state);
     return state;
@@ -153,7 +154,7 @@ export class TimeTrackingService {
       date: start.toISOString().split('T')[0],
       startTime: formatTimeHHMM(start),
       endTime: formatTimeHHMM(end),
-      description: undefined
+      description: state.description
     });
 
     // Actualizar la duración con el cálculo real
@@ -222,6 +223,22 @@ export class TimeTrackingService {
 
     await this.storage.saveTimerState(updated);
     return elapsed;
+  }
+
+  /**
+   * Actualiza la descripción del temporizador en ejecución.
+   * Persiste en IndexedDB para que sobreviva navegación.
+   */
+  async updateTimerDescription(description: string): Promise<void> {
+    const state = await this.storage.getTimerState();
+    if (!state || !state.isRunning) return;
+
+    const updated: TimerState = {
+      ...state,
+      description
+    };
+
+    await this.storage.saveTimerState(updated);
   }
 
   /**
