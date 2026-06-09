@@ -53,19 +53,34 @@ function setupMocks(entries: unknown[] = []) {
   });
 }
 
+function toLocalDateString(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 function makeEntry(id: string, synced = false, syncError?: string) {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const dayOfWeek = today.getDay();
+  const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - diffToMonday);
+  const date = toLocalDateString(monday);
+
   return {
     id,
     taskId: 100,
     taskName: `Task ${id}`,
     proceso: { proceso: 100, nombre: 'Desarrollo' },
-    date: '2026-01-15',
+    date,
     startTime: '09:00',
     endTime: '10:00',
     duration: 3600,
     description: '',
-    createdAt: '2026-01-15T09:00:00Z',
-    updatedAt: '2026-01-15T09:00:00Z',
+    createdAt: `${date}T09:00:00Z`,
+    updatedAt: `${date}T09:00:00Z`,
     synced,
     syncError,
   };
@@ -77,7 +92,6 @@ beforeEach(() => {
 
 describe('TimeTrackingPage SyncPanel integration', () => {
   it('does not show sync button when all entries are synced', async () => {
-    const user = userEvent.setup();
     setupMocks([makeEntry('1', true), makeEntry('2', true)]);
     render(
       <QueryClientProvider client={queryClient}>
@@ -85,15 +99,12 @@ describe('TimeTrackingPage SyncPanel integration', () => {
       </QueryClientProvider>
     );
 
-    await user.click(screen.getByRole('button', { name: /mis registros/i }));
-
     await waitFor(() => {
       expect(screen.queryByText(/sincronizar \d+ registros?/i)).not.toBeInTheDocument();
     });
   });
 
   it('shows sync button when there are pending entries', async () => {
-    const user = userEvent.setup();
     setupMocks([makeEntry('1', false), makeEntry('2', true)]);
     render(
       <QueryClientProvider client={queryClient}>
@@ -101,10 +112,8 @@ describe('TimeTrackingPage SyncPanel integration', () => {
       </QueryClientProvider>
     );
 
-    await user.click(screen.getByRole('button', { name: /mis registros/i }));
-
     await waitFor(() => {
-      expect(screen.getByText(/sincronizar 1 registros?/i)).toBeInTheDocument();
+      expect(screen.getByText(/Sync \(1\)/i)).toBeInTheDocument();
     });
   });
 
@@ -117,16 +126,14 @@ describe('TimeTrackingPage SyncPanel integration', () => {
       </QueryClientProvider>
     );
 
-    await user.click(screen.getByRole('button', { name: /mis registros/i }));
-
-    const syncBtn = await screen.findByText(/sincronizar 2 registros/i);
+    const syncBtn = await screen.findByText(/Sync \(2\)/i);
     await user.click(syncBtn);
 
     await waitFor(() => {
       expect(screen.getByTestId('sync-panel')).toBeInTheDocument();
     });
 
-    await user.click(screen.getByText(/sincronizar 2 registros/i));
+    await user.click(screen.getByText(/Sync \(2\)/i));
 
     await waitFor(() => {
       expect(screen.queryByTestId('sync-panel')).not.toBeInTheDocument();
@@ -134,15 +141,12 @@ describe('TimeTrackingPage SyncPanel integration', () => {
   });
 
   it('does not show sync panel when zero pending entries', async () => {
-    const user = userEvent.setup();
     setupMocks([makeEntry('1', true)]);
     render(
       <QueryClientProvider client={queryClient}>
         <TimeTrackingPage />
       </QueryClientProvider>
     );
-
-    await user.click(screen.getByRole('button', { name: /mis registros/i }));
 
     await waitFor(() => {
       expect(screen.queryByText(/sincronizar \d+ registros?/i)).not.toBeInTheDocument();
@@ -159,10 +163,8 @@ describe('TimeTrackingPage SyncPanel integration', () => {
       </QueryClientProvider>
     );
 
-    await user.click(screen.getByRole('button', { name: /mis registros/i }));
-
     // Open sync panel
-    const syncBtn = await screen.findByText(/sincronizar 2 registros/i);
+    const syncBtn = await screen.findByText(/Sync \(2\)/i);
     await user.click(syncBtn);
 
     await waitFor(() => {

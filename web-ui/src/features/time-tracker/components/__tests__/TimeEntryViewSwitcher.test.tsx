@@ -47,11 +47,12 @@ describe('TimeEntryViewSwitcher', () => {
         onDelete={vi.fn()}
         onEdit={vi.fn()}
         onPlay={vi.fn()}
+        activeTab="table"
       />
     );
 
-    const tableTab = screen.getByRole('tab', { name: /tabla/i });
-    expect(tableTab).toHaveAttribute('aria-selected', 'true');
+    // Table view should be rendered (check for table rows)
+    expect(screen.getByText('Frontend Task')).toBeInTheDocument();
   });
 
   it('renders flat table when "Tabla" tab is active', () => {
@@ -63,6 +64,7 @@ describe('TimeEntryViewSwitcher', () => {
         onDelete={vi.fn()}
         onEdit={vi.fn()}
         onPlay={vi.fn()}
+        activeTab="table"
       />
     );
 
@@ -80,8 +82,7 @@ describe('TimeEntryViewSwitcher', () => {
     expect(screen.getByText('Backend Feature')).toBeInTheDocument();
   });
 
-  it('renders GroupedEntryView when "Agrupado" tab is active', async () => {
-    const user = userEvent.setup();
+  it('renders GroupedEntryView when activeTab is "grouped"', () => {
     render(
       <TimeEntryViewSwitcher
         entries={ENTRIES}
@@ -90,11 +91,9 @@ describe('TimeEntryViewSwitcher', () => {
         onDelete={vi.fn()}
         onEdit={vi.fn()}
         onPlay={vi.fn()}
+        activeTab="grouped"
       />
     );
-
-    const groupedTab = screen.getByRole('tab', { name: /agrupado/i });
-    await user.click(groupedTab);
 
     // Should show week groups (grouped view structure)
     expect(screen.getByText(/Jun/)).toBeInTheDocument();
@@ -102,7 +101,7 @@ describe('TimeEntryViewSwitcher', () => {
 
   it('applying task filter in table view and switching to grouped view shows same filtered entries', async () => {
     const user = userEvent.setup();
-    render(
+    const { rerender } = render(
       <TimeEntryViewSwitcher
         entries={ENTRIES}
         selectedIds={new Set()}
@@ -110,6 +109,7 @@ describe('TimeEntryViewSwitcher', () => {
         onDelete={vi.fn()}
         onEdit={vi.fn()}
         onPlay={vi.fn()}
+        activeTab="table"
       />
     );
 
@@ -123,9 +123,18 @@ describe('TimeEntryViewSwitcher', () => {
     expect(screen.queryByText('Backend Task')).not.toBeInTheDocument();
     expect(screen.queryByText('Backend Feature')).not.toBeInTheDocument();
 
-    // Switch to grouped view
-    const groupedTab = screen.getByRole('tab', { name: /agrupado/i });
-    await user.click(groupedTab);
+    // Switch to grouped view by re-rendering with activeTab="grouped"
+    rerender(
+      <TimeEntryViewSwitcher
+        entries={ENTRIES}
+        selectedIds={new Set()}
+        onSelect={vi.fn()}
+        onDelete={vi.fn()}
+        onEdit={vi.fn()}
+        onPlay={vi.fn()}
+        activeTab="grouped"
+      />
+    );
 
     // The grouped view should have filtered entries (week group shows "2:00" for 2 frontend entries)
     // Backend entries should not be visible
@@ -133,9 +142,8 @@ describe('TimeEntryViewSwitcher', () => {
     expect(screen.queryByText('Backend Feature')).not.toBeInTheDocument();
   });
 
-  it('filters persist across tab switches', async () => {
-    const user = userEvent.setup();
-    render(
+  it('sort control only appears in table view', () => {
+    const { rerender } = render(
       <TimeEntryViewSwitcher
         entries={ENTRIES}
         selectedIds={new Set()}
@@ -143,44 +151,7 @@ describe('TimeEntryViewSwitcher', () => {
         onDelete={vi.fn()}
         onEdit={vi.fn()}
         onPlay={vi.fn()}
-      />
-    );
-
-    // Apply date filter (2026-06-01)
-    const dateFilter = screen.getByLabelText('Filtrar por fecha');
-    await user.type(dateFilter, '2026-06-01');
-
-    // Should show only entries from 2026-06-01
-    expect(screen.getByText('Frontend Task')).toBeInTheDocument();
-    expect(screen.getByText('Frontend Bug')).toBeInTheDocument();
-    expect(screen.queryByText('Backend Task')).not.toBeInTheDocument();
-    expect(screen.queryByText('Backend Feature')).not.toBeInTheDocument();
-
-    // Switch to grouped
-    const groupedTab = screen.getByRole('tab', { name: /agrupado/i });
-    await user.click(groupedTab);
-
-    // Switch back to table
-    const tableTab = screen.getByRole('tab', { name: /tabla/i });
-    await user.click(tableTab);
-
-    // Filter should still be applied
-    expect(screen.getByText('Frontend Task')).toBeInTheDocument();
-    expect(screen.getByText('Frontend Bug')).toBeInTheDocument();
-    expect(screen.queryByText('Backend Task')).not.toBeInTheDocument();
-    expect(screen.queryByText('Backend Feature')).not.toBeInTheDocument();
-  });
-
-  it('sort control only appears in table view', async () => {
-    const user = userEvent.setup();
-    render(
-      <TimeEntryViewSwitcher
-        entries={ENTRIES}
-        selectedIds={new Set()}
-        onSelect={vi.fn()}
-        onDelete={vi.fn()}
-        onEdit={vi.fn()}
-        onPlay={vi.fn()}
+        activeTab="table"
       />
     );
 
@@ -188,9 +159,18 @@ describe('TimeEntryViewSwitcher', () => {
     const sortSelect = screen.getAllByRole('combobox')[0]; // First select is sort
     expect(sortSelect).toBeInTheDocument();
 
-    // Switch to grouped
-    const groupedTab = screen.getByRole('tab', { name: /agrupado/i });
-    await user.click(groupedTab);
+    // Switch to grouped by re-rendering
+    rerender(
+      <TimeEntryViewSwitcher
+        entries={ENTRIES}
+        selectedIds={new Set()}
+        onSelect={vi.fn()}
+        onDelete={vi.fn()}
+        onEdit={vi.fn()}
+        onPlay={vi.fn()}
+        activeTab="grouped"
+      />
+    );
 
     // Sort control should NOT be visible in grouped view (there should be only 1 select now)
     const selectsAfterSwitch = screen.getAllByRole('combobox');
@@ -206,6 +186,7 @@ describe('TimeEntryViewSwitcher', () => {
         onDelete={vi.fn()}
         onEdit={vi.fn()}
         onPlay={vi.fn()}
+        activeTab="table"
       />
     );
 
@@ -225,6 +206,7 @@ describe('TimeEntryViewSwitcher', () => {
           onDelete={vi.fn()}
           onEdit={vi.fn()}
           onPlay={vi.fn()}
+          activeTab="table"
         />
       );
 
@@ -246,6 +228,7 @@ describe('TimeEntryViewSwitcher', () => {
           onDelete={vi.fn()}
           onEdit={vi.fn()}
           onPlay={vi.fn()}
+          activeTab="table"
         />
       );
 
@@ -264,6 +247,7 @@ describe('TimeEntryViewSwitcher', () => {
           onDelete={vi.fn()}
           onEdit={vi.fn()}
           onPlay={vi.fn()}
+          activeTab="table"
         />
       );
 
@@ -279,6 +263,7 @@ describe('TimeEntryViewSwitcher', () => {
           onDelete={vi.fn()}
           onEdit={vi.fn()}
           onPlay={vi.fn()}
+          activeTab="table"
         />
       );
 

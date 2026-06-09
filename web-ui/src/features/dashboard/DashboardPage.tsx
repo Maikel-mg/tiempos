@@ -4,11 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useTimeEntries } from './hooks/useTimeEntries';
 import { useAggregatedData } from './hooks/useAggregatedData';
-import { PeriodSelector } from './components/PeriodSelector';
+import { PeriodSelector } from '@/components/shared/PeriodSelector';
+import type { PeriodType, DateRange } from '@/components/shared/PeriodSelector';
 import { SummaryCards } from './components/SummaryCards';
 import { TaskBreakdownTable } from './components/TaskBreakdownTable';
 import { DayGroupedEntries } from './components/DayGroupedEntries';
-import type { PeriodType, DateRange } from './types';
 import type { TimeEntry } from '@/lib/types';
 
 function getDateRangeForPeriod(period: PeriodType, customRange?: DateRange): { start: Date; end: Date } {

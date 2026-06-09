@@ -68,19 +68,34 @@ function setupMocks(entries: unknown[] = []) {
   });
 }
 
+function toLocalDateString(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 function makeEntry(id: string, synced = false) {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const dayOfWeek = today.getDay();
+  const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - diffToMonday);
+  const date = toLocalDateString(monday);
+
   return {
     id,
     taskId: 100,
     taskName: `Task ${id}`,
     proceso: { proceso: 100, nombre: 'Desarrollo' },
-    date: '2026-01-15',
+    date,
     startTime: '09:00',
     endTime: '10:00',
     duration: 3600,
     description: '',
-    createdAt: '2026-01-15T09:00:00Z',
-    updatedAt: '2026-01-15T09:00:00Z',
+    createdAt: `${date}T09:00:00Z`,
+    updatedAt: `${date}T09:00:00Z`,
     synced,
   };
 }
@@ -102,11 +117,8 @@ describe('TimeTrackingPage — config guard integration', () => {
       </MemoryRouter>
     );
 
-    // Open the records tab
-    await user.click(screen.getByRole('button', { name: /mis registros/i }));
-
     // Open the sync panel
-    const syncBtn = await screen.findByText(/sincronizar 1 registros?/i);
+    const syncBtn = await screen.findByText(/Sync \(1\)/i);
     await user.click(syncBtn);
 
     // The guard panel should be visible
@@ -132,8 +144,8 @@ describe('TimeTrackingPage — config guard integration', () => {
       </MemoryRouter>
     );
 
-    // Page should render without redirect — timer widget and tabs should be visible
-    expect(screen.getByRole('button', { name: /nuevo registro/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /mis registros/i })).toBeInTheDocument();
+    // Page should render without redirect — timer widget and period selector should be visible
+    expect(screen.getByText('Hoy')).toBeInTheDocument();
+    expect(screen.getByText('Esta Semana')).toBeInTheDocument();
   });
 });

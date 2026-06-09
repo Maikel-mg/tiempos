@@ -43,19 +43,34 @@ const mockRefresh = vi.fn();
 const mockUpdateEntry = vi.fn();
 const mockDeleteEntry = vi.fn();
 
-function makeEntry(id: string, synced = false): TimeEntry {
+function toLocalDateString(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function makeEntry(id: string, synced = false, dateOverride?: string): TimeEntry {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const dayOfWeek = today.getDay();
+  const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - diffToMonday);
+  const entryDate = dateOverride || toLocalDateString(monday);
+
   return {
     id,
     taskId: 100,
     taskName: `Task ${id}`,
     proceso: { proceso: 100, nombre: 'Desarrollo' },
-    date: '2026-01-15',
+    date: entryDate,
     startTime: '09:00',
     endTime: '10:00',
     duration: 3600,
     description: `Description ${id}`,
-    createdAt: '2026-01-15T09:00:00Z',
-    updatedAt: '2026-01-15T09:00:00Z',
+    createdAt: `${entryDate}T09:00:00Z`,
+    updatedAt: `${entryDate}T09:00:00Z`,
     synced,
   };
 }

@@ -1,11 +1,9 @@
 import { useMemo, useState } from 'react';
-import { Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TimeEntryList } from './TimeEntryList';
 import { GroupedEntryView } from './GroupedEntryView';
 import type { TimeEntry } from '../types';
@@ -17,6 +15,7 @@ interface TimeEntryViewSwitcherProps {
   onDelete: (id: string) => Promise<void>;
   onEdit?: (entry: TimeEntry) => void;
   onPlay?: (entry: TimeEntry) => void;
+  activeTab: string;
 }
 
 export function TimeEntryViewSwitcher({
@@ -26,21 +25,17 @@ export function TimeEntryViewSwitcher({
   onDelete,
   onEdit,
   onPlay,
+  activeTab,
 }: TimeEntryViewSwitcherProps) {
-  const [filterDate, setFilterDate] = useState('');
   const [filterTask, setFilterTask] = useState('');
   const [sortBy, setSortBy] = useState<'date' | 'duration' | 'task'>('date');
   const [filterSync, setFilterSync] = useState<'all' | 'pending' | 'synced' | 'failed'>('all');
-  const [activeTab, setActiveTab] = useState('table');
 
   const filtered = useMemo(() => {
     let result = [...entries];
-    
-    if (filterDate) {
-      result = result.filter(e => e.date === filterDate);
-    }
+
     if (filterTask) {
-      result = result.filter(e => 
+      result = result.filter(e =>
         e.taskName.toLowerCase().includes(filterTask.toLowerCase())
       );
     }
@@ -51,7 +46,7 @@ export function TimeEntryViewSwitcher({
     } else if (filterSync === 'failed') {
       result = result.filter(e => !e.synced && !!e.syncError);
     }
-    
+
     // Sort only applies to table view
     if (activeTab === 'table') {
       result.sort((a, b) => {
@@ -60,9 +55,9 @@ export function TimeEntryViewSwitcher({
         return a.taskName.localeCompare(b.taskName);
       });
     }
-    
+
     return result;
-  }, [entries, filterDate, filterTask, filterSync, sortBy, activeTab]);
+  }, [entries, filterTask, filterSync, sortBy, activeTab]);
 
   const toggleSelect = (id: string) => {
     const newSet = new Set(selectedIds);
@@ -113,19 +108,9 @@ export function TimeEntryViewSwitcher({
             )}
           </div>
         </div>
-        
+
         {/* Filters */}
         <div className="flex flex-wrap gap-4 mt-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="filter-date" className="text-xs">Filtrar por fecha</Label>
-            <Input
-              id="filter-date"
-              type="date"
-              value={filterDate}
-              onChange={(e) => setFilterDate(e.target.value)}
-              className="w-40"
-            />
-          </div>
           <div className="space-y-1.5">
             <Label htmlFor="filter-task" className="text-xs">Filtrar por tarea</Label>
             <Input
@@ -166,18 +151,8 @@ export function TimeEntryViewSwitcher({
             </Select>
           </div>
         </div>
-
-        {/* Tabs */}
-        <div className="mt-4">
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList>
-              <TabsTrigger value="table">Tabla</TabsTrigger>
-              <TabsTrigger value="grouped">Agrupado</TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
       </CardHeader>
-      
+
       <CardContent>
         {activeTab === 'table' ? (
           <TimeEntryList

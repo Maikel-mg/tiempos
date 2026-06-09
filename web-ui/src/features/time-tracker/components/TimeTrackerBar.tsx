@@ -221,7 +221,7 @@ export function TimeTrackerBar({ onSubmit, initialData, disabled, defaultMode = 
           onChange={(e) => setDescription(e.target.value)}
           placeholder="¿En qué estás trabajando?"
           disabled={disabled || isSubmitting}
-          className="flex-1 min-w-0 bg-background border-border"
+          className="flex-1 min-w-0 dabg-background border-border"
         />
 
         {/* Process selector — shared across modes */}

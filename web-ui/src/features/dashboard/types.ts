@@ -1,9 +1,4 @@
-export type PeriodType = 'today' | 'week' | 'month' | 'last-month' | 'custom';
-
-export interface DateRange {
-  start: Date;
-  end: Date;
-}
+export type { PeriodType, DateRange } from '@/components/shared/PeriodSelector';
 
 export interface TaskSummary {
   name: string;
