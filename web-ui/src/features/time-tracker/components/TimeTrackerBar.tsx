@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Clock, List } from 'lucide-react';
+import { Clock, List, Pencil } from 'lucide-react';
 import { ProcessSelectorButton } from './ProcessSelectorButton';
 import { MidnightSplitModal } from './MidnightSplitModal';
 import { detectCrossing } from '../lib/timerCrossingDetector';
@@ -214,7 +214,7 @@ export function TimeTrackerBar({ onSubmit, initialData, disabled, defaultMode = 
 
   return (
     <>
-      <div className="flex items-center gap-2 w-full">
+      <div className="flex items-center gap-2 w-full flex-wrap">
         {/* Description — shared across modes */}
         <Input
           value={description}
@@ -281,14 +281,25 @@ export function TimeTrackerBar({ onSubmit, initialData, disabled, defaultMode = 
                   />
                 ) : (
                   <span
-                    className="text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors whitespace-nowrap"
+                    className="inline-flex items-center gap-1 text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors whitespace-nowrap rounded px-1.5 py-0.5 hover:bg-accent/50"
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Hora de inicio: ${timer.timerState?.startTime ? getLocalTimeHHMM(timer.timerState.startTime) : '--:--'}. Click para editar.`}
                     onClick={() => setEditingStartTime(true)}
-                    title="Click para editar hora de inicio"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setEditingStartTime(true);
+                      }
+                    }}
                   >
-                    HORA DE INICIO{' '}
-                    {timer.timerState?.startTime
-                      ? getLocalTimeHHMM(timer.timerState.startTime)
-                      : '--:--'}
+                    <span className="text-muted-foreground/70">Inicio:</span>
+                    <span className="font-mono font-medium text-foreground">
+                      {timer.timerState?.startTime
+                        ? getLocalTimeHHMM(timer.timerState.startTime)
+                        : '--:--'}
+                    </span>
+                    <Pencil className="w-3 h-3 opacity-40 group-hover:opacity-100" />
                   </span>
                 );
               })()
@@ -302,7 +313,7 @@ export function TimeTrackerBar({ onSubmit, initialData, disabled, defaultMode = 
                   onClick={handleStop}
                   disabled={disabled}
                 >
-                  DETENER
+                  Detener
                 </Button>
                 <Button
                   variant="ghost"
@@ -321,7 +332,7 @@ export function TimeTrackerBar({ onSubmit, initialData, disabled, defaultMode = 
                 disabled={disabled || !task}
                 title={!task ? 'Seleccioná una tarea primero' : undefined}
               >
-                INICIO
+                Iniciar
               </Button>
             )}
           </>
@@ -360,7 +371,7 @@ export function TimeTrackerBar({ onSubmit, initialData, disabled, defaultMode = 
               onClick={handleSubmit}
               disabled={!isManualValid || isSubmitting || disabled}
             >
-              {isSubmitting ? 'Guardando...' : 'AÑADIR'}
+              {isSubmitting ? 'Guardando...' : 'Añadir'}
             </Button>
           </>
         )}
@@ -372,8 +383,10 @@ export function TimeTrackerBar({ onSubmit, initialData, disabled, defaultMode = 
               type="button"
               onClick={() => setMode('timer')}
               disabled={disabled}
+              aria-label="Modo temporizador"
+              aria-pressed={mode === 'timer'}
               title="Timer"
-              className={`p-1 rounded transition-colors ${
+              className={`p-1 rounded transition-colors min-w-[44px] min-h-[44px] ${
                 mode === 'timer'
                   ? 'bg-primary text-primary-foreground'
                   : 'text-muted-foreground hover:text-foreground'
@@ -385,8 +398,10 @@ export function TimeTrackerBar({ onSubmit, initialData, disabled, defaultMode = 
               type="button"
               onClick={() => setMode('manual')}
               disabled={disabled}
+              aria-label="Modo manual"
+              aria-pressed={mode === 'manual'}
               title="Manual"
-              className={`p-1 rounded transition-colors ${
+              className={`p-1 rounded transition-colors min-w-[44px] min-h-[44px] ${
                 mode === 'manual'
                   ? 'bg-primary text-primary-foreground'
                   : 'text-muted-foreground hover:text-foreground'

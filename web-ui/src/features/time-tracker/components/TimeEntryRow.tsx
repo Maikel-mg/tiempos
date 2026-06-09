@@ -46,7 +46,7 @@ export function TimeEntryRow({ entry, selected, onToggle, onDelete, onEdit, onPl
       <TableCell className="w-12">
         <button
           onClick={onToggle}
-          className="flex items-center justify-center"
+          className="flex items-center justify-center w-11 h-11 min-w-[44px] min-h-[44px] rounded-md hover:bg-accent"
         >
           {selected ? (
             <CheckCircle2 className="w-5 h-5 text-green-600" />
@@ -113,13 +113,13 @@ export function TimeEntryRow({ entry, selected, onToggle, onDelete, onEdit, onPl
       <TableCell className="w-24">
         {entry.synced ? (
           <div className="flex gap-1">
-            <Button variant="ghost" size="icon" onClick={onPlay} className="text-green-600 hover:text-green-700">
+            <Button variant="ghost" size="icon" onClick={onPlay} className="min-w-[44px] min-h-[44px] text-green-600 hover:text-green-700">
               <Play className="w-4 h-4" />
             </Button>
             <Tooltip>
               <TooltipTrigger asChild>
                 <span>
-                  <Button variant="ghost" size="icon" disabled className="text-muted-foreground">
+                  <Button variant="ghost" size="icon" disabled className="min-w-[44px] min-h-[44px] text-muted-foreground">
                     <Pencil className="w-4 h-4" />
                   </Button>
                 </span>
@@ -129,7 +129,7 @@ export function TimeEntryRow({ entry, selected, onToggle, onDelete, onEdit, onPl
           </div>
         ) : (
           <div className="flex gap-1">
-            <Button variant="ghost" size="icon" onClick={onPlay} className="text-green-600 hover:text-green-700">
+            <Button variant="ghost" size="icon" onClick={onPlay} className="min-w-[44px] min-h-[44px] text-green-600 hover:text-green-700">
               <Play className="w-4 h-4" />
             </Button>
             {onEdit && (
@@ -137,7 +137,7 @@ export function TimeEntryRow({ entry, selected, onToggle, onDelete, onEdit, onPl
                 variant="ghost"
                 size="icon"
                 onClick={onEdit}
-                className="text-muted-foreground hover:text-foreground"
+                className="min-w-[44px] min-h-[44px] text-muted-foreground hover:text-foreground"
               >
                 <Pencil className="w-4 h-4" />
               </Button>
@@ -146,7 +146,7 @@ export function TimeEntryRow({ entry, selected, onToggle, onDelete, onEdit, onPl
               variant="ghost"
               size="icon"
               onClick={onDelete}
-              className="text-muted-foreground hover:text-destructive"
+              className="min-w-[44px] min-h-[44px] text-muted-foreground hover:text-destructive"
             >
               <Trash2 className="w-4 h-4" />
             </Button>

@@ -67,7 +67,7 @@ export function OverlapAlert({ entries }: OverlapAlertProps) {
   if (overlaps.length === 0) return null;
 
   return (
-    <Alert variant="default" className="border-yellow-500 bg-yellow-50">
+    <Alert variant="default" className="border-yellow-500 dark:border-yellow-600 bg-yellow-50 dark:bg-yellow-950/30">
       <AlertTriangle className="h-4 w-4" />
       <AlertTitle>Registros solapados detectados</AlertTitle>
       <AlertDescription>

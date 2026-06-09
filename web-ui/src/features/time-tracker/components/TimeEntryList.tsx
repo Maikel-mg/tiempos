@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
+import { Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { TimeEntryRow } from './TimeEntryRow';
 import type { TimeEntry } from '../types';
@@ -127,43 +129,55 @@ export function TimeEntryList({ entries, selectedIds, onSelect, onDelete, onEdit
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">Ordenar por</Label>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as 'date' | 'duration' | 'task')}
-              className="h-10 px-3 rounded-md border border-input bg-background text-sm"
-            >
-              <option value="date">Fecha</option>
-              <option value="duration">Duración</option>
-              <option value="task">Tarea</option>
-            </select>
+            <Select value={sortBy} onValueChange={(v: string) => setSortBy(v as typeof sortBy)}>
+              <SelectTrigger className="w-40 h-10">
+                <SelectValue placeholder="Ordenar por" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="date">Fecha</SelectItem>
+                <SelectItem value="duration">Duración</SelectItem>
+                <SelectItem value="task">Tarea</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">Estado sincronización</Label>
-            <select
-              value={filterSync}
-              onChange={(e) => setFilterSync(e.target.value as 'all' | 'pending' | 'synced' | 'failed')}
-              className="h-10 px-3 rounded-md border border-input bg-background text-sm"
-            >
-              <option value="all">Todos</option>
-              <option value="pending">Pendiente</option>
-              <option value="synced">Sincronizado</option>
-              <option value="failed">Fallido</option>
-            </select>
+            <Select value={filterSync} onValueChange={(v: string) => setFilterSync(v as typeof filterSync)}>
+              <SelectTrigger className="w-40 h-10">
+                <SelectValue placeholder="Estado sincronización" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="pending">Pendiente</SelectItem>
+                <SelectItem value="synced">Sincronizado</SelectItem>
+                <SelectItem value="failed">Fallido</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </CardHeader>
       
       <CardContent>
         {loading ? (
-          <div className="text-center py-8 text-muted-foreground">
-            Cargando registros...
+          <div className="space-y-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="h-12 bg-muted animate-pulse rounded-md" />
+            ))}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            {entries.length === 0 
-              ? 'No hay registros de tiempo' 
-              : 'No hay registros que coincidan con los filtros'}
-          </div>
+          entries.length === 0 ? (
+            <div className="text-center py-16 space-y-3">
+              <Clock className="w-12 h-12 mx-auto text-muted-foreground/40" />
+              <p className="text-lg font-medium text-muted-foreground">No hay registros de tiempo</p>
+              <p className="text-sm text-muted-foreground">
+                Empezá usando el temporizador o agregá un registro manual arriba.
+              </p>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              No hay registros que coincidan con los filtros
+            </div>
+          )
         ) : (
           <Table>
             <TableHeader>
