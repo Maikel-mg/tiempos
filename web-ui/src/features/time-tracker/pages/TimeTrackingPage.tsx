@@ -134,17 +134,23 @@ export function TimeTrackingPage() {
   }, [timerHook, createEntry]);
 
   return (
-    <main className="w-full px-4 py-6 space-y-6">
-      <TimeTrackerBar
-        onSubmit={handleSubmit}
-        initialData={editingEntry ?? undefined}
-        defaultMode={editingEntry ? 'manual' : 'timer'}
-        disabled={false}
-        timer={timerHook}
-      />
+    <main className="w-full">
+      {/* Sticky tracker bar — always visible */}
+      <div className="sticky top-0 z-40 bg-background border-b border-border/50 backdrop-blur-sm">
+        <div className="px-4 sm:px-6 py-3">
+          <TimeTrackerBar
+            onSubmit={handleSubmit}
+            initialData={editingEntry ?? undefined}
+            defaultMode={editingEntry ? 'manual' : 'timer'}
+            disabled={false}
+            timer={timerHook}
+          />
+        </div>
+      </div>
 
-      {/* Cancel editing indicator */}
-      {editingEntry && (
+      <div className="px-4 sm:px-6 py-5 space-y-5">
+        {/* Cancel editing indicator */}
+        {editingEntry && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span>Editando: <strong>{editingEntry.taskName}</strong> — {editingEntry.date}</span>
           <Button variant="ghost" size="sm" onClick={handleEditCancel}>
@@ -158,12 +164,13 @@ export function TimeTrackingPage() {
       <div className="space-y-4">
         {/* List header with weekly total + sync icon */}
         <div className="flex justify-between items-center flex-col sm:flex-row sm:items-baseline gap-2">
-          <h3 className="text-lg font-semibold">
+          <h3 className="text-xl font-semibold tracking-tight">
             Mis Registros ({entries.length})
           </h3>
           <div className="flex items-center gap-4">
-            <span className="text-xs text-muted-foreground">
-              Total semanal: <strong className="text-foreground">{weeklyTotalDisplay}</strong>
+            <span className="text-sm text-muted-foreground">
+              Total semanal:{' '}
+              <strong className="text-foreground font-medium">{weeklyTotalDisplay}</strong>
             </span>
             {pendingEntries.length > 0 && (
               <Button
@@ -194,6 +201,7 @@ export function TimeTrackingPage() {
           onEdit={handleEditEntry}
           onPlay={handlePlayEntry}
         />
+      </div>
       </div>
     </main>
   );

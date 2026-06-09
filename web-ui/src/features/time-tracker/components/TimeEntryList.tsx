@@ -79,7 +79,7 @@ export function TimeEntryList({ entries, selectedIds, onSelect, onDelete, onEdit
   const selectedCount = selectedIds.size;
 
   return (
-    <Card>
+    <Card className="bg-card border border-border">
       <CardHeader>
         <div className="flex items-center justify-between flex-wrap gap-4">
           <CardTitle>

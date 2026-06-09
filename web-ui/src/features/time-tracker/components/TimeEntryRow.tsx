@@ -72,12 +72,12 @@ export function TimeEntryRow({ entry, selected, onToggle, onDelete, onEdit, onPl
       </TableCell>
 
       {/* Start Time */}
-      <TableCell className="font-mono text-muted-foreground">
+      <TableCell className="font-mono tabular-nums text-muted-foreground">
         {entry.startTime}
       </TableCell>
 
       {/* End Time */}
-      <TableCell className="font-mono text-muted-foreground">
+      <TableCell className="font-mono tabular-nums text-muted-foreground">
         {entry.endTime}
       </TableCell>
 

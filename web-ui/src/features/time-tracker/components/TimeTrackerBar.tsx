@@ -214,14 +214,14 @@ export function TimeTrackerBar({ onSubmit, initialData, disabled, defaultMode = 
 
   return (
     <>
-      <div className="flex items-center gap-2 w-full flex-wrap">
+      <div className="flex items-center gap-2.5 w-full flex-wrap p-3 rounded-lg bg-card border border-border">
         {/* Description — shared across modes */}
         <Input
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="¿En qué estás trabajando?"
           disabled={disabled || isSubmitting}
-          className="flex-1 min-w-0"
+          className="flex-1 min-w-0 bg-background border-border"
         />
 
         {/* Process selector — shared across modes */}
@@ -235,7 +235,7 @@ export function TimeTrackerBar({ onSubmit, initialData, disabled, defaultMode = 
         {mode === 'timer' ? (
           <>
             {/* Clock display */}
-            <span className="font-mono text-sm tabular-nums whitespace-nowrap w-20 text-center">
+            <span className="font-mono text-sm tabular-nums whitespace-nowrap w-20 text-center text-foreground">
               {formatDuration(timer.elapsed)}
             </span>
 
@@ -264,7 +264,7 @@ export function TimeTrackerBar({ onSubmit, initialData, disabled, defaultMode = 
                         ? getLocalTimeHHMM(timer.timerState.startTime)
                         : ''
                     }
-                    className="w-24 font-mono text-xs"
+                    className="w-24 font-mono text-xs tabular-nums"
                     autoFocus
                     onBlur={(e) => {
                       handleSave(e.target.value);
@@ -281,7 +281,7 @@ export function TimeTrackerBar({ onSubmit, initialData, disabled, defaultMode = 
                   />
                 ) : (
                   <span
-                    className="inline-flex items-center gap-1 text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors whitespace-nowrap rounded px-1.5 py-0.5 hover:bg-accent/50"
+                    className="inline-flex items-center gap-1.5 text-xs cursor-pointer transition-colors whitespace-nowrap rounded px-2 py-1 hover:bg-accent text-muted-foreground hover:text-foreground"
                     role="button"
                     tabIndex={0}
                     aria-label={`Hora de inicio: ${timer.timerState?.startTime ? getLocalTimeHHMM(timer.timerState.startTime) : '--:--'}. Click para editar.`}
@@ -294,7 +294,7 @@ export function TimeTrackerBar({ onSubmit, initialData, disabled, defaultMode = 
                     }}
                   >
                     <span className="text-muted-foreground/70">Inicio:</span>
-                    <span className="font-mono font-medium text-foreground">
+                    <span className="font-mono font-medium text-foreground tabular-nums">
                       {timer.timerState?.startTime
                         ? getLocalTimeHHMM(timer.timerState.startTime)
                         : '--:--'}
@@ -312,6 +312,7 @@ export function TimeTrackerBar({ onSubmit, initialData, disabled, defaultMode = 
                   variant="destructive"
                   onClick={handleStop}
                   disabled={disabled}
+                  className="border border-destructive/50"
                 >
                   Detener
                 </Button>
@@ -331,6 +332,7 @@ export function TimeTrackerBar({ onSubmit, initialData, disabled, defaultMode = 
                 onClick={handleStart}
                 disabled={disabled || !task}
                 title={!task ? 'Seleccioná una tarea primero' : undefined}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium"
               >
                 Iniciar
               </Button>
@@ -378,7 +380,7 @@ export function TimeTrackerBar({ onSubmit, initialData, disabled, defaultMode = 
 
         {/* Stacked mode icons — hidden while timer is running to prevent mode switching */}
         {!timer.isRunning && (
-          <div className="flex flex-col gap-0.5 shrink-0">
+          <div className="flex rounded-lg bg-muted p-0.5 border border-border">
             <button
               type="button"
               onClick={() => setMode('timer')}
@@ -386,10 +388,10 @@ export function TimeTrackerBar({ onSubmit, initialData, disabled, defaultMode = 
               aria-label="Modo temporizador"
               aria-pressed={mode === 'timer'}
               title="Timer"
-              className={`p-1 rounded transition-colors min-w-[44px] min-h-[44px] ${
+              className={`p-1.5 rounded-md transition-colors min-w-[44px] min-h-[44px] ${
                 mode === 'timer'
                   ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-accent'
               }`}
             >
               <Clock className="h-4 w-4" />
@@ -401,10 +403,10 @@ export function TimeTrackerBar({ onSubmit, initialData, disabled, defaultMode = 
               aria-label="Modo manual"
               aria-pressed={mode === 'manual'}
               title="Manual"
-              className={`p-1 rounded transition-colors min-w-[44px] min-h-[44px] ${
+              className={`p-1.5 rounded-md transition-colors min-w-[44px] min-h-[44px] ${
                 mode === 'manual'
                   ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-accent'
               }`}
             >
               <List className="h-4 w-4" />

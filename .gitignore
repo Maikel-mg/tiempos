@@ -1,3 +1,7 @@
 .opencode
 node_modules
 dist
+skills-lock.json
+.agents/skills
+.atl
+.windsurf/skills
