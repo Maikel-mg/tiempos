@@ -365,35 +365,37 @@ export function TimeTrackerBar({ onSubmit, initialData, disabled, defaultMode = 
           </>
         )}
 
-        {/* Stacked mode icons */}
-        <div className="flex flex-col gap-0.5 shrink-0">
-          <button
-            type="button"
-            onClick={() => setMode('timer')}
-            disabled={disabled || timer.isRunning}
-            title="Timer"
-            className={`p-1 rounded transition-colors ${
-              mode === 'timer'
-                ? 'bg-primary text-primary-foreground'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <Clock className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode('manual')}
-            disabled={disabled || timer.isRunning}
-            title="Manual"
-            className={`p-1 rounded transition-colors ${
-              mode === 'manual'
-                ? 'bg-primary text-primary-foreground'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <List className="h-4 w-4" />
-          </button>
-        </div>
+        {/* Stacked mode icons — hidden while timer is running to prevent mode switching */}
+        {!timer.isRunning && (
+          <div className="flex flex-col gap-0.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => setMode('timer')}
+              disabled={disabled}
+              title="Timer"
+              className={`p-1 rounded transition-colors ${
+                mode === 'timer'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Clock className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('manual')}
+              disabled={disabled}
+              title="Manual"
+              className={`p-1 rounded transition-colors ${
+                mode === 'manual'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <List className="h-4 w-4" />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Midnight split modal */}
