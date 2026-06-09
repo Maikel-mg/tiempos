@@ -39,6 +39,22 @@ export interface TimeEntry {
   syncError?: string;
 }
 
+export interface LocalWeekDay {
+  date: string;           // YYYY-MM-DD
+  dateFormatted: string;  // "Lun 2"
+  totalSeconds: number;
+  entries: TimeEntry[];
+}
+
+export interface LocalWeekGroup {
+  weekKey: string;              // YYYY-WXX
+  weekStart: string;            // YYYY-MM-DD (Monday)
+  weekEnd: string;              // YYYY-MM-DD (Sunday)
+  weekRangeFormatted: string;   // "2 - 8 Jun"
+  totalSeconds: number;
+  days: LocalWeekDay[];
+}
+
 export interface TimerState {
   isRunning: boolean;
   taskId: number;
