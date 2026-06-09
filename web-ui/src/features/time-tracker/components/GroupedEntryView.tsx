@@ -1,6 +1,14 @@
 import { useMemo, useState } from 'react';
-import { ChevronDown, ChevronRight, Clock } from 'lucide-react';
+import { ChevronDown, ChevronRight, Clock, MoreVertical, Play, Pencil, Trash2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { groupEntriesByWeek, getWeekKey } from '../lib/groupEntriesByWeek';
 import type { TimeEntry, LocalWeekGroup, LocalWeekDay } from '../types';
 
@@ -95,6 +103,9 @@ export function GroupedEntryView({
           onWeekToggle={() => toggleWeek(weekGroup.weekKey)}
           expandedDays={expandedDays}
           onDayToggle={toggleDay}
+          onDelete={_onDelete}
+          onEdit={_onEdit}
+          onPlay={_onPlay}
         />
       ))}
     </div>
@@ -107,6 +118,9 @@ interface WeekGroupCardProps {
   onWeekToggle: () => void;
   expandedDays: Set<string>;
   onDayToggle: (dayKey: string) => void;
+  onDelete?: (id: string) => Promise<void>;
+  onEdit?: (entry: TimeEntry) => void;
+  onPlay?: (entry: TimeEntry) => void;
 }
 
 function WeekGroupCard({
@@ -115,6 +129,9 @@ function WeekGroupCard({
   onWeekToggle,
   expandedDays,
   onDayToggle,
+  onDelete,
+  onEdit,
+  onPlay,
 }: WeekGroupCardProps) {
   return (
     <div className="border rounded-lg overflow-hidden">
@@ -151,6 +168,9 @@ function WeekGroupCard({
                 day={day}
                 isExpanded={expandedDays.has(day.date)}
                 onToggle={() => onDayToggle(day.date)}
+                onDelete={onDelete}
+                onEdit={onEdit}
+                onPlay={onPlay}
               />
             ))}
           </div>
@@ -164,9 +184,12 @@ interface DayRowProps {
   day: LocalWeekDay;
   isExpanded: boolean;
   onToggle: () => void;
+  onDelete?: (id: string) => Promise<void>;
+  onEdit?: (entry: TimeEntry) => void;
+  onPlay?: (entry: TimeEntry) => void;
 }
 
-function DayRow({ day, isExpanded, onToggle }: DayRowProps) {
+function DayRow({ day, isExpanded, onToggle, onDelete, onEdit, onPlay }: DayRowProps) {
   return (
     <div>
       {/* Day Header */}
@@ -216,6 +239,31 @@ function DayRow({ day, isExpanded, onToggle }: DayRowProps) {
                     </p>
                   )}
                 </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label="Acciones">
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => onPlay?.(entry)}>
+                      <Play className="h-4 w-4" />
+                      Play
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      disabled={entry.synced}
+                      onClick={() => onEdit?.(entry)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                      Editar
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onDelete?.(entry.id)}>
+                      <Trash2 className="h-4 w-4" />
+                      Eliminar
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             ))}
           </div>

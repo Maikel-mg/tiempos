@@ -219,4 +219,148 @@ describe('GroupedEntryView', () => {
       expect(screen.getByText('Short task')).toBeInTheDocument();
     });
   });
+
+  describe('kebab menu', () => {
+    it('renders kebab menu for each entry when day is expanded', () => {
+      render(
+        <GroupedEntryView
+          entries={ALL_ENTRIES}
+          selectedIds={new Set()}
+          onSelect={vi.fn()}
+          onDelete={vi.fn()}
+          onEdit={vi.fn()}
+          onPlay={vi.fn()}
+        />,
+      );
+
+      // Each visible entry should have a kebab menu (Week 23 collapsed, so only 3 entries visible)
+      const kebabButtons = screen.getAllByRole('button', { name: /acciones/i });
+      expect(kebabButtons.length).toBe(3);
+    });
+
+    it('opens dropdown with Play, Editar, Eliminar options when kebab icon is clicked', async () => {
+      const user = userEvent.setup();
+      render(
+        <GroupedEntryView
+          entries={ALL_ENTRIES}
+          selectedIds={new Set()}
+          onSelect={vi.fn()}
+          onDelete={vi.fn()}
+          onEdit={vi.fn()}
+          onPlay={vi.fn()}
+        />,
+      );
+
+      // Click first kebab menu
+      const kebabButtons = screen.getAllByRole('button', { name: /acciones/i });
+      await user.click(kebabButtons[0]);
+
+      // Dropdown should show Play, Editar, Eliminar
+      expect(screen.getByText('Play')).toBeInTheDocument();
+      expect(screen.getByText('Editar')).toBeInTheDocument();
+      expect(screen.getByText('Eliminar')).toBeInTheDocument();
+    });
+
+    it('calls onPlay with the correct entry when Play is clicked', async () => {
+      const onPlay = vi.fn();
+      const user = userEvent.setup();
+      render(
+        <GroupedEntryView
+          entries={ALL_ENTRIES}
+          selectedIds={new Set()}
+          onSelect={vi.fn()}
+          onDelete={vi.fn()}
+          onEdit={vi.fn()}
+          onPlay={onPlay}
+        />,
+      );
+
+      // Open first kebab menu
+      const kebabButtons = screen.getAllByRole('button', { name: /acciones/i });
+      await user.click(kebabButtons[0]);
+
+      // Click Play
+      await user.click(screen.getByText('Play'));
+
+      // Should call onPlay with the first entry
+      expect(onPlay).toHaveBeenCalledWith(WEEK24_ENTRIES[0]);
+    });
+
+    it('calls onEdit with the correct entry when Editar is clicked', async () => {
+      const onEdit = vi.fn();
+      const user = userEvent.setup();
+      render(
+        <GroupedEntryView
+          entries={ALL_ENTRIES}
+          selectedIds={new Set()}
+          onSelect={vi.fn()}
+          onDelete={vi.fn()}
+          onEdit={onEdit}
+          onPlay={vi.fn()}
+        />,
+      );
+
+      // Open first kebab menu
+      const kebabButtons = screen.getAllByRole('button', { name: /acciones/i });
+      await user.click(kebabButtons[0]);
+
+      // Click Editar
+      await user.click(screen.getByText('Editar'));
+
+      // Should call onEdit with the first entry
+      expect(onEdit).toHaveBeenCalledWith(WEEK24_ENTRIES[0]);
+    });
+
+    it('calls onDelete with the correct entry id when Eliminar is clicked', async () => {
+      const onDelete = vi.fn();
+      const user = userEvent.setup();
+      render(
+        <GroupedEntryView
+          entries={ALL_ENTRIES}
+          selectedIds={new Set()}
+          onSelect={vi.fn()}
+          onDelete={onDelete}
+          onEdit={vi.fn()}
+          onPlay={vi.fn()}
+        />,
+      );
+
+      // Open first kebab menu
+      const kebabButtons = screen.getAllByRole('button', { name: /acciones/i });
+      await user.click(kebabButtons[0]);
+
+      // Click Eliminar
+      await user.click(screen.getByText('Eliminar'));
+
+      // Should call onDelete with the entry id
+      expect(onDelete).toHaveBeenCalledWith(WEEK24_ENTRIES[0].id);
+    });
+
+    it('disables Editar option for synced entries', async () => {
+      const user = userEvent.setup();
+      const syncedEntries = [
+        makeEntry('5', { date: '2026-06-09', synced: true }),
+        makeEntry('6', { date: '2026-06-09', synced: false }),
+      ];
+
+      render(
+        <GroupedEntryView
+          entries={syncedEntries}
+          selectedIds={new Set()}
+          onSelect={vi.fn()}
+          onDelete={vi.fn()}
+          onEdit={vi.fn()}
+          onPlay={vi.fn()}
+        />,
+      );
+
+      // Open kebab menu for synced entry (first one)
+      const kebabButtons = screen.getAllByRole('button', { name: /acciones/i });
+      await user.click(kebabButtons[0]);
+
+      // Editar should be disabled
+      const editItem = screen.getByText('Editar');
+      expect(editItem).toHaveAttribute('data-disabled');
+    });
+  });
 });
