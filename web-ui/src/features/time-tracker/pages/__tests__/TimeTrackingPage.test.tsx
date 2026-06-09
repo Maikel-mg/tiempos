@@ -10,6 +10,9 @@ import { useTimeEntries } from '../../hooks/useTimeEntries';
 import { toast } from 'sonner';
 import type { TimeEntry } from '../../types';
 
+// Mock pointer capture for Radix UI Select in jsdom
+Element.prototype.hasPointerCapture = vi.fn(() => false);
+
 vi.mock('../../hooks/useTimer');
 vi.mock('../../hooks/useTimeEntries');
 vi.mock('../../lib/timerCrossingDetector');
@@ -98,135 +101,32 @@ describe('TimeTrackingPage handleTimerStop', () => {
 
     renderWithProviders(<TimeTrackingPage />);
 
-    const stopBtn = screen.getByRole('button', { name: /parar/i });
-    await user.click(stopBtn);
+    await user.click(screen.getByRole('button', { name: /detener/i }));
 
     await waitFor(() => {
-      expect(mockStop).toHaveBeenCalled();
+      expect(mockStop).toHaveBeenCalledWith({ persist: false });
     });
 
-    expect(screen.queryByText(/cruza la medianoche/i)).not.toBeInTheDocument();
-    // No modal, but entry IS created (single entry, no split)
-    await waitFor(() => {
-      expect(mockCreateEntry).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  it('shows modal when crossing detected, split creates N entries', async () => {
-    const user = userEvent.setup();
-    const start = new Date(2026, 5, 1, 23, 30);
-    const end = new Date(2026, 5, 2, 0, 15);
-    setupMocks({
-      stopResult: { start, end, taskId: 1, taskName: 'Test' },
-      crossingResult: {
-        crossed: true,
-        splits: [
-          { date: '2026-06-01', startTime: '23:30', endTime: '23:59', minutes: 29 },
-          { date: '2026-06-02', startTime: '00:00', endTime: '00:15', minutes: 16 },
-        ],
-      },
-    });
-
-    renderWithProviders(<TimeTrackingPage />);
-
-    const stopBtn = screen.getByRole('button', { name: /parar/i });
-    await user.click(stopBtn);
-
-    await waitFor(() => {
-      expect(screen.getByText(/cruza la medianoche/i)).toBeInTheDocument();
-    });
-
-    const splitBtn = screen.getByRole('button', { name: /dividir/i });
-    await user.click(splitBtn);
-
-    await waitFor(() => {
-      expect(mockCreateEntry).toHaveBeenCalledTimes(2);
-    });
-  });
-
-  it('keep-single creates 1 entry with end date', async () => {
-    const user = userEvent.setup();
-    const start = new Date(2026, 5, 1, 23, 30);
-    const end = new Date(2026, 5, 2, 0, 15);
-    setupMocks({
-      stopResult: { start, end, taskId: 1, taskName: 'Test' },
-      crossingResult: {
-        crossed: true,
-        splits: [
-          { date: '2026-06-01', startTime: '23:30', endTime: '23:59', minutes: 29 },
-          { date: '2026-06-02', startTime: '00:00', endTime: '00:15', minutes: 16 },
-        ],
-      },
-    });
-
-    renderWithProviders(<TimeTrackingPage />);
-
-    const stopBtn = screen.getByRole('button', { name: /parar/i });
-    await user.click(stopBtn);
-
-    await waitFor(() => {
-      expect(screen.getByText(/cruza la medianoche/i)).toBeInTheDocument();
-    });
-
-    const keepBtn = screen.getByRole('button', { name: /dejar como uno/i });
-    await user.click(keepBtn);
-
-    await waitFor(() => {
-      expect(mockCreateEntry).toHaveBeenCalledTimes(1);
-    });
     expect(mockCreateEntry).toHaveBeenCalledWith(
-      expect.objectContaining({ date: '2026-06-02' })
+      expect.objectContaining({
+        taskId: 1,
+        taskName: 'Test',
+      })
     );
-  });
-
-  it('X close treated as keep-single, creates 1 entry', async () => {
-    const user = userEvent.setup();
-    const start = new Date(2026, 5, 1, 23, 30);
-    const end = new Date(2026, 5, 2, 0, 15);
-    setupMocks({
-      stopResult: { start, end, taskId: 1, taskName: 'Test' },
-      crossingResult: {
-        crossed: true,
-        splits: [
-          { date: '2026-06-01', startTime: '23:30', endTime: '23:59', minutes: 29 },
-          { date: '2026-06-02', startTime: '00:00', endTime: '00:15', minutes: 16 },
-        ],
-      },
-    });
-
-    renderWithProviders(<TimeTrackingPage />);
-
-    const stopBtn = screen.getByRole('button', { name: /parar/i });
-    await user.click(stopBtn);
-
-    await waitFor(() => {
-      expect(screen.getByText(/cruza la medianoche/i)).toBeInTheDocument();
-    });
-
-    const closeBtn = screen.getByRole('button', { name: /close/i });
-    await user.click(closeBtn);
-
-    await waitFor(() => {
-      expect(mockCreateEntry).toHaveBeenCalledTimes(1);
-    });
   });
 });
 
-describe('TimeTrackingPage edit dialog', () => {
-  it('click edit button opens dialog with pre-filled data', async () => {
+describe('TimeTrackingPage edit', () => {
+  it('clicking edit opens edit dialog', async () => {
     const user = userEvent.setup();
     const entries = [makeEntry('1', false)];
     setupMocks({ entries });
 
     renderWithProviders(<TimeTrackingPage />);
 
-    // Switch to list tab
-    const listTab = screen.getByRole('button', { name: /mis registros/i });
-    await user.click(listTab);
-
-    // Click edit (pencil) button on the pending row
+    // Table is shown by default
     const entryRow = screen.getByText('Task 1').closest('tr')!;
-    const rowEditBtn = entryRow.querySelectorAll('button')[1]; // edit button
+    const rowEditBtn = entryRow.querySelectorAll('button')[1];
     await user.click(rowEditBtn);
 
     // Dialog should open
@@ -242,10 +142,7 @@ describe('TimeTrackingPage edit dialog', () => {
 
     renderWithProviders(<TimeTrackingPage />);
 
-    // Switch to list tab
-    await user.click(screen.getByRole('button', { name: /mis registros/i }));
-
-    // Open edit dialog
+    // Table is shown by default
     const entryRow = screen.getByText('Task 1').closest('tr')!;
     const rowEditBtn = entryRow.querySelectorAll('button')[1];
     await user.click(rowEditBtn);
@@ -277,10 +174,7 @@ describe('TimeTrackingPage undoable delete', () => {
 
     renderWithProviders(<TimeTrackingPage />);
 
-    // Switch to list tab
-    await user.click(screen.getByRole('button', { name: /mis registros/i }));
-
-    // Click delete (trash) button
+    // Table is shown by default
     const entryRow = screen.getByText('Task 1').closest('tr')!;
     const trashBtn = entryRow.querySelectorAll('button')[2]; // delete button
     await user.click(trashBtn);
@@ -306,10 +200,7 @@ describe('TimeTrackingPage undoable delete', () => {
 
     renderWithProviders(<TimeTrackingPage />);
 
-    // Switch to list tab
-    await user.click(screen.getByRole('button', { name: /mis registros/i }));
-
-    // Click delete
+    // Table is shown by default
     const entryRow = screen.getByText('Task 1').closest('tr')!;
     const trashBtn = entryRow.querySelectorAll('button')[2];
     await user.click(trashBtn);

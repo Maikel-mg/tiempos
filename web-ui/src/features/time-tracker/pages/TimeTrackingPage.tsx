@@ -3,7 +3,7 @@ import { Database } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { TimeTrackerBar } from '../components/TimeTrackerBar';
-import { TimeEntryList } from '../components/TimeEntryList';
+import { TimeEntryViewSwitcher } from '../components/TimeEntryViewSwitcher';
 import { OverlapAlert } from '../components/OverlapAlert';
 import { SyncPanel } from '../components/SyncPanel';
 import { useTimeEntries } from '../hooks/useTimeEntries';
@@ -193,7 +193,7 @@ export function TimeTrackingPage() {
           />
         )}
 
-        <TimeEntryList
+        <TimeEntryViewSwitcher
           entries={entries}
           selectedIds={selectedIds}
           onSelect={setSelectedIds}

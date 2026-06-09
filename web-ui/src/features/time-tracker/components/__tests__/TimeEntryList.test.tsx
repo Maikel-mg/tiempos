@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import '@testing-library/jest-dom';
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { TimeEntryList } from '../TimeEntryList';
 import type { TimeEntry } from '../../types';
 
@@ -33,8 +32,8 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-describe('TimeEntryList sync status filter', () => {
-  it('shows all entries by default (Todos)', () => {
+describe('TimeEntryList', () => {
+  it('shows all entries when pre-filtered list is provided', () => {
     render(
       <TimeEntryList
         entries={ENTRIES}
@@ -50,8 +49,21 @@ describe('TimeEntryList sync status filter', () => {
     expect(screen.getByText('Task 3')).toBeInTheDocument();
   });
 
-  it('filters to Pendiente entries', async () => {
-    const user = userEvent.setup();
+  it('shows empty message when no entries', () => {
+    render(
+      <TimeEntryList
+        entries={[]}
+        selectedIds={new Set()}
+        onSelect={vi.fn()}
+        onDelete={vi.fn()}
+        onEdit={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('No hay registros que coincidan con los filtros')).toBeInTheDocument();
+  });
+
+  it('shows table headers', () => {
     render(
       <TimeEntryList
         entries={ENTRIES}
@@ -62,53 +74,28 @@ describe('TimeEntryList sync status filter', () => {
       />
     );
 
-    const selects = screen.getAllByRole('combobox');
-    const syncFilter = selects[1]; // Second select is sync status
-    await user.selectOptions(syncFilter, 'pending');
+    expect(screen.getByText('Fecha')).toBeInTheDocument();
+    expect(screen.getByText('Tarea')).toBeInTheDocument();
+    expect(screen.getByText('Descripción')).toBeInTheDocument();
+    expect(screen.getByText('Inicio')).toBeInTheDocument();
+    expect(screen.getByText('Fin')).toBeInTheDocument();
+    expect(screen.getByText('Duración')).toBeInTheDocument();
+    expect(screen.getByText('Estado')).toBeInTheDocument();
+  });
+
+  it('shows only provided entries (pre-filtered)', () => {
+    const filteredEntries = [makeEntry('1', false), makeEntry('3', false, 'Error')];
+    render(
+      <TimeEntryList
+        entries={filteredEntries}
+        selectedIds={new Set()}
+        onSelect={vi.fn()}
+        onDelete={vi.fn()}
+        onEdit={vi.fn()}
+      />
+    );
 
     expect(screen.getByText('Task 1')).toBeInTheDocument();
-    expect(screen.queryByText('Task 2')).not.toBeInTheDocument();
-    expect(screen.queryByText('Task 3')).not.toBeInTheDocument();
-  });
-
-  it('filters to Sincronizado entries', async () => {
-    const user = userEvent.setup();
-    render(
-      <TimeEntryList
-        entries={ENTRIES}
-        selectedIds={new Set()}
-        onSelect={vi.fn()}
-        onDelete={vi.fn()}
-        onEdit={vi.fn()}
-      />
-    );
-
-    const selects = screen.getAllByRole('combobox');
-    const syncFilter = selects[1];
-    await user.selectOptions(syncFilter, 'synced');
-
-    expect(screen.queryByText('Task 1')).not.toBeInTheDocument();
-    expect(screen.getByText('Task 2')).toBeInTheDocument();
-    expect(screen.queryByText('Task 3')).not.toBeInTheDocument();
-  });
-
-  it('filters to Fallido entries', async () => {
-    const user = userEvent.setup();
-    render(
-      <TimeEntryList
-        entries={ENTRIES}
-        selectedIds={new Set()}
-        onSelect={vi.fn()}
-        onDelete={vi.fn()}
-        onEdit={vi.fn()}
-      />
-    );
-
-    const selects = screen.getAllByRole('combobox');
-    const syncFilter = selects[1];
-    await user.selectOptions(syncFilter, 'failed');
-
-    expect(screen.queryByText('Task 1')).not.toBeInTheDocument();
     expect(screen.queryByText('Task 2')).not.toBeInTheDocument();
     expect(screen.getByText('Task 3')).toBeInTheDocument();
   });
