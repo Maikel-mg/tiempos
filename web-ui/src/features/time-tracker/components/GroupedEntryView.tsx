@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ChevronDown, ChevronRight, Clock, MoreVertical, Play, Pencil, Trash2 } from 'lucide-react';
+import { CheckCircle2, Circle, ChevronDown, ChevronRight, Clock, MoreVertical, Play, Pencil, Trash2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -37,8 +37,8 @@ function getTodayWeekKey(): string {
 
 export function GroupedEntryView({
   entries,
-  selectedIds: _selectedIds,
-  onSelect: _onSelect,
+  selectedIds,
+  onSelect,
   onDelete: _onDelete,
   onEdit: _onEdit,
   onPlay: _onPlay,
@@ -106,6 +106,8 @@ export function GroupedEntryView({
           onDelete={_onDelete}
           onEdit={_onEdit}
           onPlay={_onPlay}
+          selectedIds={selectedIds}
+          onSelect={onSelect}
         />
       ))}
     </div>
@@ -121,6 +123,8 @@ interface WeekGroupCardProps {
   onDelete?: (id: string) => Promise<void>;
   onEdit?: (entry: TimeEntry) => void;
   onPlay?: (entry: TimeEntry) => void;
+  selectedIds: Set<string>;
+  onSelect?: (ids: Set<string>) => void;
 }
 
 function WeekGroupCard({
@@ -132,6 +136,8 @@ function WeekGroupCard({
   onDelete,
   onEdit,
   onPlay,
+  selectedIds,
+  onSelect,
 }: WeekGroupCardProps) {
   return (
     <div className="border rounded-lg overflow-hidden">
@@ -171,6 +177,8 @@ function WeekGroupCard({
                 onDelete={onDelete}
                 onEdit={onEdit}
                 onPlay={onPlay}
+                selectedIds={selectedIds}
+                onSelect={onSelect}
               />
             ))}
           </div>
@@ -187,9 +195,22 @@ interface DayRowProps {
   onDelete?: (id: string) => Promise<void>;
   onEdit?: (entry: TimeEntry) => void;
   onPlay?: (entry: TimeEntry) => void;
+  selectedIds: Set<string>;
+  onSelect?: (ids: Set<string>) => void;
 }
 
-function DayRow({ day, isExpanded, onToggle, onDelete, onEdit, onPlay }: DayRowProps) {
+function DayRow({ day, isExpanded, onToggle, onDelete, onEdit, onPlay, selectedIds, onSelect }: DayRowProps) {
+  const toggleEntry = (entryId: string) => {
+    if (!onSelect) return;
+    const newSet = new Set(selectedIds);
+    if (newSet.has(entryId)) {
+      newSet.delete(entryId);
+    } else {
+      newSet.add(entryId);
+    }
+    onSelect(newSet);
+  };
+
   return (
     <div>
       {/* Day Header */}
@@ -220,7 +241,17 @@ function DayRow({ day, isExpanded, onToggle, onDelete, onEdit, onPlay }: DayRowP
         <div className="border-t bg-muted/20">
           <div className="divide-y">
             {day.entries.map((entry) => (
-              <div key={entry.id} className="p-3 flex items-start justify-between gap-4">
+              <div key={entry.id} className={`p-3 flex items-start justify-between gap-4 ${selectedIds.has(entry.id) ? 'bg-green-50' : ''}`}>
+                <button
+                  onClick={() => toggleEntry(entry.id)}
+                  className="flex items-center justify-center w-11 h-11 min-w-[44px] min-h-[44px] rounded-md hover:bg-accent shrink-0"
+                >
+                  {selectedIds.has(entry.id) ? (
+                    <CheckCircle2 className="w-5 h-5 text-green-600" />
+                  ) : (
+                    <Circle className="w-5 h-5 text-muted-foreground hover:text-foreground" />
+                  )}
+                </button>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="font-medium">{entry.taskName}</span>

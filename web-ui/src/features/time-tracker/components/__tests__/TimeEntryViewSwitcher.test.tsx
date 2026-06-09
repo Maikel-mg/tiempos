@@ -212,4 +212,77 @@ describe('TimeEntryViewSwitcher', () => {
     // Should show total count
     expect(screen.getByText('4 registros')).toBeInTheDocument();
   });
+
+  describe('selection controls', () => {
+    it('"Seleccionar sin sincronizar" selects all unsynced entries', async () => {
+      const onSelect = vi.fn();
+      const user = userEvent.setup();
+      render(
+        <TimeEntryViewSwitcher
+          entries={ENTRIES}
+          selectedIds={new Set()}
+          onSelect={onSelect}
+          onDelete={vi.fn()}
+          onEdit={vi.fn()}
+          onPlay={vi.fn()}
+        />
+      );
+
+      const selectBtn = screen.getByText(/Seleccionar sin sincronizar/);
+      await user.click(selectBtn);
+
+      // 2 unsynced entries: '1' (Frontend Task) and '3' (Frontend Bug)
+      expect(onSelect).toHaveBeenCalledWith(new Set(['1', '3']));
+    });
+
+    it('"Deseleccionar" clears all selections', async () => {
+      const onSelect = vi.fn();
+      const user = userEvent.setup();
+      render(
+        <TimeEntryViewSwitcher
+          entries={ENTRIES}
+          selectedIds={new Set(['1', '3'])}
+          onSelect={onSelect}
+          onDelete={vi.fn()}
+          onEdit={vi.fn()}
+          onPlay={vi.fn()}
+        />
+      );
+
+      const deselectBtn = screen.getByText('Deseleccionar');
+      await user.click(deselectBtn);
+
+      expect(onSelect).toHaveBeenCalledWith(new Set());
+    });
+
+    it('shows selected count when entries are selected', () => {
+      render(
+        <TimeEntryViewSwitcher
+          entries={ENTRIES}
+          selectedIds={new Set(['1', '3'])}
+          onSelect={vi.fn()}
+          onDelete={vi.fn()}
+          onEdit={vi.fn()}
+          onPlay={vi.fn()}
+        />
+      );
+
+      expect(screen.getByText('2 seleccionados')).toBeInTheDocument();
+    });
+
+    it('does not show selected count when no entries are selected', () => {
+      render(
+        <TimeEntryViewSwitcher
+          entries={ENTRIES}
+          selectedIds={new Set()}
+          onSelect={vi.fn()}
+          onDelete={vi.fn()}
+          onEdit={vi.fn()}
+          onPlay={vi.fn()}
+        />
+      );
+
+      expect(screen.queryByText('seleccionados')).not.toBeInTheDocument();
+    });
+  });
 });

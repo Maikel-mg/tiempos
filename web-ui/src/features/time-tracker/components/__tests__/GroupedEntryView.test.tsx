@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import '@testing-library/jest-dom';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { GroupedEntryView } from '../GroupedEntryView';
 import type { TimeEntry } from '../../types';
@@ -361,6 +361,71 @@ describe('GroupedEntryView', () => {
       // Editar should be disabled
       const editItem = screen.getByText('Editar');
       expect(editItem).toHaveAttribute('data-disabled');
+    });
+  });
+
+  describe('selection', () => {
+    it('renders checkbox for each entry when day is expanded', () => {
+      render(
+        <GroupedEntryView
+          entries={ALL_ENTRIES}
+          selectedIds={new Set()}
+          onSelect={vi.fn()}
+          onDelete={vi.fn()}
+          onEdit={vi.fn()}
+          onPlay={vi.fn()}
+        />,
+      );
+
+      // Week 23 collapsed, only 3 entries visible from current week
+      const checkboxes = screen.getAllByRole('button').filter(
+        (btn) => btn.querySelector('svg') && (btn.className.includes('w-11') || btn.className.includes('min-w-'))
+      );
+      expect(checkboxes.length).toBe(3);
+    });
+
+    it('clicking checkbox calls onSelect with correct ids', async () => {
+      const onSelect = vi.fn();
+      const user = userEvent.setup();
+      render(
+        <GroupedEntryView
+          entries={ALL_ENTRIES}
+          selectedIds={new Set()}
+          onSelect={onSelect}
+          onDelete={vi.fn()}
+          onEdit={vi.fn()}
+          onPlay={vi.fn()}
+        />,
+      );
+
+      // Find all circle buttons (selection checkboxes)
+      const entryRows = screen.getAllByText(/Task \d/);
+      // Click the checkbox button next to Task 1
+      const checkboxButtons = document.querySelectorAll('button.rounded-md.hover\\:bg-accent');
+      await user.click(checkboxButtons[0]);
+
+      expect(onSelect).toHaveBeenCalledWith(new Set([WEEK24_ENTRIES[0].id]));
+    });
+
+    it('selected entries show green highlight', () => {
+      render(
+        <GroupedEntryView
+          entries={ALL_ENTRIES}
+          selectedIds={new Set([WEEK24_ENTRIES[0].id])}
+          onSelect={vi.fn()}
+          onDelete={vi.fn()}
+          onEdit={vi.fn()}
+          onPlay={vi.fn()}
+        />,
+      );
+
+      // The entry row container for Task 1 should have bg-green-50
+      const entryContainers = document.querySelectorAll('.divide-y > div');
+      const selectedContainer = Array.from(entryContainers).find((el) =>
+        el.className.includes('bg-green-50')
+      );
+      expect(selectedContainer).toBeTruthy();
+      expect(within(selectedContainer as HTMLElement).getByText('Task 1')).toBeInTheDocument();
     });
   });
 });
