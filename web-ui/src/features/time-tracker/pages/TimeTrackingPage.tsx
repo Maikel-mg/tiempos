@@ -174,7 +174,7 @@ export function TimeTrackingPage() {
       }
     }
     pendingDescription.current = entry.description;
-    await timerHook.start(entry.taskId, entry.taskName);
+    await timerHook.start(entry.taskId, entry.taskName, entry.description);
   }, [timerHook, createEntry]);
 
   return (

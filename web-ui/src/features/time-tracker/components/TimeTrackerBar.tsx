@@ -76,7 +76,7 @@ export function TimeTrackerBar({ onSubmit, initialData, disabled, defaultMode = 
       setTask({ proceso: timer.timerState.taskId, nombre: timer.timerState.taskName });
       setMode('timer');
     }
-    if (timer.timerState?.isRunning && timer.timerState.description && !description) {
+    if (timer.timerState?.isRunning && timer.timerState.description) {
       setDescription(timer.timerState.description);
     }
   }, [timer.timerState]);
