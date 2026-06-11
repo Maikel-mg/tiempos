@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Clock, Calendar, Landmark, Check } from 'lucide-react';
+import { Clock, Calendar, Landmark } from 'lucide-react';
 import { computeDailyBalance, computeWeeklyBalance, computeBanco } from '../lib/balance';
 import { getDailyTarget } from '../lib/schedule';
 import type { TimeEntry } from '../types';
@@ -42,29 +42,21 @@ function percentWidth(worked: number, target: number): number {
   return Math.min(100, Math.round((worked / target) * 10000) / 100);
 }
 
-function signPrefix(seconds: number): string {
-  if (seconds > 0) return '+';
-  return '';
-}
-
 interface CardData {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   segmentTestId: string;
   barTestId: string;
-  value: number;
-  targetText: string;
+  workedStr: string;
+  subtext: string;
+  accentClass: string;
   percent: number;
-  isCompleted: boolean;
 }
 
 function ProgressCard({ card }: { card: CardData }) {
-  const completed = card.isCompleted;
-  const color = completed
-    ? 'text-emerald-600 dark:text-emerald-400'
-    : 'text-amber-600 dark:text-amber-400';
-  const barColor = completed ? 'bg-emerald-500' : 'bg-amber-500';
-  const barBg = completed ? 'bg-emerald-500/15' : 'bg-amber-500/15';
+  const color = card.accentClass || 'text-amber-600 dark:text-amber-400';
+  const barColor = card.accentClass ? 'bg-emerald-500' : 'bg-amber-500';
+  const barBg = card.accentClass ? 'bg-emerald-500/15' : 'bg-amber-500/15';
   const Icon = card.icon;
 
   return (
@@ -77,26 +69,15 @@ function ProgressCard({ card }: { card: CardData }) {
           </span>
         </div>
 
-        <div className="flex items-baseline gap-1.5">
-          {completed ? (
-            <Check className={`text-2xl ${color}`} data-testid={`${card.segmentTestId}-value`} />
-          ) : (
-            <>
-              {card.value > 0 && (
-                <span className={`text-lg font-bold ${color}`}>-</span>
-              )}
-              <span
-                className={`text-2xl font-bold tabular-nums tracking-tight leading-none ${color}`}
-                data-testid={`${card.segmentTestId}-value`}
-              >
-                {formatHM(Math.abs(card.value))}
-              </span>
-            </>
-          )}
-        </div>
+        <span
+          className={`text-2xl font-bold tabular-nums tracking-tight leading-none ${color}`}
+          data-testid={`${card.segmentTestId}-value`}
+        >
+          {card.workedStr}
+        </span>
 
-        <p className="text-sm text-muted-foreground">
-          {completed ? '¡Completado!' : card.targetText}
+        <p className={`text-sm ${card.accentClass || 'text-muted-foreground'}`}>
+          {card.subtext}
         </p>
 
         <div className={`h-1.5 w-full rounded-full overflow-hidden ${barBg}`}>
@@ -123,7 +104,7 @@ export function PeriodProgressPanel({ entries, period: _period }: PeriodProgress
     [entries, todayStr],
   );
   const workedToday = todayTargetSec + dailyBalance;
-  const dailyRemaining = -dailyBalance;
+  const dailyRemaining = todayTargetSec - workedToday;
 
   const weekTargetSec = useMemo(() => {
     let total = 0;
@@ -142,7 +123,7 @@ export function PeriodProgressPanel({ entries, period: _period }: PeriodProgress
     [entries, weekStartStr],
   );
   const workedWeek = weekTargetSec + weeklyBalance;
-  const weeklyRemaining = -weeklyBalance;
+  const weeklyRemaining = weekTargetSec - workedWeek;
 
   const banco = useMemo(() => computeBanco(entries), [entries]);
 
@@ -150,36 +131,64 @@ export function PeriodProgressPanel({ entries, period: _period }: PeriodProgress
   const semanaPercent = percentWidth(workedWeek, weekTargetSec);
   const bancoPercent = banco >= 0 ? 100 : 0;
 
+  const targetStr = formatTargetHM(todayTargetHours);
+
+  let hoySubtext: string;
+  let hoyAccent: string;
+  if (dailyRemaining > 0) {
+    hoySubtext = `${formatHM(dailyRemaining)} para llegar a ${targetStr}`;
+    hoyAccent = '';
+  } else if (dailyRemaining === 0) {
+    hoySubtext = '¡Objetivo cumplido!';
+    hoyAccent = 'text-emerald-600 dark:text-emerald-400';
+  } else {
+    hoySubtext = `+${formatHM(Math.abs(dailyRemaining))} por encima`;
+    hoyAccent = 'text-emerald-600 dark:text-emerald-400';
+  }
+
+  let semanaSubtext: string;
+  let semanaAccent: string;
+  if (weeklyRemaining > 0) {
+    semanaSubtext = `${formatHM(weeklyRemaining)} para llegar a ${formatHM(weekTargetSec)}`;
+    semanaAccent = '';
+  } else if (weeklyRemaining === 0) {
+    semanaSubtext = '¡Objetivo cumplido!';
+    semanaAccent = 'text-emerald-600 dark:text-emerald-400';
+  } else {
+    semanaSubtext = `+${formatHM(Math.abs(weeklyRemaining))} por encima`;
+    semanaAccent = 'text-emerald-600 dark:text-emerald-400';
+  }
+
   const cards: CardData[] = [
     {
       icon: Clock,
       label: 'Hoy',
       segmentTestId: 'segment-hoy',
       barTestId: 'bar-hoy',
-      value: dailyRemaining,
-      targetText: `para llegar a ${formatTargetHM(todayTargetHours)}`,
+      workedStr: formatHM(workedToday),
+      subtext: hoySubtext,
+      accentClass: hoyAccent,
       percent: hoyPercent,
-      isCompleted: dailyRemaining <= 0,
     },
     {
       icon: Calendar,
       label: 'Semana',
       segmentTestId: 'segment-semana',
       barTestId: 'bar-semana',
-      value: weeklyRemaining,
-      targetText: `para llegar a ${formatHM(weekTargetSec)}`,
+      workedStr: formatHM(workedWeek),
+      subtext: semanaSubtext,
+      accentClass: semanaAccent,
       percent: semanaPercent,
-      isCompleted: weeklyRemaining <= 0,
     },
     {
       icon: Landmark,
       label: 'Banco',
       segmentTestId: 'segment-banco',
       barTestId: 'bar-banco',
-      value: banco,
-      targetText: banco >= 0 ? 'horas a favor' : 'horas en contra',
+      workedStr: formatHM(Math.abs(banco)),
+      subtext: banco >= 0 ? 'horas a favor' : 'horas en contra',
+      accentClass: banco >= 0 ? 'text-emerald-600 dark:text-emerald-400' : '',
       percent: bancoPercent,
-      isCompleted: false,
     },
   ];
 

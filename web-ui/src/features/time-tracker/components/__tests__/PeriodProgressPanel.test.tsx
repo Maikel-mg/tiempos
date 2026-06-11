@@ -34,7 +34,7 @@ describe('PeriodProgressPanel', () => {
     expect(screen.getByText('Banco')).toBeInTheDocument();
   });
 
-  it('shows remaining hours for Hoy with subtitle', () => {
+  it('shows worked hours for Hoy with remaining subtitle', () => {
     // 2026-06-11 is Thursday → daily target 8.25h = 8:15
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-06-11T14:00:00'));
@@ -47,11 +47,11 @@ describe('PeriodProgressPanel', () => {
     render(<PeriodProgressPanel entries={entries} period="today" />);
 
     const hoyValue = screen.getByTestId('segment-hoy-value');
-    expect(hoyValue).toHaveTextContent('0:45');
-    expect(screen.getByText('para llegar a 8:15')).toBeInTheDocument();
+    expect(hoyValue).toHaveTextContent('7:30');
+    expect(screen.getByText('0:45 para llegar a 8:15')).toBeInTheDocument();
   });
 
-  it('shows remaining hours for Semana with subtitle', () => {
+  it('shows worked hours for Semana with remaining subtitle', () => {
     // Week of 2026-06-08 (Mon) to 2026-06-14 (Sun)
     // Mon-Thu 8.25h each, Fri 7h, Sat-Sun 0h → 40h total
     vi.useFakeTimers();
@@ -68,8 +68,8 @@ describe('PeriodProgressPanel', () => {
     render(<PeriodProgressPanel entries={entries} period="week" />);
 
     const semanaValue = screen.getByTestId('segment-semana-value');
-    expect(semanaValue).toHaveTextContent('8:30');
-    expect(screen.getByText('para llegar a 40:00')).toBeInTheDocument();
+    expect(semanaValue).toHaveTextContent('31:30');
+    expect(screen.getByText('8:30 para llegar a 40:00')).toBeInTheDocument();
   });
 
   it('shows positive banco with + prefix and "horas a favor"', () => {
@@ -175,11 +175,11 @@ describe('PeriodProgressPanel', () => {
     expect(bar.style.width).toBe('100%');
   });
 
-  it('shows checkmark when Hoy is in overtime (remaining <= 0)', () => {
+  it('shows worked hours and overtime text when Hoy is in overtime', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-06-11T14:00:00'));
 
-    // 9h worked / 8.25h target → remaining is -0:45 (overtime)
+    // 9h worked / 8.25h target → overtime 0:45
     const entries = [
       makeEntry({ date: '2026-06-11', duration: 32400, taskName: 'Overtime' }),
     ];
@@ -187,8 +187,8 @@ describe('PeriodProgressPanel', () => {
     render(<PeriodProgressPanel entries={entries} period="today" />);
 
     const hoyValue = screen.getByTestId('segment-hoy-value');
-    expect(hoyValue.tagName.toLowerCase()).toBe('svg');
-    expect(screen.getByText('¡Completado!')).toBeInTheDocument();
+    expect(hoyValue).toHaveTextContent('9:00');
+    expect(screen.getByText('+0:45 por encima')).toBeInTheDocument();
   });
 
   it('renders zero banco without prefix', () => {
@@ -208,7 +208,7 @@ describe('PeriodProgressPanel', () => {
     expect(screen.getByText('horas a favor')).toBeInTheDocument();
   });
 
-  it('shows 8:30 remaining for Semana with 8.5h deficit', () => {
+  it('shows 31:30 worked for Semana with 8.5h deficit', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-06-11T14:00:00'));
 
@@ -235,6 +235,6 @@ describe('PeriodProgressPanel', () => {
     render(<PeriodProgressPanel entries={entries} period="week" />);
 
     const semanaValue = screen.getByTestId('segment-semana-value');
-    expect(semanaValue).toHaveTextContent('8:30');
+    expect(semanaValue).toHaveTextContent('31:30');
   });
 });
