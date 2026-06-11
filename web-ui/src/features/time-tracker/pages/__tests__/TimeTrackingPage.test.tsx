@@ -84,6 +84,7 @@ function setupMocks(options: { stopResult?: unknown; crossingResult?: ReturnType
     stop: mockStop.mockResolvedValue(options.stopResult ?? null),
     cancel: vi.fn(),
     updateStartTime: vi.fn(),
+    updateDescription: vi.fn(),
   });
 
   vi.mocked(useTimeEntries).mockReturnValue({
@@ -132,7 +133,7 @@ describe('TimeTrackingPage handleTimerStop', () => {
 });
 
 describe('TimeTrackingPage edit', () => {
-  it('clicking edit opens edit dialog', async () => {
+  it('clicking edit shows inline edit indicator', async () => {
     const user = userEvent.setup();
     const entries = [makeEntry('1', false)];
     setupMocks({ entries });
@@ -141,16 +142,17 @@ describe('TimeTrackingPage edit', () => {
 
     // Table is shown by default
     const entryRow = screen.getByText('Task 1').closest('tr')!;
-    const rowEditBtn = entryRow.querySelectorAll('button')[1];
+    // Buttons in order: checkbox[0], play[1], edit[2], duplicate[3], delete[4]
+    const rowEditBtn = entryRow.querySelectorAll('button')[2];
     await user.click(rowEditBtn);
 
-    // Dialog should open
+    // Inline edit indicator should appear — text is split across elements
     await waitFor(() => {
-      expect(screen.getByText('Editar Registro')).toBeInTheDocument();
+      expect(screen.getByText(/Editando:/)).toBeInTheDocument();
     });
   });
 
-  it('cancel closes dialog without saving', async () => {
+  it('cancel exits edit mode without saving', async () => {
     const user = userEvent.setup();
     const entries = [makeEntry('1', false)];
     setupMocks({ entries });
@@ -159,21 +161,20 @@ describe('TimeTrackingPage edit', () => {
 
     // Table is shown by default
     const entryRow = screen.getByText('Task 1').closest('tr')!;
-    const rowEditBtn = entryRow.querySelectorAll('button')[1];
+    const rowEditBtn = entryRow.querySelectorAll('button')[2];
     await user.click(rowEditBtn);
 
     await waitFor(() => {
-      expect(screen.getByText('Editar Registro')).toBeInTheDocument();
+      expect(screen.getByText(/Editando:/)).toBeInTheDocument();
     });
 
-    // Click cancel — the one inside the dialog (last matching button)
-    const cancelButtons = screen.getAllByRole('button', { name: /cancelar/i });
-    const cancelBtn = cancelButtons[cancelButtons.length - 1];
+    // Click cancel button
+    const cancelBtn = screen.getByRole('button', { name: /cancelar edición/i });
     await user.click(cancelBtn);
 
-    // Dialog should close
+    // Edit indicator should disappear
     await waitFor(() => {
-      expect(screen.queryByText('Editar Registro')).not.toBeInTheDocument();
+      expect(screen.queryByText(/Editando:/)).not.toBeInTheDocument();
     });
 
     // No update should have been called
@@ -191,7 +192,8 @@ describe('TimeTrackingPage undoable delete', () => {
 
     // Table is shown by default
     const entryRow = screen.getByText('Task 1').closest('tr')!;
-    const trashBtn = entryRow.querySelectorAll('button')[2]; // delete button
+    // Buttons: checkbox[0], play[1], edit[2], duplicate[3], delete[4]
+    const trashBtn = entryRow.querySelectorAll('button')[4];
     await user.click(trashBtn);
 
     // Toast should have been called with "Entrada eliminada"
@@ -217,7 +219,8 @@ describe('TimeTrackingPage undoable delete', () => {
 
     // Table is shown by default
     const entryRow = screen.getByText('Task 1').closest('tr')!;
-    const trashBtn = entryRow.querySelectorAll('button')[2];
+    // Buttons: checkbox[0], play[1], edit[2], duplicate[3], delete[4]
+    const trashBtn = entryRow.querySelectorAll('button')[4];
     await user.click(trashBtn);
 
     // Get the undo callback from the toast call
@@ -235,6 +238,175 @@ describe('TimeTrackingPage undoable delete', () => {
       })
     );
     expect(toast.success).toHaveBeenCalledWith('Entrada restaurada');
+  });
+});
+
+describe('TimeTrackingPage edit recoverable status', () => {
+  it('shows recoverable toggle ON when editing a recoverable entry', async () => {
+    const user = userEvent.setup();
+    const entry = makeEntry('1', false);
+    entry.recoverable = true;
+    setupMocks({ entries: [entry] });
+
+    renderWithProviders(<TimeTrackingPage />);
+
+    // Click edit on the entry
+    const entryRow = screen.getByText('Task 1').closest('tr')!;
+    const rowEditBtn = entryRow.querySelectorAll('button')[2];
+    await user.click(rowEditBtn);
+
+    // The recoverable toggle should reflect the entry's state (ON)
+    await waitFor(() => {
+      const toggle = screen.getByRole('button', { name: /permiso/i });
+      expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    });
+  });
+
+  it('shows recoverable toggle OFF when editing a non-recoverable entry', async () => {
+    const user = userEvent.setup();
+    const entry = makeEntry('1', false);
+    entry.recoverable = false;
+    setupMocks({ entries: [entry] });
+
+    renderWithProviders(<TimeTrackingPage />);
+
+    const entryRow = screen.getByText('Task 1').closest('tr')!;
+    const rowEditBtn = entryRow.querySelectorAll('button')[2];
+    await user.click(rowEditBtn);
+
+    await waitFor(() => {
+      const toggle = screen.getByRole('button', { name: /permiso/i });
+      expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    });
+  });
+
+  it('toggling recoverable during edit changes the state', async () => {
+    const user = userEvent.setup();
+    const entry = makeEntry('1', false);
+    entry.recoverable = false;
+    setupMocks({ entries: [entry] });
+
+    renderWithProviders(<TimeTrackingPage />);
+
+    // Enter edit mode
+    const entryRow = screen.getByText('Task 1').closest('tr')!;
+    const rowEditBtn = entryRow.querySelectorAll('button')[2];
+    await user.click(rowEditBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Editando:/)).toBeInTheDocument();
+    });
+
+    // Toggle recoverable ON
+    const toggle = screen.getByRole('button', { name: /permiso/i });
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute('aria-pressed', 'true');
+
+    // Toggle back OFF
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('submitting edit persists recoverable=true via updateEntry', async () => {
+    const user = userEvent.setup();
+    const entry = makeEntry('1', false);
+    entry.recoverable = false;
+    setupMocks({ entries: [entry] });
+
+    renderWithProviders(<TimeTrackingPage />);
+
+    // Enter edit mode
+    const entryRow = screen.getByText('Task 1').closest('tr')!;
+    const rowEditBtn = entryRow.querySelectorAll('button')[2];
+    await user.click(rowEditBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Editando:/)).toBeInTheDocument();
+    });
+
+    // Toggle recoverable ON
+    const toggle = screen.getByRole('button', { name: /permiso/i });
+    await user.click(toggle);
+
+    // Submit the edit
+    const submitBtn = screen.getByRole('button', { name: /añadir/i });
+    await user.click(submitBtn);
+
+    // updateEntry should have been called with recoverable: true
+    await waitFor(() => {
+      expect(mockUpdateEntry).toHaveBeenCalledWith(
+        '1',
+        expect.objectContaining({
+          recoverable: true,
+        })
+      );
+    });
+  });
+
+  it('submitting edit persists recoverable=false when toggled off', async () => {
+    const user = userEvent.setup();
+    const entry = makeEntry('1', false);
+    entry.recoverable = true;
+    setupMocks({ entries: [entry] });
+
+    renderWithProviders(<TimeTrackingPage />);
+
+    // Enter edit mode
+    const entryRow = screen.getByText('Task 1').closest('tr')!;
+    const rowEditBtn = entryRow.querySelectorAll('button')[2];
+    await user.click(rowEditBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Editando:/)).toBeInTheDocument();
+    });
+
+    // Toggle recoverable OFF (it starts ON because entry is recoverable)
+    const toggle = screen.getByRole('button', { name: /permiso/i });
+    expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
+
+    // Submit the edit
+    const submitBtn = screen.getByRole('button', { name: /añadir/i });
+    await user.click(submitBtn);
+
+    // updateEntry should have been called with recoverable: false
+    await waitFor(() => {
+      expect(mockUpdateEntry).toHaveBeenCalledWith(
+        '1',
+        expect.objectContaining({
+          recoverable: false,
+        })
+      );
+    });
+  });
+
+  it('exits edit mode after successful submit', async () => {
+    const user = userEvent.setup();
+    const entry = makeEntry('1', false);
+    entry.recoverable = false;
+    setupMocks({ entries: [entry] });
+
+    renderWithProviders(<TimeTrackingPage />);
+
+    // Enter edit mode
+    const entryRow = screen.getByText('Task 1').closest('tr')!;
+    const rowEditBtn = entryRow.querySelectorAll('button')[2];
+    await user.click(rowEditBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Editando:/)).toBeInTheDocument();
+    });
+
+    // Submit
+    const submitBtn = screen.getByRole('button', { name: /añadir/i });
+    await user.click(submitBtn);
+
+    // Edit indicator should disappear after submit
+    await waitFor(() => {
+      expect(screen.queryByText(/Editando:/)).not.toBeInTheDocument();
+    });
   });
 });
 
