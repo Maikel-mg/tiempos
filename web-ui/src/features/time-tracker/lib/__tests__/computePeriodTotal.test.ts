@@ -51,4 +51,31 @@ describe('computePeriodTotal', () => {
     const total = computePeriodTotal(entries, 0, true);
     expect(total).toBe(3600);
   });
+
+  it('returns 0 entries total when all entries are recoverable', () => {
+    const entries = [
+      makeEntry({ duration: 3600, recoverable: true }),
+      makeEntry({ duration: 1800, recoverable: true }),
+    ];
+    const total = computePeriodTotal(entries, 0, false);
+    expect(total).toBe(0);
+  });
+
+  it('adds timer to 0 when all entries are recoverable and today is in range', () => {
+    const entries = [
+      makeEntry({ duration: 3600, recoverable: true }),
+    ];
+    const total = computePeriodTotal(entries, 2557, true);
+    expect(total).toBe(2557); // timer only, recoverable excluded
+  });
+
+  it('excludes recoverable entries from total', () => {
+    const entries = [
+      makeEntry({ duration: 3600 }),
+      makeEntry({ duration: 1800, recoverable: true }),
+      makeEntry({ duration: 2400 }),
+    ];
+    const total = computePeriodTotal(entries, 0, false);
+    expect(total).toBe(6000); // 3600 + 2400 (1800 excluded)
+  });
 });
