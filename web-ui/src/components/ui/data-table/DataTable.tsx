@@ -50,7 +50,26 @@ export function DataTable<TData, TValue>({
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
   const [rowSelection, setRowSelection] = React.useState<Record<string, boolean>>({})
-  const [globalFilterInternal, setGlobalFilterInternal] = React.useState("")
+  const [searchValue, setSearchValue] = React.useState("")
+
+  // Extract accessor keys from column definitions for pre-table filtering
+  const searchableKeys = React.useMemo(() => {
+    return columns
+      .map((col) => ('accessorKey' in col ? (col.accessorKey as string) : null))
+      .filter((key): key is string => !!key);
+  }, [columns]);
+
+  // Filter data BEFORE passing to the table
+  const filteredData = React.useMemo(() => {
+    if (!searchValue) return data;
+    const term = searchValue.toLowerCase();
+    return data.filter((row) =>
+      searchableKeys.some((key) => {
+        const value = (row as Record<string, unknown>)[key];
+        return String(value ?? '').toLowerCase().includes(term);
+      })
+    );
+  }, [data, searchableKeys, searchValue]);
 
   // Sync external selected rows if provided
   React.useEffect(() => {
@@ -65,7 +84,7 @@ export function DataTable<TData, TValue>({
   }, [selectedRows, getRowId])
 
   const table = useReactTable({
-    data,
+    data: filteredData,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -75,13 +94,12 @@ export function DataTable<TData, TValue>({
     getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
-    onGlobalFilterChange: setGlobalFilterInternal,
     state: {
       sorting,
       columnFilters,
       columnVisibility,
       rowSelection,
-      globalFilter: globalFilter ?? globalFilterInternal,
+      globalFilter: globalFilter ?? '',
     },
     getRowId: (row, index) => getRowId ? getRowId(row, index) : index.toString(),
   })
@@ -89,7 +107,6 @@ export function DataTable<TData, TValue>({
   // Notify parent of selection changes
   React.useEffect(() => {
     if (onRowSelectionChange) {
-      // Crear mapa de IDs a datos de fila
       const idToRowMap = new Map<string, TData>()
       data.forEach((row, index) => {
         const id = getRowId ? getRowId(row, index) : index.toString()
@@ -108,7 +125,8 @@ export function DataTable<TData, TValue>({
   return (
     <div className="space-y-4">
       <DataTableToolbar
-        table={table}
+        searchValue={searchValue}
+        onSearchChange={setSearchValue}
         searchKey={searchKey}
       />
       <div className="rounded-md border">
