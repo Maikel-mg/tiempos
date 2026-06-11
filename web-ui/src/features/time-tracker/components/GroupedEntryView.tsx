@@ -10,7 +10,17 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { groupEntriesByWeek, getWeekKey } from '../lib/groupEntriesByWeek';
+import { TimerRow } from './TimerRow';
 import type { TimeEntry, LocalWeekGroup, LocalWeekDay } from '../types';
+
+interface TimerEntryData {
+  taskName: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  duration: number;
+  description?: string;
+}
 
 interface GroupedEntryViewProps {
   entries: TimeEntry[];
@@ -19,6 +29,7 @@ interface GroupedEntryViewProps {
   onDelete?: (id: string) => Promise<void>;
   onEdit?: (entry: TimeEntry) => void;
   onPlay?: (entry: TimeEntry) => void;
+  timerEntry?: TimerEntryData | null;
 }
 
 function formatDuration(seconds: number): string {
@@ -35,6 +46,13 @@ function getTodayWeekKey(): string {
   return getWeekKey(`${y}-${m}-${d}`);
 }
 
+function toLocalDateString(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 export function GroupedEntryView({
   entries,
   selectedIds,
@@ -42,6 +60,7 @@ export function GroupedEntryView({
   onDelete: _onDelete,
   onEdit: _onEdit,
   onPlay: _onPlay,
+  timerEntry,
 }: GroupedEntryViewProps) {
   const weekGroups = useMemo(() => groupEntriesByWeek(entries), [entries]);
 
@@ -108,6 +127,7 @@ export function GroupedEntryView({
           onPlay={_onPlay}
           selectedIds={selectedIds}
           onSelect={onSelect}
+          timerEntry={timerEntry}
         />
       ))}
     </div>
@@ -125,6 +145,7 @@ interface WeekGroupCardProps {
   onPlay?: (entry: TimeEntry) => void;
   selectedIds: Set<string>;
   onSelect?: (ids: Set<string>) => void;
+  timerEntry?: TimerEntryData | null;
 }
 
 function WeekGroupCard({
@@ -138,6 +159,7 @@ function WeekGroupCard({
   onPlay,
   selectedIds,
   onSelect,
+  timerEntry,
 }: WeekGroupCardProps) {
   return (
     <div className="border rounded-lg overflow-hidden">
@@ -179,6 +201,7 @@ function WeekGroupCard({
                 onPlay={onPlay}
                 selectedIds={selectedIds}
                 onSelect={onSelect}
+                timerEntry={day.date === toLocalDateString(new Date()) ? timerEntry : null}
               />
             ))}
           </div>
@@ -197,9 +220,10 @@ interface DayRowProps {
   onPlay?: (entry: TimeEntry) => void;
   selectedIds: Set<string>;
   onSelect?: (ids: Set<string>) => void;
+  timerEntry?: TimerEntryData | null;
 }
 
-function DayRow({ day, isExpanded, onToggle, onDelete, onEdit, onPlay, selectedIds, onSelect }: DayRowProps) {
+function DayRow({ day, isExpanded, onToggle, onDelete, onEdit, onPlay, selectedIds, onSelect, timerEntry }: DayRowProps) {
   const toggleEntry = (entryId: string) => {
     if (!onSelect) return;
     const newSet = new Set(selectedIds);
@@ -240,6 +264,11 @@ function DayRow({ day, isExpanded, onToggle, onDelete, onEdit, onPlay, selectedI
       {isExpanded && (
         <div className="border-t bg-muted/20">
           <div className="divide-y">
+            {timerEntry && (
+              <div className="p-0">
+                <table className="w-full"><tbody><TimerRow {...timerEntry} /></tbody></table>
+              </div>
+            )}
             {day.entries.map((entry) => (
               <div key={entry.id} className={`p-3 flex items-start justify-between gap-4 ${selectedIds.has(entry.id) ? 'bg-green-50' : ''}`}>
                 <button

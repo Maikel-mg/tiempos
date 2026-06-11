@@ -6,7 +6,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { TimeEntryList } from './TimeEntryList';
 import { GroupedEntryView } from './GroupedEntryView';
+import { TimerRow } from './TimerRow';
 import type { TimeEntry } from '../types';
+
+interface TimerEntryData {
+  taskName: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  duration: number;
+  description?: string;
+}
 
 interface TimeEntryViewSwitcherProps {
   entries: TimeEntry[];
@@ -16,6 +26,7 @@ interface TimeEntryViewSwitcherProps {
   onEdit?: (entry: TimeEntry) => void;
   onPlay?: (entry: TimeEntry) => void;
   activeTab: string;
+  timerEntry?: TimerEntryData | null;
 }
 
 export function TimeEntryViewSwitcher({
@@ -26,6 +37,7 @@ export function TimeEntryViewSwitcher({
   onEdit,
   onPlay,
   activeTab,
+  timerEntry,
 }: TimeEntryViewSwitcherProps) {
   const [filterTask, setFilterTask] = useState('');
   const [sortBy, setSortBy] = useState<'date' | 'duration' | 'task'>('date');
@@ -162,6 +174,7 @@ export function TimeEntryViewSwitcher({
             onDelete={onDelete}
             onEdit={onEdit}
             onPlay={onPlay}
+            timerEntry={timerEntry}
           />
         ) : (
           <GroupedEntryView
@@ -171,6 +184,7 @@ export function TimeEntryViewSwitcher({
             onDelete={onDelete}
             onEdit={onEdit}
             onPlay={onPlay}
+            timerEntry={timerEntry}
           />
         )}
       </CardContent>

@@ -6,10 +6,13 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PeriodSelector } from '@/components/shared/PeriodSelector';
 import { TimeTrackerBar } from '../components/TimeTrackerBar';
 import { TimeEntryViewSwitcher } from '../components/TimeEntryViewSwitcher';
+import { TimerRow } from '../components/TimerRow';
 import { OverlapAlert } from '../components/OverlapAlert';
 import { SyncPanel } from '../components/SyncPanel';
 import { useTimeEntries } from '../hooks/useTimeEntries';
 import { useTimer } from '../hooks/useTimer';
+import { createVirtualTimerEntry } from '../lib/timerVirtualEntry';
+import { computePeriodTotal } from '../lib/computePeriodTotal';
 import type { TimeEntry } from '../types';
 import type { PeriodType, DateRange } from '@/components/shared/PeriodSelector';
 
@@ -84,9 +87,56 @@ export function TimeTrackingPage() {
     });
   }, [entries, period, customRange]);
 
+  const todayInRange = useMemo(() => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayDay = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
+
+    if (period === 'today') return true;
+
+    let start: Date;
+    let end: Date;
+
+    switch (period) {
+      case 'week': {
+        const dayOfWeek = now.getDay();
+        const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+        start = new Date(today); start.setDate(today.getDate() - diffToMonday);
+        end = new Date(start); end.setDate(start.getDate() + 6); end.setHours(23,59,59,999);
+        break;
+      }
+      case 'month': {
+        start = new Date(now.getFullYear(), now.getMonth(), 1);
+        end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        break;
+      }
+      case 'last-month': {
+        start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+        break;
+      }
+      case 'custom':
+        start = customRange?.start || today;
+        end = customRange?.end || now;
+        break;
+      default:
+        return false;
+    }
+
+    const startDay = start.getFullYear() * 10000 + (start.getMonth() + 1) * 100 + start.getDate();
+    const endDay = end.getFullYear() * 10000 + (end.getMonth() + 1) * 100 + end.getDate();
+    return todayDay >= startDay && todayDay <= endDay;
+  }, [period, customRange]);
+
+  const virtualTimerEntry = useMemo(() => {
+    if (!timerHook.isRunning || !timerHook.timerState) return null;
+    if (!todayInRange) return null;
+    return createVirtualTimerEntry(timerHook.timerState, new Date());
+  }, [timerHook.isRunning, timerHook.timerState, todayInRange]);
+
   const periodTotal = useMemo(() => {
-    return filteredByPeriod.reduce((sum, e) => sum + e.duration, 0);
-  }, [filteredByPeriod]);
+    return computePeriodTotal(filteredByPeriod, timerHook.elapsed, todayInRange);
+  }, [filteredByPeriod, timerHook.elapsed, todayInRange]);
 
   const periodTotalDisplay = useMemo(() => formatDurationHMS(periodTotal), [periodTotal]);
 
@@ -269,6 +319,7 @@ export function TimeTrackingPage() {
           onEdit={handleEditEntry}
           onPlay={handlePlayEntry}
           activeTab={activeTab}
+          timerEntry={virtualTimerEntry}
         />
       </div>
       </div>
