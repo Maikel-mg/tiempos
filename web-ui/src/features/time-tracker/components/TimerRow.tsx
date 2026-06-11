@@ -30,6 +30,9 @@ function formatDate(dateStr: string): string {
 export function TimerRow({ taskName, date, startTime, endTime, duration, description }: TimerRowProps) {
   return (
     <TableRow className="bg-blue-50 dark:bg-blue-950/30 border-l-2 border-blue-500">
+      {/* Checkbox placeholder — aligns with TimeEntryRow checkbox column */}
+      <TableCell className="w-12" />
+
       {/* Date */}
       <TableCell className="whitespace-nowrap">
         {formatDate(date)}
@@ -70,6 +73,9 @@ export function TimerRow({ taskName, date, startTime, endTime, duration, descrip
           En curso
         </span>
       </TableCell>
+
+      {/* Actions placeholder — aligns with TimeEntryRow actions column */}
+      <TableCell className="w-24" />
     </TableRow>
   );
 }
