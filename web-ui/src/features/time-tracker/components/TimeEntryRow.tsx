@@ -1,4 +1,4 @@
-import { CheckCircle2, Circle, XCircle, Trash2, Pencil, Play } from 'lucide-react';
+import { CheckCircle2, Circle, XCircle, Trash2, Pencil, Play, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
@@ -11,6 +11,7 @@ interface TimeEntryRowProps {
   onDelete: () => void;
   onEdit?: () => void;
   onPlay?: () => void;
+  onDuplicate?: () => void;
 }
 
 /**
@@ -36,7 +37,7 @@ function formatDate(dateStr: string): string {
 /**
  * Fila individual del listado de registros de tiempo.
  */
-export function TimeEntryRow({ entry, selected, onToggle, onDelete, onEdit, onPlay }: TimeEntryRowProps) {
+export function TimeEntryRow({ entry, selected, onToggle, onDelete, onEdit, onPlay, onDuplicate }: TimeEntryRowProps) {
   const SYNCED_TOOLTIP = 'Ya sincronizado con la BD — no se puede editar desde aquí';
 
   return (
@@ -116,6 +117,17 @@ export function TimeEntryRow({ entry, selected, onToggle, onDelete, onEdit, onPl
             <Button variant="ghost" size="icon" onClick={onPlay} className="min-w-[44px] min-h-[44px] text-green-600 hover:text-green-700">
               <Play className="w-4 h-4" />
             </Button>
+            {onDuplicate && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onDuplicate}
+                className="min-w-[44px] min-h-[44px] text-muted-foreground hover:text-foreground"
+                title="Duplicar entrada"
+              >
+                <Copy className="w-4 h-4" />
+              </Button>
+            )}
             <Tooltip>
               <TooltipTrigger asChild>
                 <span>
@@ -140,6 +152,17 @@ export function TimeEntryRow({ entry, selected, onToggle, onDelete, onEdit, onPl
                 className="min-w-[44px] min-h-[44px] text-muted-foreground hover:text-foreground"
               >
                 <Pencil className="w-4 h-4" />
+              </Button>
+            )}
+            {onDuplicate && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onDuplicate}
+                className="min-w-[44px] min-h-[44px] text-muted-foreground hover:text-foreground"
+                title="Duplicar entrada"
+              >
+                <Copy className="w-4 h-4" />
               </Button>
             )}
             <Button

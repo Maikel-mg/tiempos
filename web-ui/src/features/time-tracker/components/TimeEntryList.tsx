@@ -21,6 +21,7 @@ interface TimeEntryListProps {
   onDelete: (id: string) => Promise<void>;
   onEdit?: (entry: TimeEntry) => void;
   onPlay?: (entry: TimeEntry) => void;
+  onDuplicate?: (entry: TimeEntry) => void;
   loading?: boolean;
   timerEntry?: TimerEntryData | null;
 }
@@ -29,7 +30,7 @@ interface TimeEntryListProps {
  * Listado de registros de tiempo con selección.
  * Los filtros son manejados por TimeEntryViewSwitcher.
  */
-export function TimeEntryList({ entries, selectedIds, onSelect, onDelete, onEdit, onPlay, loading, timerEntry }: TimeEntryListProps) {
+export function TimeEntryList({ entries, selectedIds, onSelect, onDelete, onEdit, onPlay, onDuplicate, loading, timerEntry }: TimeEntryListProps) {
   const toggleSelect = (id: string) => {
     const newSet = new Set(selectedIds);
     if (newSet.has(id)) {
@@ -80,6 +81,7 @@ export function TimeEntryList({ entries, selectedIds, onSelect, onDelete, onEdit
                 onDelete={() => onDelete(entry.id)}
                 onEdit={onEdit ? () => onEdit(entry) : undefined}
                 onPlay={onPlay ? () => onPlay(entry) : undefined}
+                onDuplicate={onDuplicate ? () => onDuplicate(entry) : undefined}
               />
             ))}
           </TableBody>

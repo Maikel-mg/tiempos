@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { CheckCircle2, Circle, ChevronDown, ChevronRight, Clock, MoreVertical, Play, Pencil, Trash2 } from 'lucide-react';
+import { CheckCircle2, Circle, ChevronDown, ChevronRight, Clock, MoreVertical, Play, Pencil, Trash2, Copy } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -29,6 +29,7 @@ interface GroupedEntryViewProps {
   onDelete?: (id: string) => Promise<void>;
   onEdit?: (entry: TimeEntry) => void;
   onPlay?: (entry: TimeEntry) => void;
+  onDuplicate?: (entry: TimeEntry) => void;
   timerEntry?: TimerEntryData | null;
 }
 
@@ -60,6 +61,7 @@ export function GroupedEntryView({
   onDelete: _onDelete,
   onEdit: _onEdit,
   onPlay: _onPlay,
+  onDuplicate: _onDuplicate,
   timerEntry,
 }: GroupedEntryViewProps) {
   const weekGroups = useMemo(() => groupEntriesByWeek(entries), [entries]);
@@ -197,6 +199,7 @@ export function GroupedEntryView({
           onDelete={_onDelete}
           onEdit={_onEdit}
           onPlay={_onPlay}
+          onDuplicate={_onDuplicate}
           selectedIds={selectedIds}
           onSelect={onSelect}
           timerEntry={timerEntry}
@@ -215,6 +218,7 @@ interface WeekGroupCardProps {
   onDelete?: (id: string) => Promise<void>;
   onEdit?: (entry: TimeEntry) => void;
   onPlay?: (entry: TimeEntry) => void;
+  onDuplicate?: (entry: TimeEntry) => void;
   selectedIds: Set<string>;
   onSelect?: (ids: Set<string>) => void;
   timerEntry?: TimerEntryData | null;
@@ -229,6 +233,7 @@ function WeekGroupCard({
   onDelete,
   onEdit,
   onPlay,
+  onDuplicate,
   selectedIds,
   onSelect,
   timerEntry,
@@ -271,6 +276,7 @@ function WeekGroupCard({
                 onDelete={onDelete}
                 onEdit={onEdit}
                 onPlay={onPlay}
+                onDuplicate={onDuplicate}
                 selectedIds={selectedIds}
                 onSelect={onSelect}
                 timerEntry={day.date === toLocalDateString(new Date()) ? timerEntry : null}
@@ -290,12 +296,13 @@ interface DayRowProps {
   onDelete?: (id: string) => Promise<void>;
   onEdit?: (entry: TimeEntry) => void;
   onPlay?: (entry: TimeEntry) => void;
+  onDuplicate?: (entry: TimeEntry) => void;
   selectedIds: Set<string>;
   onSelect?: (ids: Set<string>) => void;
   timerEntry?: TimerEntryData | null;
 }
 
-function DayRow({ day, isExpanded, onToggle, onDelete, onEdit, onPlay, selectedIds, onSelect, timerEntry }: DayRowProps) {
+function DayRow({ day, isExpanded, onToggle, onDelete, onEdit, onPlay, onDuplicate, selectedIds, onSelect, timerEntry }: DayRowProps) {
   const toggleEntry = (entryId: string) => {
     if (!onSelect) return;
     const newSet = new Set(selectedIds);
@@ -389,6 +396,10 @@ function DayRow({ day, isExpanded, onToggle, onDelete, onEdit, onPlay, selectedI
                     >
                       <Pencil className="h-4 w-4" />
                       Editar
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onDuplicate?.(entry)}>
+                      <Copy className="h-4 w-4" />
+                      Duplicar
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => onDelete?.(entry.id)}>
                       <Trash2 className="h-4 w-4" />

@@ -209,6 +209,18 @@ export function TimeTrackingPage() {
     setEditingEntry(null);
   }, []);
 
+  const handleDuplicateEntry = useCallback(async (entry: TimeEntry) => {
+    await createEntry({
+      taskId: entry.taskId,
+      taskName: entry.taskName,
+      date: entry.date,
+      startTime: entry.startTime,
+      endTime: entry.endTime,
+      description: entry.description,
+    });
+    toast.success('Entrada duplicada');
+  }, [createEntry]);
+
   const handlePlayEntry = useCallback(async (entry: TimeEntry) => {
     if (timerHook.isRunning) {
       const result = await timerHook.stop({ persist: false });
@@ -319,6 +331,7 @@ export function TimeTrackingPage() {
           onDelete={handleDeleteEntry}
           onEdit={handleEditEntry}
           onPlay={handlePlayEntry}
+          onDuplicate={handleDuplicateEntry}
           activeTab={activeTab}
           timerEntry={virtualTimerEntry}
         />

@@ -25,6 +25,7 @@ interface TimeEntryViewSwitcherProps {
   onDelete: (id: string) => Promise<void>;
   onEdit?: (entry: TimeEntry) => void;
   onPlay?: (entry: TimeEntry) => void;
+  onDuplicate?: (entry: TimeEntry) => void;
   activeTab: string;
   timerEntry?: TimerEntryData | null;
 }
@@ -36,6 +37,7 @@ export function TimeEntryViewSwitcher({
   onDelete,
   onEdit,
   onPlay,
+  onDuplicate,
   activeTab,
   timerEntry,
 }: TimeEntryViewSwitcherProps) {
@@ -174,6 +176,7 @@ export function TimeEntryViewSwitcher({
             onDelete={onDelete}
             onEdit={onEdit}
             onPlay={onPlay}
+            onDuplicate={onDuplicate}
             timerEntry={timerEntry}
           />
         ) : (
@@ -184,6 +187,7 @@ export function TimeEntryViewSwitcher({
             onDelete={onDelete}
             onEdit={onEdit}
             onPlay={onPlay}
+            onDuplicate={onDuplicate}
             timerEntry={timerEntry}
           />
         )}
