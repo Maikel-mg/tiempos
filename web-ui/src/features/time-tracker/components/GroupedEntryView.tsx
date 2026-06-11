@@ -70,18 +70,33 @@ export function GroupedEntryView({
 
     const todayStr = toLocalDateString(new Date());
     const todayWeekKey = getWeekKey(todayStr);
+    const timerSeconds = timerEntry.duration;
 
     // Check if today already has entries in the existing groups
     const todayExists = weekGroups.some(w =>
       w.weekKey === todayWeekKey && w.days.some(d => d.date === todayStr)
     );
-    if (todayExists) return weekGroups;
 
-    // Create a synthetic day for today
+    if (todayExists) {
+      // Update existing day's totalSeconds to include timer elapsed
+      return weekGroups.map(w => {
+        if (w.weekKey !== todayWeekKey) return w;
+        return {
+          ...w,
+          totalSeconds: w.totalSeconds + timerSeconds,
+          days: w.days.map(d => {
+            if (d.date !== todayStr) return d;
+            return { ...d, totalSeconds: d.totalSeconds + timerSeconds };
+          }),
+        };
+      });
+    }
+
+    // Create a synthetic day for today with timer elapsed
     const todayDay: LocalWeekDay = {
       date: todayStr,
       dateFormatted: formatShortDate(todayStr),
-      totalSeconds: 0,
+      totalSeconds: timerSeconds,
       entries: [],
     };
 
@@ -92,6 +107,7 @@ export function GroupedEntryView({
       const updated = [...weekGroups];
       const week = { ...updated[existingWeekIdx] };
       week.days = [...week.days, todayDay].sort((a, b) => a.date.localeCompare(b.date));
+      week.totalSeconds = week.totalSeconds + timerSeconds;
       updated[existingWeekIdx] = week;
       return updated;
     }
@@ -108,7 +124,7 @@ export function GroupedEntryView({
       weekStart: weekStartStr,
       weekEnd: weekEndStr,
       weekRangeFormatted: formatWeekRange(weekStartStr, weekEndStr),
-      totalSeconds: 0,
+      totalSeconds: timerSeconds,
       days: [todayDay],
     };
 
