@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import '@testing-library/jest-dom';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { GroupedEntryView } from '../GroupedEntryView';
@@ -426,6 +425,72 @@ describe('GroupedEntryView', () => {
       );
       expect(selectedContainer).toBeTruthy();
       expect(within(selectedContainer as HTMLElement).getByText('Task 1')).toBeInTheDocument();
+    });
+  });
+
+  describe('recoverable indicators', () => {
+    it('shows "Permiso" badge for recoverable entries', () => {
+      const entries = [
+        makeEntry('1', { date: '2026-06-09', recoverable: true }),
+        makeEntry('2', { date: '2026-06-09', recoverable: false }),
+      ];
+
+      render(
+        <GroupedEntryView
+          entries={entries}
+          selectedIds={new Set()}
+          onSelect={vi.fn()}
+          onDelete={vi.fn()}
+          onEdit={vi.fn()}
+          onPlay={vi.fn()}
+        />,
+      );
+
+      const permisoBadges = screen.getAllByText('Permiso');
+      expect(permisoBadges.length).toBe(1);
+    });
+
+    it('applies amber background to recoverable entries', () => {
+      const entries = [
+        makeEntry('1', { date: '2026-06-09', recoverable: true }),
+      ];
+
+      render(
+        <GroupedEntryView
+          entries={entries}
+          selectedIds={new Set()}
+          onSelect={vi.fn()}
+          onDelete={vi.fn()}
+          onEdit={vi.fn()}
+          onPlay={vi.fn()}
+        />,
+      );
+
+      const entryContainers = document.querySelectorAll('.divide-y > div');
+      const amberContainer = Array.from(entryContainers).find((el) =>
+        el.className.includes('bg-amber')
+      );
+      expect(amberContainer).toBeTruthy();
+      expect(within(amberContainer as HTMLElement).getByText('Task 1')).toBeInTheDocument();
+    });
+
+    it('does not show "Permiso" badge for non-recoverable entries', () => {
+      const entries = [
+        makeEntry('1', { date: '2026-06-09', recoverable: false }),
+      ];
+
+      render(
+        <GroupedEntryView
+          entries={entries}
+          selectedIds={new Set()}
+          onSelect={vi.fn()}
+          onDelete={vi.fn()}
+          onEdit={vi.fn()}
+          onPlay={vi.fn()}
+        />,
+      );
+
+      expect(screen.queryByText('Permiso')).not.toBeInTheDocument();
     });
   });
 });

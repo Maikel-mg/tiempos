@@ -12,6 +12,8 @@ interface TimeEntryRowProps {
   onEdit?: () => void;
   onPlay?: () => void;
   onDuplicate?: () => void;
+  /** Información de recuperación para entries recuperables (permisos). */
+  recoveryInfo?: { recovered: number; total: number };
 }
 
 /**
@@ -27,6 +29,15 @@ function formatDuration(seconds: number): string {
 }
 
 /**
+ * Formatea segundos a H:MM (sin cero inicial en horas).
+ */
+function formatRecoveryTime(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  return `${h}:${m.toString().padStart(2, '0')}`;
+}
+
+/**
  * Formatea fecha YYYY-MM-DD a DD/MM/YYYY.
  */
 function formatDate(dateStr: string): string {
@@ -37,12 +48,15 @@ function formatDate(dateStr: string): string {
 /**
  * Fila individual del listado de registros de tiempo.
  */
-export function TimeEntryRow({ entry, selected, onToggle, onDelete, onEdit, onPlay, onDuplicate }: TimeEntryRowProps) {
+export function TimeEntryRow({ entry, selected, onToggle, onDelete, onEdit, onPlay, onDuplicate, recoveryInfo }: TimeEntryRowProps) {
   const SYNCED_TOOLTIP = 'Ya sincronizado con la BD — no se puede editar desde aquí';
 
   return (
     <TooltipProvider>
-      <TableRow className={selected ? 'bg-green-50' : ''}>
+      <TableRow className={[
+        selected ? 'bg-green-50' : '',
+        entry.recoverable && !selected ? 'bg-amber-50 dark:bg-amber-950/20' : '',
+      ].filter(Boolean).join(' ')}>
       {/* Checkbox */}
       <TableCell className="w-12">
         <button
@@ -64,7 +78,27 @@ export function TimeEntryRow({ entry, selected, onToggle, onDelete, onEdit, onPl
 
       {/* Task */}
       <TableCell className="font-medium">
-        {entry.taskName}
+        <div className="flex items-center gap-2">
+          {entry.taskName}
+          {entry.recoverable && (
+            <span className="inline-flex items-center text-[10px] font-semibold uppercase tracking-wide bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-1.5 py-0.5 rounded">
+              Permiso
+            </span>
+          )}
+        </div>
+        {entry.recoverable && recoveryInfo && (
+          <div className="mt-1 flex items-center gap-2">
+            <div className="h-1.5 w-24 rounded-full bg-amber-200 dark:bg-amber-800/40 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-amber-500 dark:bg-amber-400"
+                style={{ width: `${recoveryInfo.total > 0 ? Math.min((recoveryInfo.recovered / recoveryInfo.total) * 100, 100) : 0}%` }}
+              />
+            </div>
+            <span className="text-xs text-muted-foreground font-mono">
+              {formatRecoveryTime(recoveryInfo.recovered)} / {formatRecoveryTime(recoveryInfo.total)}
+            </span>
+          </div>
+        )}
       </TableCell>
 
       {/* Description */}

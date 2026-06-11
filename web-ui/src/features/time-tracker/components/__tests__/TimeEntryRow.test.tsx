@@ -1,5 +1,4 @@
 import { describe, it, expect, vi } from 'vitest';
-import '@testing-library/jest-dom';
 import { render, screen } from '@testing-library/react';
 import { TimeEntryRow } from '../TimeEntryRow';
 import type { TimeEntry } from '../../types';
@@ -22,7 +21,7 @@ function makeEntry(overrides: Partial<TimeEntry> = {}): TimeEntry {
   };
 }
 
-function renderRow(entry: TimeEntry, props: Partial<{ onEdit: () => void; onDelete: () => void; onToggle: () => void; selected: boolean }> = {}) {
+function renderRow(entry: TimeEntry, props: Partial<{ onEdit: () => void; onDelete: () => void; onToggle: () => void; selected: boolean; recoveryInfo: { recovered: number; total: number } }> = {}) {
   return render(
     <table>
       <tbody>
@@ -32,6 +31,7 @@ function renderRow(entry: TimeEntry, props: Partial<{ onEdit: () => void; onDele
           onToggle={props.onToggle ?? vi.fn()}
           onDelete={props.onDelete ?? vi.fn()}
           onEdit={props.onEdit}
+          recoveryInfo={props.recoveryInfo}
         />
       </tbody>
     </table>
@@ -119,5 +119,63 @@ describe('TimeEntryRow edit button', () => {
     await userEvent.click(pencilBtn);
 
     expect(onEdit).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('TimeEntryRow recoverable indicators', () => {
+  it('shows "Permiso" badge for recoverable entries', () => {
+    renderRow(makeEntry({ recoverable: true }));
+
+    expect(screen.getByText('Permiso')).toBeInTheDocument();
+  });
+
+  it('does not show "Permiso" badge for non-recoverable entries', () => {
+    renderRow(makeEntry({ recoverable: false }));
+
+    expect(screen.queryByText('Permiso')).not.toBeInTheDocument();
+  });
+
+  it('does not show "Permiso" badge when recoverable is undefined', () => {
+    renderRow(makeEntry({}));
+
+    expect(screen.queryByText('Permiso')).not.toBeInTheDocument();
+  });
+
+  it('applies amber background to recoverable entries', () => {
+    const { container } = renderRow(makeEntry({ recoverable: true }));
+
+    const row = container.querySelector('tr');
+    expect(row?.className).toContain('bg-amber-50');
+  });
+
+  it('does not apply amber background to non-recoverable entries', () => {
+    const { container } = renderRow(makeEntry({ recoverable: false }));
+
+    const row = container.querySelector('tr');
+    expect(row?.className).not.toContain('bg-amber');
+  });
+
+  it('shows recovery progress text when recoveryInfo is provided', () => {
+    renderRow(
+      makeEntry({ recoverable: true, duration: 14400 }),
+      { recoveryInfo: { recovered: 5400, total: 14400 } },
+    );
+
+    expect(screen.getByText('1:30 / 4:00')).toBeInTheDocument();
+  });
+
+  it('shows zero progress when nothing recovered yet', () => {
+    renderRow(
+      makeEntry({ recoverable: true, duration: 7200 }),
+      { recoveryInfo: { recovered: 0, total: 7200 } },
+    );
+
+    expect(screen.getByText('0:00 / 2:00')).toBeInTheDocument();
+  });
+
+  it('does not show progress text when recoveryInfo is not provided', () => {
+    renderRow(makeEntry({ recoverable: true }));
+
+    expect(screen.queryByText(/\d+:\d+ \/ \d+:\d+/)).not.toBeInTheDocument();
   });
 });

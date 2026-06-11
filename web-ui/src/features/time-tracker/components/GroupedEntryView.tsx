@@ -349,7 +349,7 @@ function DayRow({ day, isExpanded, onToggle, onDelete, onEdit, onPlay, onDuplica
               </div>
             )}
             {day.entries.map((entry) => (
-              <div key={entry.id} className={`p-3 flex items-start justify-between gap-4 ${selectedIds.has(entry.id) ? 'bg-green-50' : ''}`}>
+              <div key={entry.id} className={`p-3 flex items-start justify-between gap-4 ${selectedIds.has(entry.id) ? 'bg-green-50' : entry.recoverable ? 'bg-amber-50 dark:bg-amber-950/20' : ''}`}>
                 <button
                   onClick={() => toggleEntry(entry.id)}
                   className="flex items-center justify-center w-11 h-11 min-w-[44px] min-h-[44px] rounded-md hover:bg-accent shrink-0"
@@ -363,6 +363,11 @@ function DayRow({ day, isExpanded, onToggle, onDelete, onEdit, onPlay, onDuplica
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="font-medium">{entry.taskName}</span>
+                    {entry.recoverable && (
+                      <span className="inline-flex items-center text-[10px] font-semibold uppercase tracking-wide bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-1.5 py-0.5 rounded">
+                        Permiso
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">
