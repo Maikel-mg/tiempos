@@ -38,6 +38,7 @@ export class TimeTrackingService {
     startTime: string;
     endTime: string;
     description?: string;
+    recoverable?: boolean;
   }): Promise<TimeEntry> {
     const now = new Date().toISOString();
     const durationInSecond = calculateDurationSeconds(data.startTime, data.endTime);
@@ -53,6 +54,7 @@ export class TimeTrackingService {
       endTime: data.endTime,
       duration: durationInSecond ,
       description: data.description,
+      recoverable: data.recoverable,
       createdAt: now,
       updatedAt: now,
       synced: false

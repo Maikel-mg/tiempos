@@ -40,6 +40,25 @@ export async function migrateToV2(tx: Transaction): Promise<{ migrated: number; 
 }
 
 /**
+ * Migración v2→v3: agrega campo recoverable a entradas existentes.
+ * Entradas sin el campo quedan con recoverable: false.
+ */
+export async function migrateToV3(tx: Transaction): Promise<{ updated: number }> {
+  const table = tx.table<TimeEntry, string>('timeEntries');
+  const entries = await table.toArray();
+  let updated = 0;
+
+  for (const entry of entries) {
+    if (entry.recoverable === undefined) {
+      await table.update(entry.id, { recoverable: false } as Partial<TimeEntry>);
+      updated++;
+    }
+  }
+
+  return { updated };
+}
+
+/**
  * Base de datos IndexedDB para el TimeTracker usando Dexie.
  */
 class TimeTrackerDB extends Dexie {
@@ -66,6 +85,18 @@ class TimeTrackerDB extends Dexie {
     }).upgrade(async (tx) => {
       const result = await migrateToV2(tx);
       await tx.table('migrationMeta').put({ key: 'v2_migration', value: result });
+      return result;
+    });
+
+    this.version(3).stores({
+      timeEntries: 'id, taskId, date, startTime, endTime, synced, createdAt, serverId, recoverable',
+      timerState: 'id',
+      processes: 'proceso, nombre, faseNombre, proyectoNombre, clienteNombre',
+      processRecents: 'proceso, lastUsedAt',
+      migrationMeta: 'key',
+    }).upgrade(async (tx) => {
+      const result = await migrateToV3(tx);
+      await tx.table('migrationMeta').put({ key: 'v3_migration', value: result });
       return result;
     });
   }

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TimeTrackingService } from '../timeTrackingService';
 import type { StorageStrategy } from '@/lib/storage/StorageStrategy';
-import type { TimerState } from '../types';
+import type { TimeEntry, TimerState } from '../types';
 
 function createMockStorage(): StorageStrategy {
   return {
@@ -54,5 +54,77 @@ describe('TimeTrackingService.stopTimer', () => {
     const result = await service.stopTimer({ persist: false });
 
     expect(result).toBeNull();
+  });
+});
+
+describe('TimeTrackingService.createEntry', () => {
+  let storage: StorageStrategy;
+  let service: TimeTrackingService;
+
+  beforeEach(() => {
+    storage = createMockStorage();
+    service = new TimeTrackingService(storage);
+  });
+
+  it('creates entry with recoverable field when provided', async () => {
+    const entry = await service.createEntry({
+      taskId: 1,
+      taskName: 'Test',
+      date: '2025-06-11',
+      startTime: '09:00',
+      endTime: '10:00',
+      recoverable: true,
+    });
+
+    expect(entry.recoverable).toBe(true);
+    expect(storage.saveEntry).toHaveBeenCalledWith(
+      expect.objectContaining({ recoverable: true })
+    );
+  });
+
+  it('creates entry without recoverable field when not provided', async () => {
+    const entry = await service.createEntry({
+      taskId: 1,
+      taskName: 'Test',
+      date: '2025-06-11',
+      startTime: '09:00',
+      endTime: '10:00',
+    });
+
+    expect(entry.recoverable).toBeUndefined();
+  });
+});
+
+describe('TimeTrackingService.updateEntry', () => {
+  let storage: StorageStrategy;
+  let service: TimeTrackingService;
+
+  beforeEach(() => {
+    storage = createMockStorage();
+    service = new TimeTrackingService(storage);
+  });
+
+  it('updates recoverable field on existing entry', async () => {
+    const existing: TimeEntry = {
+      id: '1',
+      taskId: 1,
+      taskName: 'Test',
+      date: '2025-06-11',
+      startTime: '09:00',
+      endTime: '10:00',
+      duration: 3600,
+      createdAt: '2025-06-11T09:00:00Z',
+      updatedAt: '2025-06-11T09:00:00Z',
+      synced: false,
+    };
+    vi.mocked(storage.getEntry).mockResolvedValue(existing);
+
+    const updated = await service.updateEntry('1', { recoverable: true });
+
+    expect(updated).not.toBeNull();
+    expect(updated!.recoverable).toBe(true);
+    expect(storage.updateEntry).toHaveBeenCalledWith(
+      expect.objectContaining({ recoverable: true })
+    );
   });
 });

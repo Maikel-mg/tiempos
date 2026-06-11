@@ -32,6 +32,7 @@ export interface TimeEntry {
   endTime: string;
   duration: number;
   description?: string;
+  recoverable?: boolean;
   createdAt: string;
   updatedAt: string;
   synced: boolean;
