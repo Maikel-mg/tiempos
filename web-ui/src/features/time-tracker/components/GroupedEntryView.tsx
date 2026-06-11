@@ -9,7 +9,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { groupEntriesByWeek, getWeekKey, getWeekStart, parseDateString, formatDateToString, formatWeekRange, formatShortDate } from '../lib/groupEntriesByWeek';
+import { computeDailyBalance } from '../lib/balance';
 import { TimerRow } from './TimerRow';
 import type { TimeEntry, LocalWeekGroup, LocalWeekDay } from '../types';
 
@@ -37,6 +39,19 @@ function formatDuration(seconds: number): string {
   const hrs = Math.floor(seconds / 3600);
   const mins = Math.floor((seconds % 3600) / 60);
   return `${hrs}:${mins.toString().padStart(2, '0')}`;
+}
+
+function formatHM(totalSeconds: number): string {
+  const abs = Math.abs(totalSeconds);
+  const h = Math.floor(abs / 3600);
+  const m = Math.floor((abs % 3600) / 60);
+  return `${h}:${String(m).padStart(2, '0')}`;
+}
+
+function dayTotalColor(balance: number): string {
+  if (balance > 0) return 'text-emerald-600 dark:text-emerald-400';
+  if (balance < 0) return 'text-amber-600 dark:text-amber-400';
+  return '';
 }
 
 function getTodayWeekKey(): string {
@@ -303,6 +318,8 @@ interface DayRowProps {
 }
 
 function DayRow({ day, isExpanded, onToggle, onDelete, onEdit, onPlay, onDuplicate, selectedIds, onSelect, timerEntry }: DayRowProps) {
+  const dailyBalance = computeDailyBalance(day.entries, day.date);
+
   const toggleEntry = (entryId: string) => {
     if (!onSelect) return;
     const newSet = new Set(selectedIds);
@@ -333,9 +350,22 @@ function DayRow({ day, isExpanded, onToggle, onDelete, onEdit, onPlay, onDuplica
           <span className="text-xs text-muted-foreground">
             {day.entries.length} {day.entries.length === 1 ? 'entrada' : 'entradas'}
           </span>
-          <span className="bg-muted px-2 py-0.5 rounded font-mono text-sm">
-            {formatDuration(day.totalSeconds)}
-          </span>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className={`bg-muted px-2 py-0.5 rounded font-mono text-sm ${dayTotalColor(dailyBalance)}`}>
+                  {formatDuration(day.totalSeconds)}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                {dailyBalance > 0
+                  ? `+${formatHM(dailyBalance)} a favor del banco`
+                  : dailyBalance < 0
+                  ? `${formatHM(dailyBalance)} en contra del banco`
+                  : 'Día exacto'}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </button>
 
