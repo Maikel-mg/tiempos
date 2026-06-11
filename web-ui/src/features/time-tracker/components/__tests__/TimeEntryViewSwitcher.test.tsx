@@ -7,8 +7,10 @@ import type { TimeEntry } from '../../types';
 
 // Mock pointer capture for Radix UI Select in jsdom
 Element.prototype.hasPointerCapture = vi.fn(() => false);
+// Mock scrollIntoView for Radix UI Select in jsdom
+Element.prototype.scrollIntoView = vi.fn(() => {});
 
-function makeEntry(id: string, taskName: string, date: string, synced = false, syncError?: string): TimeEntry {
+function makeEntry(id: string, taskName: string, date: string, synced = false, syncError?: string, recoverable?: boolean): TimeEntry {
   return {
     id,
     taskId: 100,
@@ -19,6 +21,7 @@ function makeEntry(id: string, taskName: string, date: string, synced = false, s
     endTime: '10:00',
     duration: 3600,
     description: '',
+    recoverable,
     createdAt: '2026-01-15T09:00:00Z',
     updatedAt: '2026-01-15T09:00:00Z',
     synced,
@@ -27,10 +30,10 @@ function makeEntry(id: string, taskName: string, date: string, synced = false, s
 }
 
 const ENTRIES: TimeEntry[] = [
-  makeEntry('1', 'Frontend Task', '2026-06-01', false),
-  makeEntry('2', 'Backend Task', '2026-06-02', true),
-  makeEntry('3', 'Frontend Bug', '2026-06-01', false, 'Error'),
-  makeEntry('4', 'Backend Feature', '2026-06-03', true),
+  makeEntry('1', 'Frontend Task', '2026-06-01', false, undefined, false),
+  makeEntry('2', 'Backend Task', '2026-06-02', true, undefined, true),
+  makeEntry('3', 'Frontend Bug', '2026-06-01', false, 'Error', false),
+  makeEntry('4', 'Backend Feature', '2026-06-03', true, undefined, true),
 ];
 
 beforeEach(() => {
@@ -172,9 +175,9 @@ describe('TimeEntryViewSwitcher', () => {
       />
     );
 
-    // Sort control should NOT be visible in grouped view (there should be only 1 select now)
+    // Sort control should NOT be visible in grouped view (there should be 2 selects now: sync + tipo)
     const selectsAfterSwitch = screen.getAllByRole('combobox');
-    expect(selectsAfterSwitch.length).toBe(1); // Only sync filter should remain
+    expect(selectsAfterSwitch.length).toBe(2); // sync filter + tipo filter
   });
 
   it('shows record count', () => {
@@ -254,7 +257,25 @@ describe('TimeEntryViewSwitcher', () => {
       expect(screen.getByText('2 seleccionados')).toBeInTheDocument();
     });
 
-    it('does not show selected count when no entries are selected', () => {
+  it('does not show selected count when no entries are selected', () => {
+    render(
+      <TimeEntryViewSwitcher
+        entries={ENTRIES}
+        selectedIds={new Set()}
+        onSelect={vi.fn()}
+        onDelete={vi.fn()}
+        onEdit={vi.fn()}
+        onPlay={vi.fn()}
+        activeTab="table"
+      />
+    );
+
+    expect(screen.queryByText('seleccionados')).not.toBeInTheDocument();
+  });
+
+  describe('Tipo filter (recoverable)', () => {
+    it('renders Tipo filter with three options: Todos, Normal, Permiso', async () => {
+      const user = userEvent.setup();
       render(
         <TimeEntryViewSwitcher
           entries={ENTRIES}
@@ -267,7 +288,159 @@ describe('TimeEntryViewSwitcher', () => {
         />
       );
 
-      expect(screen.queryByText('seleccionados')).not.toBeInTheDocument();
+      // Find the Tipo filter by label
+      const tipoLabel = screen.getByText('Tipo');
+      expect(tipoLabel).toBeInTheDocument();
+
+      // The select trigger should be next to the label
+      const tipoSelect = tipoLabel.closest('div')?.querySelector('[role="combobox"]') as HTMLElement;
+      expect(tipoSelect).toBeInTheDocument();
+
+      // Open the dropdown
+      await user.click(tipoSelect);
+
+      // Should show all three options
+      expect(screen.getByRole('option', { name: 'Todos' })).toBeInTheDocument();
+      expect(screen.getByRole('option', { name: 'Normal' })).toBeInTheDocument();
+      expect(screen.getByRole('option', { name: 'Permiso' })).toBeInTheDocument();
+    });
+
+    it('defaults to "Todos" showing all entries', () => {
+      render(
+        <TimeEntryViewSwitcher
+          entries={ENTRIES}
+          selectedIds={new Set()}
+          onSelect={vi.fn()}
+          onDelete={vi.fn()}
+          onEdit={vi.fn()}
+          onPlay={vi.fn()}
+          activeTab="table"
+        />
+      );
+
+      // All entries should be visible
+      expect(screen.getByText('Frontend Task')).toBeInTheDocument();
+      expect(screen.getByText('Backend Task')).toBeInTheDocument();
+      expect(screen.getByText('Frontend Bug')).toBeInTheDocument();
+      expect(screen.getByText('Backend Feature')).toBeInTheDocument();
+
+      // Count should show all 4
+      expect(screen.getByText('4 registros')).toBeInTheDocument();
+    });
+
+    it('filtering by "Normal" hides recoverable entries', async () => {
+      const user = userEvent.setup();
+      render(
+        <TimeEntryViewSwitcher
+          entries={ENTRIES}
+          selectedIds={new Set()}
+          onSelect={vi.fn()}
+          onDelete={vi.fn()}
+          onEdit={vi.fn()}
+          onPlay={vi.fn()}
+          activeTab="table"
+        />
+      );
+
+      // Find and click the Tipo filter
+      const tipoLabel = screen.getByText('Tipo');
+      const tipoSelect = tipoLabel.closest('div')?.querySelector('[role="combobox"]') as HTMLElement;
+      await user.click(tipoSelect);
+
+      // Select "Normal"
+      await user.click(screen.getByRole('option', { name: 'Normal' }));
+
+      // Should show only non-recoverable entries (recoverable !== true)
+      expect(screen.getByText('Frontend Task')).toBeInTheDocument();
+      expect(screen.getByText('Frontend Bug')).toBeInTheDocument();
+
+      // Should hide recoverable entries (recoverable === true)
+      expect(screen.queryByText('Backend Task')).not.toBeInTheDocument();
+      expect(screen.queryByText('Backend Feature')).not.toBeInTheDocument();
+
+      // Count should show 2 of 4
+      expect(screen.getByText('4 registros')).toBeInTheDocument();
+      expect(screen.getByText('(2 mostrados)')).toBeInTheDocument();
+    });
+
+    it('filtering by "Permiso" shows only recoverable entries', async () => {
+      const user = userEvent.setup();
+      render(
+        <TimeEntryViewSwitcher
+          entries={ENTRIES}
+          selectedIds={new Set()}
+          onSelect={vi.fn()}
+          onDelete={vi.fn()}
+          onEdit={vi.fn()}
+          onPlay={vi.fn()}
+          activeTab="table"
+        />
+      );
+
+      // Find and click the Tipo filter
+      const tipoLabel = screen.getByText('Tipo');
+      const tipoSelect = tipoLabel.closest('div')?.querySelector('[role="combobox"]') as HTMLElement;
+      await user.click(tipoSelect);
+
+      // Select "Permiso"
+      await user.click(screen.getByRole('option', { name: 'Permiso' }));
+
+      // Should show only recoverable entries (recoverable === true)
+      expect(screen.getByText('Backend Task')).toBeInTheDocument();
+      expect(screen.getByText('Backend Feature')).toBeInTheDocument();
+
+      // Should hide non-recoverable entries
+      expect(screen.queryByText('Frontend Task')).not.toBeInTheDocument();
+      expect(screen.queryByText('Frontend Bug')).not.toBeInTheDocument();
+
+      // Count should show 2 of 4
+      expect(screen.getByText('4 registros')).toBeInTheDocument();
+      expect(screen.getByText('(2 mostrados)')).toBeInTheDocument();
+    });
+
+    it('count updates correctly when filtering by Tipo', async () => {
+      const user = userEvent.setup();
+      render(
+        <TimeEntryViewSwitcher
+          entries={ENTRIES}
+          selectedIds={new Set()}
+          onSelect={vi.fn()}
+          onDelete={vi.fn()}
+          onEdit={vi.fn()}
+          onPlay={vi.fn()}
+          activeTab="table"
+        />
+      );
+
+      // Initial count should show all 4
+      expect(screen.getByText('4 registros')).toBeInTheDocument();
+
+      // Find and click the Tipo filter
+      const tipoLabel = screen.getByText('Tipo');
+      const tipoSelect = tipoLabel.closest('div')?.querySelector('[role="combobox"]') as HTMLElement;
+      await user.click(tipoSelect);
+
+      // Select "Normal" (2 entries)
+      await user.click(screen.getByRole('option', { name: 'Normal' }));
+
+      // Count should show (2 mostrados)
+      expect(screen.getByText('(2 mostrados)')).toBeInTheDocument();
+
+      // Open dropdown again and select "Permiso" (also 2 entries)
+      await user.click(tipoSelect);
+      await user.click(screen.getByRole('option', { name: 'Permiso' }));
+
+      // Count should still show (2 mostrados)
+      expect(screen.getByText('(2 mostrados)')).toBeInTheDocument();
+
+      // Select "Todos" to show all again
+      await user.click(tipoSelect);
+      await user.click(screen.getByRole('option', { name: 'Todos' }));
+
+      // Count should show all 4 without the "(X mostrados)" suffix
+      expect(screen.getByText('4 registros')).toBeInTheDocument();
+      expect(screen.queryByText('mostrados')).not.toBeInTheDocument();
     });
   });
+});
 });

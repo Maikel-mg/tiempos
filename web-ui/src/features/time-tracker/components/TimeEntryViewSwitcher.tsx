@@ -44,6 +44,7 @@ export function TimeEntryViewSwitcher({
   const [filterTask, setFilterTask] = useState('');
   const [sortBy, setSortBy] = useState<'date' | 'duration' | 'task'>('date');
   const [filterSync, setFilterSync] = useState<'all' | 'pending' | 'synced' | 'failed'>('all');
+  const [filterRecoverable, setFilterRecoverable] = useState<'all' | 'normal' | 'recoverable'>('all');
 
   const filtered = useMemo(() => {
     let result = [...entries];
@@ -60,6 +61,11 @@ export function TimeEntryViewSwitcher({
     } else if (filterSync === 'failed') {
       result = result.filter(e => !e.synced && !!e.syncError);
     }
+    if (filterRecoverable === 'normal') {
+      result = result.filter(e => e.recoverable !== true);
+    } else if (filterRecoverable === 'recoverable') {
+      result = result.filter(e => e.recoverable === true);
+    }
 
     // Sort only applies to table view
     if (activeTab === 'table') {
@@ -71,7 +77,7 @@ export function TimeEntryViewSwitcher({
     }
 
     return result;
-  }, [entries, filterTask, filterSync, sortBy, activeTab]);
+  }, [entries, filterTask, filterSync, filterRecoverable, sortBy, activeTab]);
 
   const toggleSelect = (id: string) => {
     const newSet = new Set(selectedIds);
@@ -161,6 +167,19 @@ export function TimeEntryViewSwitcher({
                 <SelectItem value="pending">Pendiente</SelectItem>
                 <SelectItem value="synced">Sincronizado</SelectItem>
                 <SelectItem value="failed">Fallido</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Tipo</Label>
+            <Select value={filterRecoverable} onValueChange={(v: string) => setFilterRecoverable(v as typeof filterRecoverable)}>
+              <SelectTrigger className="w-40 h-10">
+                <SelectValue placeholder="Tipo" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="normal">Normal</SelectItem>
+                <SelectItem value="recoverable">Permiso</SelectItem>
               </SelectContent>
             </Select>
           </div>
