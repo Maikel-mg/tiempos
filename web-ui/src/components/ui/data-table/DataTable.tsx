@@ -34,6 +34,10 @@ interface DataTableProps<TData, TValue> {
   globalFilter?: string
   getRowId?: (row: TData, index: number) => string
   onRowClick?: (row: TData) => void
+  columnToggle?: {
+    columns: { id: string; label: string; visible: boolean }[];
+    onToggle: (columnId: string, visible: boolean) => void;
+  };
 }
 
 export function DataTable<TData, TValue>({
@@ -45,6 +49,7 @@ export function DataTable<TData, TValue>({
   globalFilter,
   getRowId,
   onRowClick,
+  columnToggle,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
@@ -128,6 +133,7 @@ export function DataTable<TData, TValue>({
         searchValue={searchValue}
         onSearchChange={setSearchValue}
         searchKey={searchKey}
+        columnToggle={columnToggle}
       />
       <div className="rounded-md border">
         <Table>

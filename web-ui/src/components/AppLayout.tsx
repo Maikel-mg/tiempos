@@ -18,6 +18,7 @@ import {
   Clock,
   FolderOpen,
   Settings,
+  ListTodo,
 } from "lucide-react"
 import { ThemeToggle } from "@/components/ThemeToggle"
 import { Separator } from "@/components/ui/separator"
@@ -43,6 +44,11 @@ const mainNavItems = [
     title: "Tiempos en Vivo",
     url: "/live-entries",
     icon: Clock,
+  },
+  {
+    title: "Mis Tareas",
+    url: "/my-tasks",
+    icon: ListTodo,
   },
   {
     title: "Mi TimeTracker",

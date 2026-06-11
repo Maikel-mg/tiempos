@@ -2,16 +2,22 @@
 
 import { X } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { ColumnToggle } from "./ColumnToggle"
 
 interface DataTableToolbarProps {
   searchValue: string
   onSearchChange: (value: string) => void
   searchKey?: string
+  columnToggle?: {
+    columns: { id: string; label: string; visible: boolean }[];
+    onToggle: (columnId: string, visible: boolean) => void;
+  };
 }
 
 export function DataTableToolbar({
   searchValue,
   onSearchChange,
+  columnToggle,
 }: DataTableToolbarProps) {
   return (
     <div className="flex items-center justify-between">
@@ -33,6 +39,12 @@ export function DataTableToolbar({
           )}
         </div>
       </div>
+      {columnToggle && (
+        <ColumnToggle
+          columns={columnToggle.columns}
+          onToggle={columnToggle.onToggle}
+        />
+      )}
     </div>
   )
 }
