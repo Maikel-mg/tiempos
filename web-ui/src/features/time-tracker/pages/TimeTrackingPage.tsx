@@ -132,7 +132,7 @@ export function TimeTrackingPage() {
     if (!timerHook.isRunning || !timerHook.timerState) return null;
     if (!todayInRange) return null;
     return createVirtualTimerEntry(timerHook.timerState, new Date());
-  }, [timerHook.isRunning, timerHook.timerState, todayInRange]);
+  }, [timerHook.isRunning, timerHook.timerState, timerHook.elapsed, todayInRange]);
 
   const periodTotal = useMemo(() => {
     return computePeriodTotal(filteredByPeriod, timerHook.elapsed, todayInRange);
