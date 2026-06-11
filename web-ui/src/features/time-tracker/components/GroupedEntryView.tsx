@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { groupEntriesByWeek, getWeekKey } from '../lib/groupEntriesByWeek';
+import { groupEntriesByWeek, getWeekKey, getWeekStart, parseDateString, formatDateToString, formatWeekRange, formatShortDate } from '../lib/groupEntriesByWeek';
 import { TimerRow } from './TimerRow';
 import type { TimeEntry, LocalWeekGroup, LocalWeekDay } from '../types';
 
@@ -64,14 +64,70 @@ export function GroupedEntryView({
 }: GroupedEntryViewProps) {
   const weekGroups = useMemo(() => groupEntriesByWeek(entries), [entries]);
 
+  // When timer is running, ensure today has a day group even if no entries exist
+  const effectiveWeekGroups = useMemo(() => {
+    if (!timerEntry) return weekGroups;
+
+    const todayStr = toLocalDateString(new Date());
+    const todayWeekKey = getWeekKey(todayStr);
+
+    // Check if today already has entries in the existing groups
+    const todayExists = weekGroups.some(w =>
+      w.weekKey === todayWeekKey && w.days.some(d => d.date === todayStr)
+    );
+    if (todayExists) return weekGroups;
+
+    // Create a synthetic day for today
+    const todayDay: LocalWeekDay = {
+      date: todayStr,
+      dateFormatted: formatShortDate(todayStr),
+      totalSeconds: 0,
+      entries: [],
+    };
+
+    // Find existing week group for this week
+    const existingWeekIdx = weekGroups.findIndex(w => w.weekKey === todayWeekKey);
+    if (existingWeekIdx >= 0) {
+      // Add today to existing week group
+      const updated = [...weekGroups];
+      const week = { ...updated[existingWeekIdx] };
+      week.days = [...week.days, todayDay].sort((a, b) => a.date.localeCompare(b.date));
+      updated[existingWeekIdx] = week;
+      return updated;
+    }
+
+    // Create a new week group for today
+    const monday = getWeekStart(parseDateString(todayStr));
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    const weekStartStr = formatDateToString(monday);
+    const weekEndStr = formatDateToString(sunday);
+
+    const newWeek: LocalWeekGroup = {
+      weekKey: todayWeekKey,
+      weekStart: weekStartStr,
+      weekEnd: weekEndStr,
+      weekRangeFormatted: formatWeekRange(weekStartStr, weekEndStr),
+      totalSeconds: 0,
+      days: [todayDay],
+    };
+
+    return [newWeek, ...weekGroups].sort((a, b) => b.weekStart.localeCompare(a.weekStart));
+  }, [weekGroups, timerEntry]);
+
   const [expandedWeeks, setExpandedWeeks] = useState<Set<string>>(() => {
     return new Set([getTodayWeekKey()]);
   });
   const [expandedDays, setExpandedDays] = useState<Set<string>>(() => {
     const todayKey = getTodayWeekKey();
     const todayWeek = weekGroups.find((w) => w.weekKey === todayKey);
-    if (!todayWeek) return new Set();
-    return new Set(todayWeek.days.map((d) => d.date));
+    const days = todayWeek ? todayWeek.days.map((d) => d.date) : [];
+    // Always include today when timer is running
+    const todayStr = toLocalDateString(new Date());
+    if (!days.includes(todayStr)) {
+      days.push(todayStr);
+    }
+    return new Set(days);
   });
 
   const toggleWeek = (weekKey: string) => {
@@ -98,7 +154,7 @@ export function GroupedEntryView({
     });
   };
 
-  if (entries.length === 0) {
+  if (entries.length === 0 && !timerEntry) {
     return (
       <Card className="bg-card border border-border">
         <CardContent className="text-center py-16 space-y-3">
@@ -114,7 +170,7 @@ export function GroupedEntryView({
 
   return (
     <div className="space-y-3">
-      {weekGroups.map((weekGroup) => (
+      {effectiveWeekGroups.map((weekGroup) => (
         <WeekGroupCard
           key={weekGroup.weekKey}
           weekGroup={weekGroup}
