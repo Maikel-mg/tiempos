@@ -155,6 +155,7 @@ export function TimeTrackingPage() {
     startTime: string;
     endTime: string;
     description?: string;
+    recoverable: boolean;
   }) => {
     if (editingEntry) {
       await updateEntry(editingEntry.id, data);

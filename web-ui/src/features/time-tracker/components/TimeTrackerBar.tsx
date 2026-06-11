@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Clock, List, Pencil } from 'lucide-react';
+import { Clock, List, Pencil, ShieldCheck, ShieldOff } from 'lucide-react';
 import { ProcessSelectorButton } from './ProcessSelectorButton';
 import { MidnightSplitModal } from './MidnightSplitModal';
 import { detectCrossing } from '../lib/timerCrossingDetector';
@@ -17,6 +17,7 @@ interface TimeTrackerBarProps {
     startTime: string;
     endTime: string;
     description?: string;
+    recoverable: boolean;
   }) => Promise<void>;
   initialData?: Partial<TimeEntry>;
   disabled?: boolean;
@@ -61,6 +62,7 @@ export function TimeTrackerBar({ onSubmit, initialData, disabled, defaultMode = 
   const [startTime, setStartTime] = useState(initialData?.startTime || '09:00');
   const [endTime, setEndTime] = useState(initialData?.endTime || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [recoverable, setRecoverable] = useState(initialData?.recoverable ?? false);
 
   // Start time editing state
   const [editingStartTime, setEditingStartTime] = useState(false);
@@ -93,6 +95,7 @@ export function TimeTrackerBar({ onSubmit, initialData, disabled, defaultMode = 
       setDate(initialData.date || today);
       setStartTime(initialData.startTime || '09:00');
       setEndTime(initialData.endTime || '');
+      setRecoverable(initialData.recoverable ?? false);
       setMode('manual');
     }
   }, [initialData]);
@@ -119,14 +122,16 @@ export function TimeTrackerBar({ onSubmit, initialData, disabled, defaultMode = 
         startTime,
         endTime,
         description: description || undefined,
+        recoverable,
       });
       setStartTime('09:00');
       setEndTime('');
       setDescription('');
+      setRecoverable(false);
     } finally {
       setIsSubmitting(false);
     }
-  }, [isManualValid, task, durationSeconds, date, startTime, endTime, description, onSubmit]);
+  }, [isManualValid, task, durationSeconds, date, startTime, endTime, description, recoverable, onSubmit]);
 
   // Timer handlers
   const handleStart = useCallback(async () => {
@@ -151,9 +156,10 @@ export function TimeTrackerBar({ onSubmit, initialData, disabled, defaultMode = 
         startTime: result.start.toTimeString().slice(0, 5),
         endTime: result.end.toTimeString().slice(0, 5),
         description: description || undefined,
+        recoverable,
       });
     }
-  }, [timer, onSubmit, description]);
+  }, [timer, onSubmit, description, recoverable]);
 
   const handleCancel = useCallback(async () => {
     await timer.cancel();
@@ -169,12 +175,13 @@ export function TimeTrackerBar({ onSubmit, initialData, disabled, defaultMode = 
         startTime: split.startTime,
         endTime: split.endTime,
         description: description || undefined,
+        recoverable,
       });
     }
     setSplitModalOpen(false);
     setPendingStop(null);
     setSplitProposal([]);
-  }, [pendingStop, splitProposal, onSubmit, description]);
+  }, [pendingStop, splitProposal, onSubmit, description, recoverable]);
 
   const handleKeepSingle = useCallback(async () => {
     if (!pendingStop) return;
@@ -185,11 +192,12 @@ export function TimeTrackerBar({ onSubmit, initialData, disabled, defaultMode = 
       startTime: pendingStop.start.toTimeString().slice(0, 5),
       endTime: pendingStop.end.toTimeString().slice(0, 5),
       description: description || undefined,
+      recoverable,
     });
     setSplitModalOpen(false);
     setPendingStop(null);
     setSplitProposal([]);
-  }, [pendingStop, onSubmit, description]);
+  }, [pendingStop, onSubmit, description, recoverable]);
 
   // Force timer mode when timer is running
   useEffect(() => {
@@ -231,6 +239,27 @@ export function TimeTrackerBar({ onSubmit, initialData, disabled, defaultMode = 
           disabled={disabled || isSubmitting || timer.isRunning}
           className="w-96"
         />
+
+        {/* Recoverable toggle — shared across modes */}
+        <button
+          type="button"
+          onClick={() => setRecoverable((r) => !r)}
+          disabled={disabled || isSubmitting}
+          aria-label="Permiso (recuperable)"
+          aria-pressed={recoverable}
+          title="Marcar como permiso"
+          className={`p-1.5 rounded-md transition-colors min-w-[44px] min-h-[44px] ${
+            recoverable
+              ? 'bg-amber-500/20 text-amber-600'
+              : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+          }`}
+        >
+          {recoverable ? (
+            <ShieldCheck className="h-4 w-4" />
+          ) : (
+            <ShieldOff className="h-4 w-4" />
+          )}
+        </button>
 
         {mode === 'timer' ? (
           <>

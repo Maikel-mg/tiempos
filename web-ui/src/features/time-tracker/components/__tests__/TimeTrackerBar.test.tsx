@@ -20,6 +20,7 @@ const timerMock = {
   stop: vi.fn(),
   cancel: vi.fn().mockResolvedValue(undefined),
   updateStartTime: vi.fn().mockResolvedValue(undefined),
+  updateDescription: vi.fn().mockResolvedValue(undefined),
 };
 
 vi.mock('../../hooks/useTimer', () => ({
@@ -60,7 +61,7 @@ describe('TimeTrackerBar', () => {
   });
 
   it('renders all input fields in manual mode', () => {
-    const { container } = render(<TimeTrackerBar onSubmit={mockOnSubmit} defaultMode="manual" />);
+    const { container } = render(<TimeTrackerBar onSubmit={mockOnSubmit} timer={timerMock} defaultMode="manual" />);
 
     expect(screen.getByPlaceholderText(/en qué estás trabajando/i)).toBeInTheDocument();
     expect(screen.getByDisplayValue('09:00')).toBeInTheDocument();
@@ -69,20 +70,20 @@ describe('TimeTrackerBar', () => {
   });
 
   it('disables AÑADIR button when required fields are empty', () => {
-    render(<TimeTrackerBar onSubmit={mockOnSubmit} defaultMode="manual" />);
+    render(<TimeTrackerBar onSubmit={mockOnSubmit} timer={timerMock} defaultMode="manual" />);
 
     const addBtn = screen.getByRole('button', { name: /añadir/i });
     expect(addBtn).toBeDisabled();
   });
 
   it('shows duration as 00:00:00 when no end time', () => {
-    render(<TimeTrackerBar onSubmit={mockOnSubmit} defaultMode="manual" />);
+    render(<TimeTrackerBar onSubmit={mockOnSubmit} timer={timerMock} defaultMode="manual" />);
 
     expect(screen.getByText('00:00:00')).toBeInTheDocument();
   });
 
   it('computes duration live when times change', () => {
-    const { container } = render(<TimeTrackerBar onSubmit={mockOnSubmit} defaultMode="manual" />);
+    const { container } = render(<TimeTrackerBar onSubmit={mockOnSubmit} timer={timerMock} defaultMode="manual" />);
 
     const timeInputs = getTimeInputs(container);
     setTimeValue(timeInputs[1], '12:00');
@@ -91,7 +92,7 @@ describe('TimeTrackerBar', () => {
   });
 
   it('shows disabled button when end < start (negative duration)', () => {
-    const { container } = render(<TimeTrackerBar onSubmit={mockOnSubmit} defaultMode="manual" />);
+    const { container } = render(<TimeTrackerBar onSubmit={mockOnSubmit} timer={timerMock} defaultMode="manual" />);
 
     const timeInputs = getTimeInputs(container);
     setTimeValue(timeInputs[1], '08:00');
@@ -102,7 +103,7 @@ describe('TimeTrackerBar', () => {
 
   it('calls onSubmit with correct data when form is valid', async () => {
     const user = userEvent.setup();
-    const { container } = render(<TimeTrackerBar onSubmit={mockOnSubmit} defaultMode="manual" />);
+    const { container } = render(<TimeTrackerBar onSubmit={mockOnSubmit} timer={timerMock} defaultMode="manual" />);
 
     // Select a task
     const selectBtn = screen.getByRole('button', { name: /seleccionar proceso/i });
@@ -130,7 +131,7 @@ describe('TimeTrackerBar', () => {
 
   it('clears description and times after successful submit', async () => {
     const user = userEvent.setup();
-    const { container } = render(<TimeTrackerBar onSubmit={mockOnSubmit} defaultMode="manual" />);
+    const { container } = render(<TimeTrackerBar onSubmit={mockOnSubmit} timer={timerMock} defaultMode="manual" />);
 
     // Select a task
     const selectBtn = screen.getByRole('button', { name: /seleccionar proceso/i });
@@ -156,7 +157,7 @@ describe('TimeTrackerBar', () => {
   });
 
   it('renders disabled state', () => {
-    render(<TimeTrackerBar onSubmit={mockOnSubmit} defaultMode="manual" disabled />);
+    render(<TimeTrackerBar onSubmit={mockOnSubmit} timer={timerMock} defaultMode="manual" disabled />);
 
     expect(screen.getByPlaceholderText(/en qué estás trabajando/i)).toBeDisabled();
     expect(screen.getByRole('button', { name: /añadir/i })).toBeDisabled();
@@ -166,6 +167,7 @@ describe('TimeTrackerBar', () => {
     render(
       <TimeTrackerBar
         onSubmit={mockOnSubmit}
+        timer={timerMock}
         defaultMode="manual"
         initialData={{
           taskId: 102,
@@ -184,5 +186,141 @@ describe('TimeTrackerBar', () => {
     expect(screen.getByDisplayValue('18:00')).toBeInTheDocument();
     expect(screen.getByText('08:00:00')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /desarrollo backend/i })).toBeInTheDocument();
+  });
+
+  // ── Recoverable toggle ──────────────────────────────────────────────────
+
+  it('renders recoverable toggle in manual mode', () => {
+    render(<TimeTrackerBar onSubmit={mockOnSubmit} timer={timerMock} defaultMode="manual" />);
+
+    const toggle = screen.getByRole('button', { name: /permiso/i });
+    expect(toggle).toBeInTheDocument();
+  });
+
+  it('renders recoverable toggle in timer mode', () => {
+    render(<TimeTrackerBar onSubmit={mockOnSubmit} timer={timerMock} defaultMode="timer" />);
+
+    const toggle = screen.getByRole('button', { name: /permiso/i });
+    expect(toggle).toBeInTheDocument();
+  });
+
+  it('defaults recoverable toggle to OFF', () => {
+    render(<TimeTrackerBar onSubmit={mockOnSubmit} timer={timerMock} defaultMode="manual" />);
+
+    const toggle = screen.getByRole('button', { name: /permiso/i });
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('toggles recoverable state on click', async () => {
+    const user = userEvent.setup();
+    render(<TimeTrackerBar onSubmit={mockOnSubmit} timer={timerMock} defaultMode="manual" />);
+
+    const toggle = screen.getByRole('button', { name: /permiso/i });
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
+
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute('aria-pressed', 'true');
+
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('passes recoverable: true to onSubmit when toggle is active', async () => {
+    const user = userEvent.setup();
+    const { container } = render(<TimeTrackerBar onSubmit={mockOnSubmit} timer={timerMock} defaultMode="manual" />);
+
+    // Select a task
+    const selectBtn = screen.getByRole('button', { name: /seleccionar proceso/i });
+    await user.click(selectBtn);
+    await user.click(await screen.findByText('Desarrollo Frontend'));
+
+    // Set end time
+    const timeInputs = getTimeInputs(container);
+    setTimeValue(timeInputs[1], '17:00');
+
+    // Activate recoverable toggle
+    const toggle = screen.getByRole('button', { name: /permiso/i });
+    await user.click(toggle);
+
+    // Submit
+    const addBtn = screen.getByRole('button', { name: /añadir/i });
+    await user.click(addBtn);
+
+    expect(mockOnSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recoverable: true,
+      })
+    );
+  });
+
+  it('passes recoverable: false when toggle is off', async () => {
+    const user = userEvent.setup();
+    const { container } = render(<TimeTrackerBar onSubmit={mockOnSubmit} timer={timerMock} defaultMode="manual" />);
+
+    // Select a task
+    const selectBtn = screen.getByRole('button', { name: /seleccionar proceso/i });
+    await user.click(selectBtn);
+    await user.click(await screen.findByText('Desarrollo Frontend'));
+
+    // Set end time
+    const timeInputs = getTimeInputs(container);
+    setTimeValue(timeInputs[1], '17:00');
+
+    // Submit without toggling
+    const addBtn = screen.getByRole('button', { name: /añadir/i });
+    await user.click(addBtn);
+
+    expect(mockOnSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recoverable: false,
+      })
+    );
+  });
+
+  it('reflects recoverable state when editing an entry', () => {
+    render(
+      <TimeTrackerBar
+        onSubmit={mockOnSubmit}
+        timer={timerMock}
+        defaultMode="manual"
+        initialData={{
+          taskId: 102,
+          taskName: 'Desarrollo Backend',
+          date: '2026-06-01',
+          startTime: '10:00',
+          endTime: '18:00',
+          recoverable: true,
+        }}
+      />
+    );
+
+    const toggle = screen.getByRole('button', { name: /permiso/i });
+    expect(toggle).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('resets recoverable toggle after successful submit', async () => {
+    const user = userEvent.setup();
+    const { container } = render(<TimeTrackerBar onSubmit={mockOnSubmit} timer={timerMock} defaultMode="manual" />);
+
+    // Select a task
+    const selectBtn = screen.getByRole('button', { name: /seleccionar proceso/i });
+    await user.click(selectBtn);
+    await user.click(await screen.findByText('Desarrollo Frontend'));
+
+    // Set end time
+    const timeInputs = getTimeInputs(container);
+    setTimeValue(timeInputs[1], '17:00');
+
+    // Activate recoverable toggle
+    const toggle = screen.getByRole('button', { name: /permiso/i });
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute('aria-pressed', 'true');
+
+    // Submit
+    const addBtn = screen.getByRole('button', { name: /añadir/i });
+    await user.click(addBtn);
+
+    // Toggle should reset to OFF after submit
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
   });
 });

@@ -22,6 +22,7 @@ const timerMock = {
   stop: vi.fn(),
   cancel: vi.fn().mockResolvedValue(undefined),
   updateStartTime: vi.fn().mockResolvedValue(undefined),
+  updateDescription: vi.fn().mockResolvedValue(undefined),
 };
 
 vi.mock('../../hooks/useTimer', () => ({
@@ -49,6 +50,8 @@ function resetTimerMock() {
   timerMock.start.mockClear();
   timerMock.stop.mockReset();
   timerMock.cancel.mockClear();
+  timerMock.updateStartTime.mockClear();
+  timerMock.updateDescription.mockClear();
 }
 
 // ── Tests ──────────────────────────────────────────────────────────────────
