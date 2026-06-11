@@ -69,7 +69,7 @@ function ProgressCard({ card }: { card: CardData }) {
 
   return (
     <Card className="flex-1" data-testid={card.segmentTestId}>
-      <CardContent className="flex flex-col gap-3 p-5">
+      <CardContent className="flex flex-col gap-2 p-3">
         <div className="flex items-center gap-2 text-muted-foreground">
           <Icon className="w-4 h-4" />
           <span className="text-xs font-semibold uppercase tracking-widest">
@@ -79,14 +79,14 @@ function ProgressCard({ card }: { card: CardData }) {
 
         <div className="flex items-baseline gap-1.5">
           {completed ? (
-            <Check className={`text-3xl ${color}`} data-testid={`${card.segmentTestId}-value`} />
+            <Check className={`text-2xl ${color}`} data-testid={`${card.segmentTestId}-value`} />
           ) : (
             <>
               {card.value > 0 && (
                 <span className={`text-lg font-bold ${color}`}>-</span>
               )}
               <span
-                className={`text-3xl font-bold tabular-nums tracking-tight leading-none ${color}`}
+                className={`text-2xl font-bold tabular-nums tracking-tight leading-none ${color}`}
                 data-testid={`${card.segmentTestId}-value`}
               >
                 {formatHM(Math.abs(card.value))}
@@ -99,15 +99,13 @@ function ProgressCard({ card }: { card: CardData }) {
           {completed ? '¡Completado!' : card.targetText}
         </p>
 
-        <div className={`h-2.5 w-full rounded-full overflow-hidden ${barBg}`}>
+        <div className={`h-1.5 w-full rounded-full overflow-hidden ${barBg}`}>
           <div
             className={`h-full rounded-full transition-all duration-500 ease-out ${barColor}`}
             style={{ width: `${Math.min(100, card.percent)}%` }}
             data-testid={card.barTestId}
           />
         </div>
-
-        <span className={`text-xs font-bold ${color}`}>{card.percent}%</span>
       </CardContent>
     </Card>
   );
