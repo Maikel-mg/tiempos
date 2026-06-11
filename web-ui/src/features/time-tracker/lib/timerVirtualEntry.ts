@@ -16,13 +16,16 @@ function formatDateSV(date: Date): string {
 }
 
 export function createVirtualTimerEntry(timerState: TimerState, now: Date): VirtualTimerEntry {
+  const startTimeMs = new Date(timerState.startTime).getTime();
+  const duration = Math.floor((now.getTime() - startTimeMs) / 1000);
+
   return {
     taskId: timerState.taskId,
     taskName: timerState.taskName,
     date: formatDateSV(now),
     startTime: formatTime(new Date(timerState.startTime)),
     endTime: formatTime(now),
-    duration: timerState.elapsed,
+    duration,
     description: timerState.description,
   };
 }

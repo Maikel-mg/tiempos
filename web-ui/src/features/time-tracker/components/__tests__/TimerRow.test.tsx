@@ -78,7 +78,7 @@ describe('TimerRow', () => {
     const { container } = renderTimerRow();
     const row = container.querySelector('tr');
     expect(row).toHaveClass('border-l-2');
-    expect(row).toHaveClass('border-blue-500');
+    expect(row).toHaveClass('border-l-blue-500');
   });
 
   it('renders green dot indicator', () => {

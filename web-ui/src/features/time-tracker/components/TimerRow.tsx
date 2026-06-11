@@ -29,7 +29,7 @@ function formatDate(dateStr: string): string {
  */
 export function TimerRow({ taskName, date, startTime, endTime, duration, description }: TimerRowProps) {
   return (
-    <TableRow className="bg-blue-50 dark:bg-blue-950/30 border-l-2 border-blue-500">
+    <TableRow className="bg-blue-50 dark:bg-blue-950/30 border-l-2 border-l-blue-500">
       {/* Checkbox placeholder — aligns with TimeEntryRow checkbox column */}
       <TableCell className="w-12" />
 
