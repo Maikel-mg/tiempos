@@ -145,7 +145,7 @@ describe('TimeTrackingPage — config guard integration', () => {
     );
 
     // Page should render without redirect — timer widget and period selector should be visible
-    expect(screen.getByText('Hoy')).toBeInTheDocument();
+    expect(screen.getAllByText('Hoy').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Esta Semana')).toBeInTheDocument();
   });
 });
