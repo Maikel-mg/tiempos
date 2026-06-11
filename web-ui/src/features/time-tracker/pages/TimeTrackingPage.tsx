@@ -9,6 +9,7 @@ import { TimeEntryViewSwitcher } from '../components/TimeEntryViewSwitcher';
 import { TimerRow } from '../components/TimerRow';
 import { OverlapAlert } from '../components/OverlapAlert';
 import { SyncPanel } from '../components/SyncPanel';
+import { PeriodProgressPanel } from '../components/PeriodProgressPanel';
 import { useTimeEntries } from '../hooks/useTimeEntries';
 import { useTimer } from '../hooks/useTimer';
 import { createVirtualTimerEntry } from '../lib/timerVirtualEntry';
@@ -280,6 +281,9 @@ export function TimeTrackingPage() {
             </Tabs>
           </div>
         </div>
+
+        {/* Period progress panel */}
+        <PeriodProgressPanel entries={entries} period={period} />
 
         {/* Cancel editing indicator */}
         {editingEntry && (

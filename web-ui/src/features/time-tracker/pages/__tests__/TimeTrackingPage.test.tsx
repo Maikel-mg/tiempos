@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import '@testing-library/jest-dom';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { TimeTrackingPage } from '../TimeTrackingPage';
@@ -235,5 +235,23 @@ describe('TimeTrackingPage undoable delete', () => {
       })
     );
     expect(toast.success).toHaveBeenCalledWith('Entrada restaurada');
+  });
+});
+
+describe('TimeTrackingPage PeriodProgressPanel', () => {
+  it('renders PeriodProgressPanel below PeriodSelector', () => {
+    setupMocks({ entries: [] });
+
+    renderWithProviders(<TimeTrackingPage />);
+
+    // The panel should be present in the DOM
+    const panel = screen.getByTestId('period-progress-panel');
+    expect(panel).toBeInTheDocument();
+
+    // Panel should contain Hoy, Semana, Banco segments
+    const panelWithin = within(panel);
+    expect(panelWithin.getByText('Hoy')).toBeInTheDocument();
+    expect(panelWithin.getByText('Semana')).toBeInTheDocument();
+    expect(panelWithin.getByText('Banco')).toBeInTheDocument();
   });
 });
