@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Clock, Calendar, Landmark } from 'lucide-react';
+import { Clock, Calendar, Landmark, CalendarDays } from 'lucide-react';
 import { computeDailyBalance, computeWeeklyBalance, computeBanco } from '../lib/balance';
 import { getDailyTarget } from '../lib/schedule';
 import type { TimeEntry } from '../types';
@@ -22,6 +22,15 @@ function getWeekStartStr(): string {
   const monday = new Date(now);
   monday.setDate(now.getDate() - diffToMonday);
   return monday.toISOString().slice(0, 10);
+}
+
+function getMonthStartStr(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+}
+
+function getDaysInMonth(date: Date): number {
+  return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
 }
 
 function formatHM(totalSeconds: number): string {
@@ -95,6 +104,7 @@ function ProgressCard({ card }: { card: CardData }) {
 export function PeriodProgressPanel({ entries, period: _period }: PeriodProgressPanelProps) {
   const todayStr = getTodayStr();
   const weekStartStr = getWeekStartStr();
+  const monthStartStr = getMonthStartStr();
 
   const todayTargetHours = getDailyTarget(todayStr);
   const todayTargetSec = todayTargetHours * 3600;
@@ -125,10 +135,36 @@ export function PeriodProgressPanel({ entries, period: _period }: PeriodProgress
   const workedWeek = weekTargetSec + weeklyBalance;
   const weeklyRemaining = weekTargetSec - workedWeek;
 
+  const monthTargetSec = useMemo(() => {
+    let total = 0;
+    const now = new Date();
+    const daysInMonth = getDaysInMonth(now);
+    for (let i = 1; i <= daysInMonth; i++) {
+      const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+      total += getDailyTarget(dateStr) * 3600;
+    }
+    return total;
+  }, []);
+
+  const monthlyBalance = useMemo(() => {
+    let total = 0;
+    const now = new Date();
+    const daysInMonth = getDaysInMonth(now);
+    for (let i = 1; i <= daysInMonth; i++) {
+      const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+      total += computeDailyBalance(entries, dateStr);
+    }
+    return total;
+  }, [entries]);
+
+  const workedMonth = monthTargetSec + monthlyBalance;
+  const monthlyRemaining = monthTargetSec - workedMonth;
+
   const banco = useMemo(() => computeBanco(entries), [entries]);
 
   const hoyPercent = percentWidth(workedToday, todayTargetSec);
   const semanaPercent = percentWidth(workedWeek, weekTargetSec);
+  const mesPercent = percentWidth(workedMonth, monthTargetSec);
   const balancePercent = banco >= 0 ? 100 : 0;
 
   const targetStr = formatTargetHM(todayTargetHours);
@@ -159,6 +195,19 @@ export function PeriodProgressPanel({ entries, period: _period }: PeriodProgress
     semanaAccent = 'text-emerald-600 dark:text-emerald-400';
   }
 
+  let mesSubtext: string;
+  let mesAccent: string;
+  if (monthlyRemaining > 0) {
+    mesSubtext = `${formatHM(monthlyRemaining)} para llegar a ${formatHM(monthTargetSec)}`;
+    mesAccent = '';
+  } else if (monthlyRemaining === 0) {
+    mesSubtext = '¡Objetivo cumplido!';
+    mesAccent = 'text-emerald-600 dark:text-emerald-400';
+  } else {
+    mesSubtext = `+${formatHM(Math.abs(monthlyRemaining))} por encima`;
+    mesAccent = 'text-emerald-600 dark:text-emerald-400';
+  }
+
   const cards: CardData[] = [
     {
       icon: Clock,
@@ -179,6 +228,16 @@ export function PeriodProgressPanel({ entries, period: _period }: PeriodProgress
       subtext: semanaSubtext,
       accentClass: semanaAccent,
       percent: semanaPercent,
+    },
+    {
+      icon: CalendarDays,
+      label: 'Mes',
+      segmentTestId: 'segment-mes',
+      barTestId: 'bar-mes',
+      workedStr: formatHM(workedMonth),
+      subtext: mesSubtext,
+      accentClass: mesAccent,
+      percent: mesPercent,
     },
     {
       icon: Landmark,
