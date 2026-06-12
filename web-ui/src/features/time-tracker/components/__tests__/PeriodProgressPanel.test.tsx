@@ -26,12 +26,12 @@ describe('PeriodProgressPanel', () => {
     vi.useRealTimers();
   });
 
-  it('renders three stat blocks: Hoy, Semana, Banco', () => {
+  it('renders three stat blocks: Hoy, Semana, Balance', () => {
     render(<PeriodProgressPanel entries={[]} period="today" />);
 
     expect(screen.getByText('Hoy')).toBeInTheDocument();
     expect(screen.getByText('Semana')).toBeInTheDocument();
-    expect(screen.getByText('Banco')).toBeInTheDocument();
+    expect(screen.getByText('Balance')).toBeInTheDocument();
   });
 
   it('shows worked hours for Hoy with remaining subtitle', () => {
@@ -72,7 +72,7 @@ describe('PeriodProgressPanel', () => {
     expect(screen.getByText('8:30 para llegar a 40:00')).toBeInTheDocument();
   });
 
-  it('shows positive banco with + prefix and "horas a favor"', () => {
+  it('shows positive balance with + prefix and "horas a favor"', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-06-11T14:00:00'));
 
@@ -83,12 +83,12 @@ describe('PeriodProgressPanel', () => {
 
     render(<PeriodProgressPanel entries={entries} period="today" />);
 
-    const bancoValue = screen.getByTestId('segment-banco-value');
-    expect(bancoValue).toHaveTextContent('0:45');
+    const balanceValue = screen.getByTestId('segment-balance-value');
+    expect(balanceValue).toHaveTextContent('0:45');
     expect(screen.getByText('horas a favor')).toBeInTheDocument();
   });
 
-  it('shows negative banco with - prefix and "horas en contra"', () => {
+  it('shows negative balance with - prefix and "horas en contra"', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-06-11T14:00:00'));
 
@@ -99,8 +99,8 @@ describe('PeriodProgressPanel', () => {
 
     render(<PeriodProgressPanel entries={entries} period="today" />);
 
-    const bancoValue = screen.getByTestId('segment-banco-value');
-    expect(bancoValue).toHaveTextContent('1:15');
+    const balanceValue = screen.getByTestId('segment-balance-value');
+    expect(balanceValue).toHaveTextContent('1:15');
     expect(screen.getByText('horas en contra')).toBeInTheDocument();
   });
 
@@ -191,7 +191,7 @@ describe('PeriodProgressPanel', () => {
     expect(screen.getByText('+0:45 por encima')).toBeInTheDocument();
   });
 
-  it('renders zero banco without prefix', () => {
+  it('renders zero balance without prefix', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-06-11T14:00:00'));
 
@@ -203,8 +203,8 @@ describe('PeriodProgressPanel', () => {
 
     render(<PeriodProgressPanel entries={entries} period="today" />);
 
-    const bancoValue = screen.getByTestId('segment-banco-value');
-    expect(bancoValue).toHaveTextContent('0:00');
+    const balanceValue = screen.getByTestId('segment-balance-value');
+    expect(balanceValue).toHaveTextContent('0:00');
     expect(screen.getByText('horas a favor')).toBeInTheDocument();
   });
 

@@ -129,7 +129,7 @@ export function PeriodProgressPanel({ entries, period: _period }: PeriodProgress
 
   const hoyPercent = percentWidth(workedToday, todayTargetSec);
   const semanaPercent = percentWidth(workedWeek, weekTargetSec);
-  const bancoPercent = banco >= 0 ? 100 : 0;
+  const balancePercent = banco >= 0 ? 100 : 0;
 
   const targetStr = formatTargetHM(todayTargetHours);
 
@@ -182,13 +182,13 @@ export function PeriodProgressPanel({ entries, period: _period }: PeriodProgress
     },
     {
       icon: Landmark,
-      label: 'Banco',
-      segmentTestId: 'segment-banco',
-      barTestId: 'bar-banco',
+      label: 'Balance',
+      segmentTestId: 'segment-balance',
+      barTestId: 'bar-balance',
       workedStr: formatHM(Math.abs(banco)),
       subtext: banco >= 0 ? 'horas a favor' : 'horas en contra',
       accentClass: banco >= 0 ? 'text-emerald-600 dark:text-emerald-400' : '',
-      percent: bancoPercent,
+      percent: balancePercent,
     },
   ];
 

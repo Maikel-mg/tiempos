@@ -359,10 +359,10 @@ function DayRow({ day, isExpanded, onToggle, onDelete, onEdit, onPlay, onDuplica
               </TooltipTrigger>
               <TooltipContent>
                 {dailyBalance > 0
-                  ? `+${formatHM(dailyBalance)} a favor del banco`
+                  ? `Suma ${formatHM(dailyBalance)} a tu balance`
                   : dailyBalance < 0
-                  ? `${formatHM(dailyBalance)} en contra del banco`
-                  : 'Día exacto'}
+                  ? `Resta ${formatHM(dailyBalance)} a tu balance`
+                  : 'Sin efecto en el balance'}
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>

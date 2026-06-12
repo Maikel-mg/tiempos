@@ -420,10 +420,10 @@ describe('TimeTrackingPage PeriodProgressPanel', () => {
     const panel = screen.getByTestId('period-progress-panel');
     expect(panel).toBeInTheDocument();
 
-    // Panel should contain Hoy, Semana, Banco segments
+    // Panel should contain Hoy, Semana, Balance segments
     const panelWithin = within(panel);
     expect(panelWithin.getByText('Hoy')).toBeInTheDocument();
     expect(panelWithin.getByText('Semana')).toBeInTheDocument();
-    expect(panelWithin.getByText('Banco')).toBeInTheDocument();
+    expect(panelWithin.getByText('Balance')).toBeInTheDocument();
   });
 });
