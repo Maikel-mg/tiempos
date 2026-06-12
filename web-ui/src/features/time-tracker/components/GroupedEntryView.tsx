@@ -386,7 +386,7 @@ function DayRow({ day, isExpanded, onToggle, onDelete, onEdit, onPlay, onDuplica
               </div>
             )}
             {day.entries.map((entry) => (
-              <div key={entry.id} className={`p-3 ${selectedIds.has(entry.id) ? 'bg-green-50' : entry.recoverable ? 'bg-amber-50 dark:bg-amber-950/20' : ''}`}>
+              <div key={entry.id} className={`group p-3 ${selectedIds.has(entry.id) ? 'bg-green-50' : entry.recoverable ? 'bg-amber-50 dark:bg-amber-950/20' : ''}`}>
                 {/* Row 1: checkbox + time range + task name + duration */}
                 <div className="flex items-center gap-2">
                   <button
@@ -408,7 +408,7 @@ function DayRow({ day, isExpanded, onToggle, onDelete, onEdit, onPlay, onDuplica
                       Permiso
                     </span>
                   )}
-                  <span className="ml-auto font-mono text-sm shrink-0">{formatDuration(entry.duration)}</span>
+                  <span className="ml-auto bg-muted px-2 py-0.5 rounded font-mono text-sm shrink-0">{formatDuration(entry.duration)}</span>
                 </div>
                 {/* Row 2: description + actions */}
                 <div className="flex items-center gap-2 mt-1 ml-10">
@@ -417,7 +417,7 @@ function DayRow({ day, isExpanded, onToggle, onDelete, onEdit, onPlay, onDuplica
                     )}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" aria-label="Acciones">
+                        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" aria-label="Acciones">
                           <MoreVertical className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
