@@ -255,9 +255,20 @@ export function TimeTrackingPage() {
             timer={timerHook}
           />
         </div>
+          {/* Cancel editing indicator */}
+        {editingEntry && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <span>Editando: <strong>{editingEntry.taskName}</strong> — {editingEntry.date}</span>
+          <Button variant="ghost" size="sm" onClick={handleEditCancel}>
+            Cancelar edición
+          </Button>
+        </div>
+      )}
       </div>
 
       <div className="px-4 sm:px-6 py-5 space-y-5">
+         {/* Period progress panel */}
+        <PeriodProgressPanel entries={entries} period={period} />
         {/* Period selector + View tabs row */}
         <div className="flex items-center justify-between flex-col sm:flex-row gap-4">
           <PeriodSelector
@@ -282,18 +293,7 @@ export function TimeTrackingPage() {
           </div>
         </div>
 
-        {/* Period progress panel */}
-        <PeriodProgressPanel entries={entries} period={period} />
-
-        {/* Cancel editing indicator */}
-        {editingEntry && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span>Editando: <strong>{editingEntry.taskName}</strong> — {editingEntry.date}</span>
-          <Button variant="ghost" size="sm" onClick={handleEditCancel}>
-            Cancelar edición
-          </Button>
-        </div>
-      )}
+    
 
       <OverlapAlert entries={filteredByPeriod} />
 
