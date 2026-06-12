@@ -85,10 +85,11 @@ export function groupEntriesByWeek(entries: TimeEntry[]): LocalWeekGroup[] {
   const dayGroups: LocalWeekDay[] = [];
   for (const [date, dayEntries] of dayMap) {
     dayEntries.sort((a, b) => a.startTime.localeCompare(b.startTime));
+    const workableSeconds = dayEntries.reduce((sum, e) => sum + (e.recoverable ? 0 : e.duration), 0);
     dayGroups.push({
       date,
       dateFormatted: formatShortDate(date),
-      totalSeconds: dayEntries.reduce((sum, e) => sum + e.duration, 0),
+      totalSeconds: workableSeconds,
       entries: dayEntries,
     });
   }
