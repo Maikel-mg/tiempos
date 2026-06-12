@@ -326,6 +326,7 @@ interface DayRowProps {
 
 function DayRow({ day, isExpanded, onToggle, onDelete, onEdit, onPlay, onDuplicate, onSync, selectedIds, onSelect, timerEntry }: DayRowProps) {
   const dailyBalance = computeDailyBalance(day.entries, day.date);
+  const hasRecoverable = day.entries.some(e => e.recoverable);
 
   const toggleEntry = (entryId: string) => {
     if (!onSelect) return;
@@ -352,6 +353,11 @@ function DayRow({ day, isExpanded, onToggle, onDelete, onEdit, onPlay, onDuplica
             <ChevronRight className="h-4 w-4 text-muted-foreground" />
           )}
           <span className="font-medium">{day.dateFormatted}</span>
+          {hasRecoverable && (
+            <span className="inline-flex items-center text-[10px] font-semibold uppercase tracking-wide bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-1.5 py-0.5 rounded">
+              Permiso
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground">
