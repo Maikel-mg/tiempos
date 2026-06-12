@@ -386,75 +386,71 @@ function DayRow({ day, isExpanded, onToggle, onDelete, onEdit, onPlay, onDuplica
               </div>
             )}
             {day.entries.map((entry) => (
-              <div key={entry.id} className={`p-3 flex items-start justify-between gap-4 ${selectedIds.has(entry.id) ? 'bg-green-50' : entry.recoverable ? 'bg-amber-50 dark:bg-amber-950/20' : ''}`}>
-                <button
-                  onClick={() => toggleEntry(entry.id)}
-                  className="flex items-center justify-center w-11 h-11 min-w-[44px] min-h-[44px] rounded-md hover:bg-accent shrink-0"
-                >
-                  {selectedIds.has(entry.id) ? (
-                    <CheckCircle2 className="w-5 h-5 text-green-600" />
-                  ) : (
-                    <Circle className="w-5 h-5 text-muted-foreground hover:text-foreground" />
-                  )}
-                </button>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-medium">{entry.taskName}</span>
-                    {entry.recoverable && (
-                      <span className="inline-flex items-center text-[10px] font-semibold uppercase tracking-wide bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-1.5 py-0.5 rounded">
-                        Permiso
-                      </span>
+              <div key={entry.id} className={`p-3 ${selectedIds.has(entry.id) ? 'bg-green-50' : entry.recoverable ? 'bg-amber-50 dark:bg-amber-950/20' : ''}`}>
+                {/* Row 1: checkbox + time range + task name + duration */}
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => toggleEntry(entry.id)}
+                    className="flex items-center justify-center w-8 h-8 min-w-[32px] min-h-[32px] rounded-md hover:bg-accent shrink-0"
+                  >
+                    {selectedIds.has(entry.id) ? (
+                      <CheckCircle2 className="w-4 h-4 text-green-600" />
+                    ) : (
+                      <Circle className="w-4 h-4 text-muted-foreground hover:text-foreground" />
                     )}
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">
-                      {entry.startTime} – {entry.endTime}
+                  </button>
+                  <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded shrink-0">
+                    {entry.startTime} – {entry.endTime}
+                  </span>
+                  <span className="font-medium truncate">{entry.taskName}</span>
+                  {entry.recoverable && (
+                    <span className="inline-flex items-center text-[10px] font-semibold uppercase tracking-wide bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-1.5 py-0.5 rounded shrink-0">
+                      Permiso
                     </span>
-                    <span className="font-mono text-xs">
-                      {formatDuration(entry.duration)}
-                    </span>
-                  </div>
-                  {entry.description && (
-                    <p className="text-sm text-muted-foreground truncate mt-1">
-                      {entry.description}
-                    </p>
                   )}
+                  <span className="ml-auto font-mono text-sm shrink-0">{formatDuration(entry.duration)}</span>
                 </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label="Acciones">
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => onPlay?.(entry)}>
-                      <Play className="h-4 w-4" />
-                      Play
-                    </DropdownMenuItem>
-                    {!entry.synced && (
-                      <DropdownMenuItem onClick={() => onSync?.(entry)}>
-                        <Database className="h-4 w-4" />
-                        Sincronizar
-                      </DropdownMenuItem>
+                {/* Row 2: description + actions */}
+                <div className="flex items-center gap-2 mt-1 ml-10">
+                    {entry.description && (
+                      <p className="text-sm text-muted-foreground truncate flex-1">{entry.description}</p>
                     )}
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      disabled={entry.synced}
-                      onClick={() => onEdit?.(entry)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                      Editar
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onDuplicate?.(entry)}>
-                      <Copy className="h-4 w-4" />
-                      Duplicar
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onDelete?.(entry.id)}>
-                      <Trash2 className="h-4 w-4" />
-                      Eliminar
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" aria-label="Acciones">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => onPlay?.(entry)}>
+                          <Play className="h-4 w-4" />
+                          Play
+                        </DropdownMenuItem>
+                        {!entry.synced && (
+                          <DropdownMenuItem onClick={() => onSync?.(entry)}>
+                            <Database className="h-4 w-4" />
+                            Sincronizar
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          disabled={entry.synced}
+                          onClick={() => onEdit?.(entry)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                          Editar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onDuplicate?.(entry)}>
+                          <Copy className="h-4 w-4" />
+                          Duplicar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onDelete?.(entry.id)}>
+                          <Trash2 className="h-4 w-4" />
+                          Eliminar
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
               </div>
             ))}
           </div>
