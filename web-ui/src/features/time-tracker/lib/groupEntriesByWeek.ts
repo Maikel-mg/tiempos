@@ -84,6 +84,7 @@ export function groupEntriesByWeek(entries: TimeEntry[]): LocalWeekGroup[] {
   // 2. Build LocalWeekDay[] with day-level totals
   const dayGroups: LocalWeekDay[] = [];
   for (const [date, dayEntries] of dayMap) {
+    dayEntries.sort((a, b) => a.startTime.localeCompare(b.startTime));
     dayGroups.push({
       date,
       dateFormatted: formatShortDate(date),

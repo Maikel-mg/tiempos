@@ -42,7 +42,7 @@ export function TimeEntryViewSwitcher({
   activeTab,
   timerEntry,
 }: TimeEntryViewSwitcherProps) {
-  const [filterTask, setFilterTask] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'date' | 'duration' | 'task'>('date');
   const [filterSync, setFilterSync] = useState<'all' | 'pending' | 'synced' | 'failed'>('all');
   const [filterRecoverable, setFilterRecoverable] = useState<'all' | 'normal' | 'recoverable'>('all');
@@ -50,9 +50,11 @@ export function TimeEntryViewSwitcher({
   const filtered = useMemo(() => {
     let result = [...entries];
 
-    if (filterTask) {
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
       result = result.filter(e =>
-        e.taskName.toLowerCase().includes(filterTask.toLowerCase())
+        e.taskName.toLowerCase().includes(q) ||
+        (e.description && e.description.toLowerCase().includes(q))
       );
     }
     if (filterSync === 'pending') {
@@ -71,14 +73,18 @@ export function TimeEntryViewSwitcher({
     // Sort only applies to table view
     if (activeTab === 'table') {
       result.sort((a, b) => {
-        if (sortBy === 'date') return b.date.localeCompare(a.date);
+        if (sortBy === 'date') {
+          const dateCmp = b.date.localeCompare(a.date);
+          if (dateCmp !== 0) return dateCmp;
+          return a.startTime.localeCompare(b.startTime);
+        }
         if (sortBy === 'duration') return b.duration - a.duration;
         return a.taskName.localeCompare(b.taskName);
       });
     }
 
     return result;
-  }, [entries, filterTask, filterSync, filterRecoverable, sortBy, activeTab]);
+  }, [entries, searchQuery, filterSync, filterRecoverable, sortBy, activeTab]);
 
   const selectAll = () => {
     const unsynced = filtered.filter(e => !e.synced).map(e => e.id);
@@ -123,13 +129,13 @@ export function TimeEntryViewSwitcher({
         {/* Filters */}
         <div className="flex flex-wrap gap-4 mt-4">
           <div className="space-y-1.5">
-            <Label htmlFor="filter-task" className="text-xs">Filtrar por tarea</Label>
+            <Label htmlFor="filter-search" className="text-xs">Buscar</Label>
             <Input
-              id="filter-task"
-              placeholder="Buscar tarea..."
-              value={filterTask}
-              onChange={(e) => setFilterTask(e.target.value)}
-              className="w-40"
+              id="filter-search"
+              placeholder="Tarea o descripción..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-48"
             />
           </div>
           {activeTab === 'table' && (
