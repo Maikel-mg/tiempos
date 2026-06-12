@@ -63,6 +63,7 @@ describe('SyncPanel', () => {
     render(
       <SyncPanel
         selectedEntries={[makeEntry({ id: 'e1' }), makeEntry({ id: 'e2' })]}
+        totalPendingCount={2}
         onSyncComplete={vi.fn()}
       />
     );
@@ -86,6 +87,7 @@ describe('SyncPanel', () => {
     render(
       <SyncPanel
         selectedEntries={[makeEntry({ id: 'e1' }), makeEntry({ id: 'e2' })]}
+        totalPendingCount={2}
         onSyncComplete={onSyncComplete}
       />
     );
@@ -115,6 +117,7 @@ describe('SyncPanel', () => {
     render(
       <SyncPanel
         selectedEntries={[makeEntry({ id: 'e1' }), makeEntry({ id: 'e2' })]}
+        totalPendingCount={2}
         onSyncComplete={onSyncComplete}
       />
     );
@@ -144,6 +147,7 @@ describe('SyncPanel', () => {
     render(
       <SyncPanel
         selectedEntries={[makeEntry({ id: 'e1' }), makeEntry({ id: 'e2' })]}
+        totalPendingCount={2}
         onSyncComplete={onSyncComplete}
       />
     );
@@ -164,6 +168,7 @@ describe('SyncPanel', () => {
     render(
       <SyncPanel
         selectedEntries={[makeEntry({ id: 'e1' })]}
+        totalPendingCount={1}
         onSyncComplete={onSyncComplete}
       />
     );
@@ -192,6 +197,7 @@ describe('SyncPanel', () => {
         <MemoryRouter>
           <SyncPanel
             selectedEntries={[makeEntry({ id: 'e1' })]}
+            totalPendingCount={1}
             onSyncComplete={vi.fn()}
           />
         </MemoryRouter>
@@ -209,6 +215,7 @@ describe('SyncPanel', () => {
         <MemoryRouter>
           <SyncPanel
             selectedEntries={[makeEntry({ id: 'e1' })]}
+            totalPendingCount={1}
             onSyncComplete={vi.fn()}
           />
         </MemoryRouter>

@@ -6,7 +6,6 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PeriodSelector } from '@/components/shared/PeriodSelector';
 import { TimeTrackerBar } from '../components/TimeTrackerBar';
 import { TimeEntryViewSwitcher } from '../components/TimeEntryViewSwitcher';
-import { TimerRow } from '../components/TimerRow';
 import { OverlapAlert } from '../components/OverlapAlert';
 import { SyncPanel } from '../components/SyncPanel';
 import { PeriodProgressPanel } from '../components/PeriodProgressPanel';
@@ -14,6 +13,8 @@ import { useTimeEntries } from '../hooks/useTimeEntries';
 import { useTimer } from '../hooks/useTimer';
 import { createVirtualTimerEntry } from '../lib/timerVirtualEntry';
 import { computePeriodTotal } from '../lib/computePeriodTotal';
+import { syncTimeEntries } from '../services/timeEntrySyncService';
+import { wizardConfig, dbConfig } from '@/config/stores';
 import type { TimeEntry } from '../types';
 import type { PeriodType, DateRange } from '@/components/shared/PeriodSelector';
 
@@ -42,6 +43,11 @@ export function TimeTrackingPage() {
     () => entries.filter((e) => !e.synced),
     [entries]
   );
+
+  const entriesToSync = useMemo(() => {
+    if (selectedIds.size === 0) return pendingEntries;
+    return pendingEntries.filter((e) => selectedIds.has(e.id));
+  }, [pendingEntries, selectedIds]);
 
   const filteredByPeriod = useMemo(() => {
     const now = new Date();
@@ -211,6 +217,29 @@ export function TimeTrackingPage() {
     setEditingEntry(null);
   }, []);
 
+  const handleSyncEntry = useCallback(async (entry: TimeEntry) => {
+    const dbConfigData = dbConfig.get();
+    if (!dbConfigData || !dbConfigData.server || !dbConfigData.database) {
+      toast.error('Falta configuración de base de datos');
+      return;
+    }
+    const usuario = (() => {
+      try {
+        const stored = wizardConfig.get();
+        return stored?.usuario ?? '';
+      } catch { return ''; }
+    })();
+    const outcome = await syncTimeEntries([entry], dbConfigData, usuario);
+    if (outcome.success && outcome.results.some(r => r.success)) {
+      const succeededIds = outcome.results.filter(r => r.success).map(r => r.entryId);
+      await markSynced(succeededIds);
+      toast.success(`Sincronizado: ${entry.taskName}`);
+    } else {
+      const error = outcome.results[0]?.error ?? 'Error desconocido';
+      toast.error(`Error al sincronizar: ${error}`);
+    }
+  }, [markSynced]);
+
   const handleDuplicateEntry = useCallback(async (entry: TimeEntry) => {
     await createEntry({
       taskId: entry.taskId,
@@ -316,7 +345,10 @@ export function TimeTrackingPage() {
                 className="gap-2"
               >
                 <Database className="w-4 h-4" />
-                Sync ({pendingEntries.length})
+                Sync ({selectedIds.size > 0
+                  ? `${entriesToSync.length}/${pendingEntries.length}`
+                  : pendingEntries.length
+                })
               </Button>
             )}
           </div>
@@ -324,7 +356,8 @@ export function TimeTrackingPage() {
 
         {syncPanelOpen && (
           <SyncPanel
-            selectedEntries={pendingEntries}
+            selectedEntries={entriesToSync}
+            totalPendingCount={pendingEntries.length}
             onSyncComplete={markSynced}
           />
         )}
@@ -337,6 +370,7 @@ export function TimeTrackingPage() {
           onEdit={handleEditEntry}
           onPlay={handlePlayEntry}
           onDuplicate={handleDuplicateEntry}
+          onSync={handleSyncEntry}
           activeTab={activeTab}
           timerEntry={virtualTimerEntry}
         />

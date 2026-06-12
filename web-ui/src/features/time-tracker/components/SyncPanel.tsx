@@ -13,6 +13,7 @@ import { ConfigGuardPanel } from './ConfigGuardPanel';
 
 interface SyncPanelProps {
   selectedEntries: TimeEntry[];
+  totalPendingCount: number;
   onSyncComplete: (ids: string[]) => Promise<void>;
 }
 
@@ -20,7 +21,7 @@ interface SyncPanelProps {
  * Panel de sincronización que permite sincronizar registros de tiempo
  * hacia SQL Server usando el servicio timeEntrySyncService.
  */
-export function SyncPanel({ selectedEntries, onSyncComplete }: SyncPanelProps) {
+export function SyncPanel({ selectedEntries, totalPendingCount, onSyncComplete }: SyncPanelProps) {
   const [isExecuting, setIsExecuting] = useState(false);
   const [syncResults, setSyncResults] = useState<SyncResultEntry[] | null>(null);
   const [overallSuccess, setOverallSuccess] = useState<boolean | null>(null);
@@ -74,7 +75,10 @@ export function SyncPanel({ selectedEntries, onSyncComplete }: SyncPanelProps) {
       <CardHeader className="pb-4">
         <CardTitle className="text-lg flex items-center gap-2">
           <Database className="w-5 h-5" />
-          Sincronizar {selectedEntries.length} registros
+          {selectedEntries.length < totalPendingCount
+            ? `Sincronizar ${selectedEntries.length} de ${totalPendingCount} pendientes`
+            : `Sincronizar ${selectedEntries.length} registros`
+          }
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">

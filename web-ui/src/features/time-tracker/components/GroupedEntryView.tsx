@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { CheckCircle2, Circle, ChevronDown, ChevronRight, Clock, MoreVertical, Play, Pencil, Trash2, Copy } from 'lucide-react';
+import { CheckCircle2, Circle, ChevronDown, ChevronRight, Clock, MoreVertical, Play, Pencil, Trash2, Copy, Database } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -32,6 +32,7 @@ interface GroupedEntryViewProps {
   onEdit?: (entry: TimeEntry) => void;
   onPlay?: (entry: TimeEntry) => void;
   onDuplicate?: (entry: TimeEntry) => void;
+  onSync?: (entry: TimeEntry) => void;
   timerEntry?: TimerEntryData | null;
 }
 
@@ -77,6 +78,7 @@ export function GroupedEntryView({
   onEdit: _onEdit,
   onPlay: _onPlay,
   onDuplicate: _onDuplicate,
+  onSync: _onSync,
   timerEntry,
 }: GroupedEntryViewProps) {
   const weekGroups = useMemo(() => groupEntriesByWeek(entries), [entries]);
@@ -204,21 +206,22 @@ export function GroupedEntryView({
   return (
     <div className="space-y-3">
       {effectiveWeekGroups.map((weekGroup) => (
-        <WeekGroupCard
-          key={weekGroup.weekKey}
-          weekGroup={weekGroup}
-          isWeekExpanded={expandedWeeks.has(weekGroup.weekKey)}
-          onWeekToggle={() => toggleWeek(weekGroup.weekKey)}
-          expandedDays={expandedDays}
-          onDayToggle={toggleDay}
-          onDelete={_onDelete}
-          onEdit={_onEdit}
-          onPlay={_onPlay}
-          onDuplicate={_onDuplicate}
-          selectedIds={selectedIds}
-          onSelect={onSelect}
-          timerEntry={timerEntry}
-        />
+          <WeekGroupCard
+            key={weekGroup.weekKey}
+            weekGroup={weekGroup}
+            isWeekExpanded={expandedWeeks.has(weekGroup.weekKey)}
+            onWeekToggle={() => toggleWeek(weekGroup.weekKey)}
+            expandedDays={expandedDays}
+            onDayToggle={toggleDay}
+            onDelete={_onDelete}
+            onEdit={_onEdit}
+            onPlay={_onPlay}
+            onDuplicate={_onDuplicate}
+            onSync={_onSync}
+            selectedIds={selectedIds}
+            onSelect={onSelect}
+            timerEntry={timerEntry}
+          />
       ))}
     </div>
   );
@@ -234,6 +237,7 @@ interface WeekGroupCardProps {
   onEdit?: (entry: TimeEntry) => void;
   onPlay?: (entry: TimeEntry) => void;
   onDuplicate?: (entry: TimeEntry) => void;
+  onSync?: (entry: TimeEntry) => void;
   selectedIds: Set<string>;
   onSelect?: (ids: Set<string>) => void;
   timerEntry?: TimerEntryData | null;
@@ -249,6 +253,7 @@ function WeekGroupCard({
   onEdit,
   onPlay,
   onDuplicate,
+  onSync,
   selectedIds,
   onSelect,
   timerEntry,
@@ -292,6 +297,7 @@ function WeekGroupCard({
                 onEdit={onEdit}
                 onPlay={onPlay}
                 onDuplicate={onDuplicate}
+                onSync={onSync}
                 selectedIds={selectedIds}
                 onSelect={onSelect}
                 timerEntry={day.date === toLocalDateString(new Date()) ? timerEntry : null}
@@ -312,12 +318,13 @@ interface DayRowProps {
   onEdit?: (entry: TimeEntry) => void;
   onPlay?: (entry: TimeEntry) => void;
   onDuplicate?: (entry: TimeEntry) => void;
+  onSync?: (entry: TimeEntry) => void;
   selectedIds: Set<string>;
   onSelect?: (ids: Set<string>) => void;
   timerEntry?: TimerEntryData | null;
 }
 
-function DayRow({ day, isExpanded, onToggle, onDelete, onEdit, onPlay, onDuplicate, selectedIds, onSelect, timerEntry }: DayRowProps) {
+function DayRow({ day, isExpanded, onToggle, onDelete, onEdit, onPlay, onDuplicate, onSync, selectedIds, onSelect, timerEntry }: DayRowProps) {
   const dailyBalance = computeDailyBalance(day.entries, day.date);
 
   const toggleEntry = (entryId: string) => {
@@ -424,6 +431,12 @@ function DayRow({ day, isExpanded, onToggle, onDelete, onEdit, onPlay, onDuplica
                       <Play className="h-4 w-4" />
                       Play
                     </DropdownMenuItem>
+                    {!entry.synced && (
+                      <DropdownMenuItem onClick={() => onSync?.(entry)}>
+                        <Database className="h-4 w-4" />
+                        Sincronizar
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                       disabled={entry.synced}

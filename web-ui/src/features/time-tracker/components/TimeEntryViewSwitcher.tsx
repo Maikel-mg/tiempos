@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { TimeEntryList } from './TimeEntryList';
 import { GroupedEntryView } from './GroupedEntryView';
-import { TimerRow } from './TimerRow';
 import type { TimeEntry } from '../types';
 
 interface TimerEntryData {
@@ -26,6 +25,7 @@ interface TimeEntryViewSwitcherProps {
   onEdit?: (entry: TimeEntry) => void;
   onPlay?: (entry: TimeEntry) => void;
   onDuplicate?: (entry: TimeEntry) => void;
+  onSync?: (entry: TimeEntry) => void;
   activeTab: string;
   timerEntry?: TimerEntryData | null;
 }
@@ -38,6 +38,7 @@ export function TimeEntryViewSwitcher({
   onEdit,
   onPlay,
   onDuplicate,
+  onSync,
   activeTab,
   timerEntry,
 }: TimeEntryViewSwitcherProps) {
@@ -78,16 +79,6 @@ export function TimeEntryViewSwitcher({
 
     return result;
   }, [entries, filterTask, filterSync, filterRecoverable, sortBy, activeTab]);
-
-  const toggleSelect = (id: string) => {
-    const newSet = new Set(selectedIds);
-    if (newSet.has(id)) {
-      newSet.delete(id);
-    } else {
-      newSet.add(id);
-    }
-    onSelect(newSet);
-  };
 
   const selectAll = () => {
     const unsynced = filtered.filter(e => !e.synced).map(e => e.id);
@@ -196,6 +187,7 @@ export function TimeEntryViewSwitcher({
             onEdit={onEdit}
             onPlay={onPlay}
             onDuplicate={onDuplicate}
+            onSync={onSync}
             timerEntry={timerEntry}
           />
         ) : (
@@ -207,6 +199,7 @@ export function TimeEntryViewSwitcher({
             onEdit={onEdit}
             onPlay={onPlay}
             onDuplicate={onDuplicate}
+            onSync={onSync}
             timerEntry={timerEntry}
           />
         )}

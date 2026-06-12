@@ -1,4 +1,4 @@
-import { CheckCircle2, Circle, XCircle, Trash2, Pencil, Play, Copy } from 'lucide-react';
+import { CheckCircle2, Circle, XCircle, Trash2, Pencil, Play, Copy, Database } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
@@ -12,6 +12,7 @@ interface TimeEntryRowProps {
   onEdit?: () => void;
   onPlay?: () => void;
   onDuplicate?: () => void;
+  onSync?: () => void;
   /** Información de recuperación para entries recuperables (permisos). */
   recoveryInfo?: { recovered: number; total: number };
 }
@@ -48,7 +49,7 @@ function formatDate(dateStr: string): string {
 /**
  * Fila individual del listado de registros de tiempo.
  */
-export function TimeEntryRow({ entry, selected, onToggle, onDelete, onEdit, onPlay, onDuplicate, recoveryInfo }: TimeEntryRowProps) {
+export function TimeEntryRow({ entry, selected, onToggle, onDelete, onEdit, onPlay, onDuplicate, onSync, recoveryInfo }: TimeEntryRowProps) {
   const SYNCED_TOOLTIP = 'Ya sincronizado con la BD — no se puede editar desde aquí';
 
   return (
@@ -178,6 +179,17 @@ export function TimeEntryRow({ entry, selected, onToggle, onDelete, onEdit, onPl
             <Button variant="ghost" size="icon" onClick={onPlay} className="min-w-[44px] min-h-[44px] text-green-600 hover:text-green-700">
               <Play className="w-4 h-4" />
             </Button>
+            {onSync && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onSync}
+                className="min-w-[44px] min-h-[44px] text-blue-600 hover:text-blue-700"
+                title="Sincronizar registro"
+              >
+                <Database className="w-4 h-4" />
+              </Button>
+            )}
             {onEdit && (
               <Button
                 variant="ghost"
