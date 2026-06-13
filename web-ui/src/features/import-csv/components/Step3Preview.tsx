@@ -8,7 +8,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { DataTable, createSelectColumn, ColumnDef } from '@/components/ui/data-table';
-import { downloadSQL, formatSQLForHighlight, generateSQL } from '@/lib/sql-generator';
+import { downloadSQL, formatSQLForHighlight } from '@/lib/sql-generator';
+import { convertCsvToTimeEntries } from '../services/entry-converter';
+import { usePreviewSql } from '../queries/preview-sql-query';
 import type { ParsedData, CSVIndices } from '../services/csv-parser';
 import type { SQLResult } from '../ports';
 
@@ -30,7 +32,6 @@ export interface Step3PreviewProps {
   columnIndices: CSVIndices | null;
 }
 
-// Tipo para las filas de la tabla
 interface TableRow {
   __index: number;
   [key: string]: string | number;
@@ -53,13 +54,11 @@ export function Step3Preview({
   const [showRaw, setShowRaw] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
   const [executeResult, setExecuteResult] = useState<any>(null);
-  const [dynamicSqlResult, setDynamicSqlResult] = useState<SQLResult | null>(null);
   const [sqlPreviewOpen, setSqlPreviewOpen] = useState(false);
   const [selectedDataRows, setSelectedDataRows] = useState<TableRow[]>([]);
 
   const allHeaders = csvData?.headers || [];
 
-  // Transformar datos para la tabla
   const tableData = useMemo(() => {
     if (!csvData) return [];
     return csvData.rows.map((row: string[], idx: number) => {
@@ -74,7 +73,6 @@ export function Step3Preview({
     });
   }, [csvData, allHeaders]);
 
-  // Definir columnas dinámicas basadas en los headers del CSV
   const columns = useMemo(() => {
     const cols: ColumnDef<TableRow>[] = [createSelectColumn()];
 
@@ -96,60 +94,58 @@ export function Step3Preview({
     return cols;
   }, [allHeaders]);
 
-  // Manejar cambio de selección
   const handleRowSelectionChange = useCallback((selectedRows: TableRow[]) => {
     setSelectedDataRows(selectedRows);
     const indices = selectedRows.map(row => row.__index);
     setSelectedRows(indices);
   }, [setSelectedRows]);
 
-  // Sincronizar selección inicial
   useEffect(() => {
     if (csvData && selectedRows.length === 0) {
-      // Seleccionar todas las filas inicialmente
       const allRows = tableData;
       setSelectedDataRows(allRows);
       setSelectedRows(allRows.map(r => r.__index));
     }
   }, [csvData, selectedRows, tableData, setSelectedRows]);
 
-  // Generar SQL cuando cambia la selección
-  const generateDynamicSQL = useCallback(() => {
+  const previewPayload = useMemo(() => {
     if (!csvData || selectedDataRows.length === 0 || !columnIndices) {
-      setDynamicSqlResult(null);
-      return;
+      return null;
     }
 
     const rowsToProcess = csvData.rows.filter((_, index: number) =>
       selectedDataRows.some(row => row.__index === index)
     );
 
-    const numericMapping: Record<string, string> = {};
-    Object.entries(taskMapping).forEach(([task, id]) => {
-      numericMapping[task] = id;
+    const entries = convertCsvToTimeEntries({
+      rows: rowsToProcess,
+      taskMapping,
+      config,
+      indices: columnIndices,
     });
 
-    try {
-      const result = generateSQL({
-        rows: rowsToProcess,
-        taskMapping: numericMapping,
-        config,
-        indices: columnIndices
-      });
-      setDynamicSqlResult(result as SQLResult);
-    } catch (err) {
-      console.error('Error generating SQL:', err);
-    }
+    if (entries.length === 0) return null;
+    return { entries };
   }, [csvData, selectedDataRows, config, taskMapping, columnIndices]);
 
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      generateDynamicSQL();
-    }, 300);
-    return () => clearTimeout(timeoutId);
-  }, [generateDynamicSQL]);
+  const { data: previewData, isLoading: previewLoading, isError: previewError, error: previewErrorMsg } = usePreviewSql(
+    previewPayload || { entries: [] },
+    !!previewPayload && sqlPreviewOpen
+  );
 
-  const activeSqlResult = dynamicSqlResult || sqlResult;
+  const previewSql = previewData?.sql || '';
+  const activeSqlResult: SQLResult | null = useMemo(() => {
+    if (previewSql) {
+      return {
+        sql: previewSql,
+        statements: previewSql.split(/\nGO\n/).filter(Boolean),
+        processed: selectedDataRows.length,
+        errors: [],
+        total: selectedDataRows.length,
+      };
+    }
+    return sqlResult;
+  }, [previewSql, sqlResult, selectedDataRows.length]);
 
   const handleCopy = async () => {
     try {
@@ -170,7 +166,7 @@ export function Step3Preview({
     if (!dbConfig.server || !dbConfig.database || !dbConfig.username) {
       setExecuteResult({
         success: false,
-        message: 'Configura la conexión a la base de datos primero'
+        message: 'Configura la conexion a la base de datos primero'
       });
       return;
     }
@@ -225,7 +221,6 @@ export function Step3Preview({
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Estadísticas */}
           <div className="grid grid-cols-4 gap-4">
             <div className="p-3 bg-muted/50 rounded-lg text-center">
               <p className="text-2xl font-bold text-green-600">
@@ -249,7 +244,6 @@ export function Step3Preview({
             </div>
           </div>
 
-          {/* DataTable */}
           {csvData && (
             <DataTable
               columns={columns}
@@ -261,7 +255,6 @@ export function Step3Preview({
 
           <Separator />
 
-          {/* SQL Preview */}
           <div className="border rounded-lg overflow-hidden">
             <button
               onClick={() => setSqlPreviewOpen(!sqlPreviewOpen)}
@@ -286,37 +279,55 @@ export function Step3Preview({
 
             {sqlPreviewOpen && selectedDataRows.length > 0 && (
               <div className="p-4 space-y-4">
-                <div className="flex justify-end gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowRaw(!showRaw)}
-                  >
-                    {showRaw ? 'Formato' : 'Sin formato'}
-                  </Button>
-                </div>
+                {previewLoading && (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                    <span className="ml-2 text-muted-foreground">Generando SQL...</span>
+                  </div>
+                )}
 
-                <ScrollArea className="h-[300px] border rounded-lg">
-                  {showRaw ? (
-                    <Textarea
-                      value={activeSqlResult?.sql || ''}
-                      readOnly
-                      className="h-full min-h-[300px] font-mono text-sm resize-none border-0 focus-visible:ring-0"
-                    />
-                  ) : (
-                    <div
-                      className="p-4 font-mono text-sm whitespace-pre-wrap"
-                      dangerouslySetInnerHTML={{
-                        __html: formatSQLForHighlight(activeSqlResult?.sql || '')
-                      }}
-                    />
-                  )}
-                </ScrollArea>
+                {previewError && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="w-4 h-4" />
+                    <AlertTitle>Error al generar SQL</AlertTitle>
+                    <AlertDescription>{previewErrorMsg?.message || 'Error desconocido'}</AlertDescription>
+                  </Alert>
+                )}
+
+                {!previewLoading && !previewError && (
+                  <>
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowRaw(!showRaw)}
+                      >
+                        {showRaw ? 'Formato' : 'Sin formato'}
+                      </Button>
+                    </div>
+
+                    <ScrollArea className="h-[300px] border rounded-lg">
+                      {showRaw ? (
+                        <Textarea
+                          value={activeSqlResult?.sql || ''}
+                          readOnly
+                          className="h-full min-h-[300px] font-mono text-sm resize-none border-0 focus-visible:ring-0"
+                        />
+                      ) : (
+                        <div
+                          className="p-4 font-mono text-sm whitespace-pre-wrap"
+                          dangerouslySetInnerHTML={{
+                            __html: formatSQLForHighlight(activeSqlResult?.sql || '')
+                          }}
+                        />
+                      )}
+                    </ScrollArea>
+                  </>
+                )}
               </div>
             )}
           </div>
 
-          {/* Errores */}
           {selectedDataRows.length > 0 && activeSqlResult && hasErrors && (
             <Alert variant="warning">
               <AlertCircle className="w-4 h-4" />
@@ -329,11 +340,10 @@ export function Step3Preview({
             </Alert>
           )}
 
-          {/* Resultado de ejecución */}
           {executeResult && (
             <Alert variant={executeResult.success ? "success" : "destructive"}>
               <AlertCircle className="w-4 h-4" />
-              <AlertTitle>{executeResult.success ? "Ejecución exitosa" : "Error en ejecución"}</AlertTitle>
+              <AlertTitle>{executeResult.success ? "Ejecucion exitosa" : "Error en ejecucion"}</AlertTitle>
               <AlertDescription>
                 {executeResult.message}
               </AlertDescription>

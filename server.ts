@@ -10,7 +10,7 @@ import {
   executeForYearMonthPairs,
   executeTimeEntriesInTransaction,
 } from './src/application/sql-executor';
-import { buildProjectsQuery, buildProjectsTreeQuery, buildProcessesQuery } from './src/application/sp-builder';
+import { buildProjectsQuery, buildProjectsTreeQuery, buildProcessesQuery, buildExecuteTimeEntriesSQL } from './src/application/sp-builder';
 import { classifyEntries, type TimeEntry } from './src/application/entry-classifier';
 import * as clockifyApp from './src/application/clockify-app';
 
@@ -335,6 +335,22 @@ app.post('/api/execute-time-entries', async (req: Request, res: Response) => {
 
   const results = await executeTimeEntriesInTransaction(req.body as ExecuteTimeEntriesParams, entries);
   res.json({ success: true, results });
+});
+
+// --- Preview Time Entries SQL: returns constructed SQL without executing ---
+app.post('/api/preview-sql', async (req: Request, res: Response) => {
+  try {
+    const { entries } = req.body as { entries: ExecuteTimeEntriesParams['entries'] };
+
+    if (!entries || !Array.isArray(entries) || entries.length === 0) {
+      return res.status(400).json({ success: false, message: 'entries is required and must be a non-empty array' });
+    }
+
+    const sql = buildExecuteTimeEntriesSQL(entries);
+    res.json({ success: true, sql });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
 });
 
 // Only start listening when run directly (not when imported for tests)
