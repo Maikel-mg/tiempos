@@ -3,8 +3,6 @@ import cors from 'cors';
 import sql from 'mssql';
 import { getYearMonthPairs } from './src/domain/year-month-pairs';
 import { transformToTreeStructure } from './src/domain/tree-transformer';
-import { ClockifyApiClient } from './src/infrastructure/clockify-client';
-import { fechaToYMD, toHHMM } from './src/shared/date-helpers';
 import { createDbConfig, type DbConnectionParams } from './src/domain/db-config';
 import {
   executeStatements,
@@ -14,6 +12,7 @@ import {
 } from './src/application/sql-executor';
 import { buildProjectsQuery, buildProjectsTreeQuery, buildProcessesQuery } from './src/application/sp-builder';
 import { classifyEntries, type TimeEntry } from './src/application/entry-classifier';
+import * as clockifyApp from './src/application/clockify-app';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -97,17 +96,12 @@ app.post('/api/execute-sql', async (req: Request, res: Response) => {
 
 app.get('/api/get-workspace-id', async (_req: Request, res: Response) => {
   try {
-    const client = ClockifyApiClient.fromEnv();
-    const userData = await client.getUser();
+    const workspaces = await clockifyApp.getWorkspaces();
 
     res.json({
       success: true,
       message: 'Copia el ID del workspace que quieras usar',
-      workspaces: userData.workspaces.map((w) => ({
-        id: w.id,
-        name: w.name,
-        idLength: w.id.length
-      }))
+      workspaces
     });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
@@ -124,11 +118,7 @@ app.get('/api/time-entries', async (req: Request, res: Response) => {
             });
         }
 
-        const client = ClockifyApiClient.fromEnv();
-        const data = await client.getTimeEntries({
-            startDate,
-            endDate: endDate || new Date().toISOString().split('T')[0]
-        });
+        const data = await clockifyApp.getTimeEntries({ startDate, endDate });
 
         res.json({
             success: true,
@@ -147,8 +137,7 @@ app.get('/api/time-entries', async (req: Request, res: Response) => {
 app.post('/api/clockify/report', async (req: Request, res: Response) => {
   try {
     const { startDate, endDate } = req.body;
-    const client = ClockifyApiClient.fromEnv();
-    const data = await client.getReport({ startDate, endDate });
+    const data = await clockifyApp.getReport({ startDate, endDate });
 
     res.json({
       success: true,
@@ -182,12 +171,11 @@ app.post('/api/clockify/create-task', async (req: Request, res: Response) => {
             });
         }
 
-        const client = ClockifyApiClient.fromEnv();
-        const task = await client.createTask(projectId, taskName);
+        const result = await clockifyApp.createTask(projectId, taskName);
 
         res.json({
             success: true,
-            taskId: task.id,
+            taskId: result.taskId,
             message: 'Tarea creada'
         });
     } catch (error: any) {
@@ -218,8 +206,7 @@ app.put('/api/clockify/bulk-update-entries', async (req: Request, res: Response)
             });
         }
 
-        const client = ClockifyApiClient.fromEnv();
-        await client.bulkUpdateEntries(entries, taskId);
+        await clockifyApp.bulkUpdateEntries(entries, taskId);
 
         res.json({
             success: true,
