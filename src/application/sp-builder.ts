@@ -1,3 +1,5 @@
+import { parseAmbiguousDate } from '../domain/date-parser';
+
 function escapeSQL(value: string): string {
   return value.replace(/'/g, "''");
 }
@@ -30,27 +32,9 @@ export function buildProjectsTreeQuery(params: {
 
   let pFechaYYYYMMDD: string | null = null;
   if (pFecha) {
-    const normalizedFecha = pFecha.replace(/\//g, '-');
-    const parts = normalizedFecha.split('-');
-
-    if (parts.length === 3) {
-      const firstPart = parseInt(parts[0], 10);
-      const secondPart = parseInt(parts[1], 10);
-      const thirdPart = parseInt(parts[2], 10);
-
-      let year: string, month: string, day: string;
-
-      if (firstPart > 99) {
-        year = parts[0]; month = parts[1]; day = parts[2];
-      } else if (secondPart > 12) {
-        year = parts[2]; month = parts[0]; day = parts[1];
-      } else if (thirdPart > 99) {
-        year = parts[2]; month = parts[1]; day = parts[0];
-      } else {
-        year = parts[0]; month = parts[1]; day = parts[2];
-      }
-
-      pFechaYYYYMMDD = `${year}${month.padStart(2, '0')}${day.padStart(2, '0')}`;
+    const parsed = parseAmbiguousDate(pFecha);
+    if (parsed) {
+      pFechaYYYYMMDD = parsed.yyyymmdd;
     }
   }
 

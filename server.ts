@@ -13,6 +13,7 @@ import {
   executeTimeEntriesInTransaction,
 } from './src/application/sql-executor';
 import { buildProjectsQuery, buildProjectsTreeQuery, buildProcessesQuery } from './src/application/sp-builder';
+import { classifyEntries, type TimeEntry } from './src/application/entry-classifier';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -284,18 +285,6 @@ app.post('/api/validate-entries', async (req: Request, res: Response) => {
 });
 
 // --- Sync Time Entries: classify entries as new or existing ---
-interface TimeEntry {
-  id: string;
-  taskId: number;
-  taskName: string;
-  date: string;        // YYYY-MM-DD
-  startTime: string;   // HH:MM:SS
-  endTime: string;     // HH:MM:SS
-  duration: number;
-  description?: string;
-  synced: boolean;
-}
-
 interface SyncTimeEntriesParams extends DbConnectionParams {
   entries: TimeEntry[];
   usuario: string;
@@ -324,37 +313,9 @@ app.post('/api/sync-time-entries', async (req: Request, res: Response) => {
     const pairResults = await executeForYearMonthPairs(req.body as SyncTimeEntriesParams, pairs, usuario);
     const allDbRows = pairResults.flatMap(r => r.data);
 
-    // --- Classify each entry ---
-    const alreadyExists: any[] = [];
-    const willInsert: any[] = [];
+    const result = classifyEntries(entries, allDbRows);
 
-    for (const entry of entries) {
-      const entryDate = entry.date;
-      const entryStart = toHHMM(entry.startTime);
-      const entryEnd = toHHMM(entry.endTime);
-
-      const matched = allDbRows.some((row: any) => {
-        const rowDate = fechaToYMD(row.Fecha);
-        const rowStart = toHHMM(String(row.Desde));
-        const rowEnd = toHHMM(String(row.Hasta));
-        const rowProcess = row.IdProceso ?? row.Proceso;
-
-        return (
-          rowDate === entryDate &&
-          rowStart === entryStart &&
-          rowEnd === entryEnd &&
-          rowProcess === entry.taskId
-        );
-      });
-
-      if (matched) {
-        alreadyExists.push(entry);
-      } else {
-        willInsert.push(entry);
-      }
-    }
-
-    res.json({ success: true, willInsert, alreadyExists });
+    res.json({ success: true, ...result });
 });
 
 // --- Execute Time Entries: insert time entries via spNETTiempos_Alta ---
