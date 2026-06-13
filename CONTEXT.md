@@ -39,3 +39,15 @@ _Avoid_: Hour type, Time type
 **Tarea (Proceso)**:
 Entidad que se crea vía `spNETTiempos_Procesos_Mantenimiento`. Tiene un nombre (descripción), fechas previstas, minutos estimados, y una fase. El SQLPreviewModal permite crearlas desde el ProcessSelector (modo creación sin datos pre-cargados) o desde el ProcessMappingTable (modo edición con datos extraídos de la fila).
 _Avoid_: Task, Process (cuando el contexto es el dominio de la app)
+
+**SpBuilder**:
+Módulo que construye strings SQL para stored procedures con escape de parámetros y formato de fechas. Funciones puras, sin I/O.
+_Avoid_: SQL generator, Query builder
+
+**EntryClassifier**:
+Módulo que compara entradas de tiempo entrantes contra filas de BD y clasifica cada una como `alreadyExists` o `willInsert`. Función pura.
+_Avoid_: Validator, Checker
+
+**ClockifyApp**:
+Capa de aplicación que envuelve `ClockifyApiClient` con operaciones de nivel de negocio (obtener workspaces, entradas, reportes, crear tareas, etc.).
+_Avoid_: ClockifyService
