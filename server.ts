@@ -12,6 +12,7 @@ import {
   executeForYearMonthPairs,
   executeTimeEntriesInTransaction,
 } from './src/application/sql-executor';
+import { buildProjectsQuery, buildProjectsTreeQuery, buildProcessesQuery } from './src/application/sp-builder';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -246,21 +247,16 @@ interface ProjectsRequest extends DbConnectionParams {
 }
 
 app.post('/api/projects', async (req: Request, res: Response) => {
-  // console.log(`TCL ~ Projects request body:`, req.body);
   const { server, database, username, password, fecha, modoProc, usured } = req.body as ProjectsRequest;
 
   try {
-    const fechaInput = fecha || new Date().toISOString().split('T')[0];
-    const pModoProc = modoProc ? parseInt(modoProc, 10) : 1;
-    const pUsured = usured || 'MG01';
-
-    const [year, month, day] = fechaInput.split('-');
-    const pFechaSpanish = `${day}/${month}/${year}`;
-
-    const query = `SET DATEFORMAT dmy; EXEC spNETProyectos_SeleccionProyectos @pFecha = '${pFechaSpanish}', @pModoProc = ${pModoProc}, @pUsured = '${pUsured.replace(/'/g, "''")}';`;
+    const query = buildProjectsQuery({
+      fecha,
+      modoProc: modoProc ? parseInt(modoProc, 10) : undefined,
+      usured,
+    });
 
     const result = await executeQueryRaw(req.body as ProjectsRequest, query);
-    // executeQueryRaw returns all recordsets as an array; first recordset = array of rows
     const data = Array.isArray(result) && Array.isArray(result[0]) ? result[0] : result;
     res.json({ success: true, data: data || [] });
   } catch (error: any) {
@@ -414,43 +410,15 @@ app.post('/api/projects-tree', async (req: Request, res: Response) => {
   const { codCli, proyecto, fecha, modo } = req.body;
 
   try {
-    const pCodCli = codCli || null;
-    const pProyecto = proyecto || null;
-    const pFecha = fecha || new Date().toISOString().split('T')[0];
-    const pModo = modo ? parseInt(modo, 10) : 1;
-
-    // Convertir fecha a formato YYYYMMDD (inambiguo en cualquier idioma de sesión SQL Server)
-    let pFechaYYYYMMDD: string | null = null;
-    if (pFecha) {
-      const normalizedFecha = pFecha.replace(/\//g, '-');
-      const parts = normalizedFecha.split('-');
-
-      if (parts.length === 3) {
-        const firstPart = parseInt(parts[0], 10);
-        const secondPart = parseInt(parts[1], 10);
-        const thirdPart = parseInt(parts[2], 10);
-
-        let year: string, month: string, day: string;
-
-        if (firstPart > 99) {
-          year = parts[0]; month = parts[1]; day = parts[2];
-        } else if (secondPart > 12) {
-          year = parts[2]; month = parts[0]; day = parts[1];
-        } else if (thirdPart > 99) {
-          year = parts[2]; month = parts[1]; day = parts[0];
-        } else {
-          year = parts[0]; month = parts[1]; day = parts[2];
-        }
-
-        pFechaYYYYMMDD = `${year}${month.padStart(2, '0')}${day.padStart(2, '0')}`;
-      }
-    }
-
-    const query = `EXEC spNETProyectos_TreeProyectos @pClientes = ${pCodCli ? `'${pCodCli.toString().replace(/'/g, "''")}'` : 'NULL'}, @pProyectos = ${pProyecto ? `'${pProyecto.toString().replace(/'/g, "''")}'` : 'NULL'}, @pFecha = ${pFechaYYYYMMDD ? `'${pFechaYYYYMMDD}'` : 'NULL'}, @pModo = ${pModo};`;
+    const query = buildProjectsTreeQuery({
+      codCli,
+      proyecto,
+      fecha,
+      modo: modo ? parseInt(modo, 10) : undefined,
+    });
 
     const result = await executeQueryRaw(req.body as DbConnectionParams, query);
 
-    // mssql retorna varios recordsets cuando el SP ejecuta múltiples SELECTs
     const recordsets: any[] = Array.isArray(result)
       ? result
       : Object.values(result || {});
@@ -486,14 +454,11 @@ app.post('/api/processes', async (req: Request, res: Response) => {
   }
 
 try {
-    const usuredSanitized = usured.trim().replace(/'/g, "''");
-    const query = `EXEC spNETTiempos_SEL_TraerProcesos @pUsured = '${usuredSanitized}';`;
+    const query = buildProcessesQuery({ usured });
 
     const result = await executeQueryRaw(req.body as DbConnectionParams, query);
-    // executeQueryRaw returns all recordsets as an array; first recordset = array of rows
     const rows = Array.isArray(result) && Array.isArray(result[0]) ? result[0] : (Array.isArray(result) ? result : []);
 
-    // Mapear filas planas del SP al shape de Proceso
     const data = rows.map((row: any) => ({
       proceso: row.NProceso,
       nombre: row.NomProceso,
