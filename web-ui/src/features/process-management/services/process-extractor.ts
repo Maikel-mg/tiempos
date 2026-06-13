@@ -4,7 +4,7 @@
  * Takes raw time entries and extracts unique processes with aggregated data.
  */
 
-import { parseISO8601DurationToMinutes } from '@/lib/sql-generator';
+import { parseISO8601DurationToMinutes } from '@/lib/sql-utils';
 import type { Process, TimeEntry } from '../types';
 
 export class ProcessExtractorService {

@@ -23,7 +23,7 @@ import { Edit2, Check, AlertCircle, Eye, Search, ChevronDown, ChevronUp } from '
 import { ProcessSelector } from './ProcessSelector';
 import { SQLPreviewModal } from '@/components/SQLPreviewModal';
 import { useCreateProcess } from '@/features/process-management/mutations/useCreateProcess';
-import { formatISOToSQLDate } from '@/lib/sql-generator';
+import { formatISOToSQLDate } from '@/lib/sql-utils';
 import type { Project } from '@/features/projects/types';
 
 export interface ProcessMappingTableProps {

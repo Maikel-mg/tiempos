@@ -4,11 +4,11 @@
  * This service handles the generation of SQL statements for creating
  * new processes (tareas) in the intranet database.
  * 
- * Uses the shared sql-generator from @/lib/sql-generator but wraps it
+ * Uses utilities from @/lib/sql-utils
  * with domain-specific logic for process creation.
  */
 
-import { generateTaskSQL, copyToClipboard as copyToClipboardUtil } from '@/lib/sql-generator';
+import { copyToClipboard as copyToClipboardUtil } from '@/lib/sql-utils';
 import type { ProcessCreationParams } from '../types';
 
 /**
@@ -18,8 +18,8 @@ export class ProcessSQLService {
   /**
    * Generate SQL for creating a new process
    */
-  generateCreateSQL(params: ProcessCreationParams): string {
-    return generateTaskSQL(params);
+  generateCreateSQL(_params: ProcessCreationParams): string {
+    return '-- SQL generation moved to backend. Use the preview endpoint.';
   }
 
   /**

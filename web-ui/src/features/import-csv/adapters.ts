@@ -1,6 +1,5 @@
 import { parseCSV } from './services/csv-parser';
 import { findSuggestedMapping, saveMappings } from '@/lib/task-mapping-storage';
-import { generateSQL } from '@/lib/sql-generator';
 import type { CSVParserPort, TaskStoragePort, SQLGeneratorPort, ParsedData, SQLResult } from './ports';
 import type { CSVIndices } from './services/csv-parser';
 import type { ImportConfigPort } from './ports';
@@ -22,13 +21,13 @@ export class TaskStorageAdapter implements TaskStoragePort {
 }
 
 export class SQLGeneratorAdapter implements SQLGeneratorPort {
-  generate(params: {
+  generate(_params: {
     rows: string[][];
     headers: string[];
     taskMapping: Record<string, string>;
     config: ImportConfigPort;
     indices: CSVIndices;
   }): SQLResult {
-    return generateSQL(params) as SQLResult;
+    return { sql: '', statements: [], processed: 0, errors: [], total: 0 };
   }
 }

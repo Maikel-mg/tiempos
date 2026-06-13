@@ -13,7 +13,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { generateTaskSQL, formatISOToSQLDate } from '@/lib/sql-generator';
+import { formatISOToSQLDate } from '@/lib/sql-utils';
 import { SinFasesSelector } from './SinFasesSelector';
 import type { Project } from '@/features/projects/types';
 
@@ -90,15 +90,10 @@ export function SQLPreviewModal({
         }
     }, [open, taskData, config, fases]);
 
-    // Generate SQL based on edited data
+    // SQL generation moved to backend sp-builder
     const sql = useMemo(() => {
-        console.log(`TCL ~ SQLPreviewModal ~ editedTask:`, editedTask)
         if (!editedTask) return '';
-        try {
-            return generateTaskSQL(editedTask);
-        } catch (error: any) {
-            return `-- Error generating SQL: ${error.message}`;
-        }
+        return '-- SQL generation moved to backend. Use the preview endpoint.';
     }, [editedTask]);
 
     const handleCopy = async () => {

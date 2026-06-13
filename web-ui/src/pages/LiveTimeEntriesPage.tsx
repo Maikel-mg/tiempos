@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
-import { generateSQLFromObjects, formatSQLForHighlight, downloadSQL, copyToClipboard, type SQLGenerationResult } from '@/lib/sql-generator';
+import { formatSQLForHighlight, downloadSQL, copyToClipboard } from '@/lib/sql-utils';
 import { loadMappings, saveMappings, type TaskMappings } from '@/lib/task-mapping-storage';
 import { ConfigInfoBar } from '@/components/ConfigInfoBar';
 import { toast } from 'sonner';
@@ -105,7 +105,7 @@ export function LiveTimeEntriesPage() {
     // Selection state
     const [selectedEntries, setSelectedEntries] = useState<Set<string>>(new Set());
     const [sqlPreviewOpen, setSqlPreviewOpen] = useState(false);
-    const [sqlResult, setSqlResult] = useState<SQLGenerationResult | null>(null);
+    const [sqlResult, setSqlResult] = useState<{ sql: string; statements: string[]; processed: number; errors: { message: string }[]; total: number } | null>(null);
     const [showRawSql, setShowRawSql] = useState(false);
     const [copied, setCopied] = useState(false);
     const [isExecuting, setIsExecuting] = useState(false);
@@ -447,33 +447,14 @@ export function LiveTimeEntriesPage() {
         });
     }, [entries, selectedEntries, taskMapping]);
 
-    // Generate SQL for selected entries
+    // Generate SQL for selected entries (backend now owns SQL construction)
     const generateSQL = useCallback(() => {
         if (selectedEntries.size === 0) {
             setSqlResult(null);
             return;
         }
-
-        const selectedData = entries.filter(e => selectedEntries.has(getEntryUniqueId(e)));
-        
-        try {
-            const result = generateSQLFromObjects({
-                entries: selectedData,
-                taskMapping,
-                config
-            });
-            setSqlResult(result as SQLGenerationResult);
-        } catch (err: any) {
-            console.error('Error generating SQL:', err);
-            setSqlResult({
-                sql: '',
-                statements: [],
-                processed: 0,
-                errors: [{ message: err.message }],
-                total: selectedData.length
-            });
-        }
-    }, [entries, selectedEntries, taskMapping, config]);
+        setSqlResult(null);
+    }, [selectedEntries]);
 
     useEffect(() => {
         const timeoutId = setTimeout(() => {

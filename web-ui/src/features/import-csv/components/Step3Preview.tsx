@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { DataTable, createSelectColumn, ColumnDef } from '@/components/ui/data-table';
-import { downloadSQL, formatSQLForHighlight } from '@/lib/sql-generator';
+import { downloadSQL, formatSQLForHighlight } from '@/lib/sql-utils';
 import { convertCsvToTimeEntries } from '../services/entry-converter';
 import { usePreviewSql } from '../queries/preview-sql-query';
 import type { ParsedData, CSVIndices } from '../services/csv-parser';

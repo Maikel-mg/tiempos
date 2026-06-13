@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
-import { generateTaskSQL, copyToClipboard, parseISO8601DurationToMinutes } from '@/lib/sql-generator';
+import { copyToClipboard, parseISO8601DurationToMinutes } from '@/lib/sql-utils';
 import { saveMappings } from '@/lib/task-mapping-storage';
 import { calculateHours } from '@/lib/utils';
 import { Edit2, Check, AlertCircle, FileCode, Search, ChevronDown, ChevronUp } from 'lucide-react';
@@ -26,8 +26,7 @@ export function TaskMappingTable({
     entries, 
     taskMapping, 
     onUpdateTaskId, 
-    config,
-    // dbConfig 
+    config: _config,
 }: TaskMappingTableProps) {
     const [localErrors, setLocalErrors] = useState<Record<string, string | null>>({});
     const [copiedTask, setCopiedTask] = useState<string | null>(null);
@@ -163,14 +162,7 @@ export function TaskMappingTable({
     };
 
     const handleCopyTaskSQL = async (task: any) => {
-        const sql = generateTaskSQL({
-            nombre: task.name,
-            fechaInicio: formatDateDDMMYYYY(task.fechaInicio),
-            fechaFin: formatDateDDMMYYYY(task.fechaFin),
-            minutos: Math.ceil(task.totalMinutes),
-            usuario: config.usuario,
-            fase: config.fase
-        });
+        const sql = '-- SQL generation moved to backend. Use the preview endpoint.';
         
         const success = await copyToClipboard(sql);
         if (success) {
