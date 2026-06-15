@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Copy, Play, Loader2, Check, AlertCircle, Calendar, Clock, Flag, Edit2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,10 @@ import {
 } from '@/components/ui/select';
 import { formatISOToSQLDate } from '@/lib/sql-utils';
 import { SinFasesSelector } from './SinFasesSelector';
+import { apiClient } from '@/lib/api/client';
 import type { Project } from '@/features/projects/types';
+import type { CreateProcessDTO } from '@/features/process-management/types';
+import { dbConfig } from '@/config/stores';
 
 export interface SQLPreviewModalProps {
     open: boolean;
@@ -28,9 +31,21 @@ export interface SQLPreviewModalProps {
     fases?: Array<{ id: string; label: string }>;
     selectedProject?: Project | null;
     title?: string;
-    onExecute?: (sql: string) => void;
+    onExecute?: (dto: CreateProcessDTO) => void;
     isExecuting?: boolean;
     executeResult?: any;
+}
+
+function buildDTOFromTask(task: any, config: { usuario: string; fase: string } | null): CreateProcessDTO {
+    return {
+        nombre: task.nombre || '',
+        fechaInicio: task.fechaInicio || '',
+        fechaFin: task.fechaFin || '',
+        fechaEstimacion: task.fechaEstimacion || '',
+        minutos: task.minutos || 0,
+        usuario: task.usuario || config?.usuario || '',
+        fase: task.fase || config?.fase || '',
+    };
 }
 
 export function SQLPreviewModal({ 
@@ -47,6 +62,8 @@ export function SQLPreviewModal({
 }: SQLPreviewModalProps) {
     const [copied, setCopied] = useState(false);
     const [editedTask, setEditedTask] = useState<any>(null);
+    const [previewSql, setPreviewSql] = useState<string>('');
+    const [isLoadingPreview, setIsLoadingPreview] = useState(false);
 
     // Initialize edited task when modal opens or taskData changes
     useEffect(() => {
@@ -90,14 +107,49 @@ export function SQLPreviewModal({
         }
     }, [open, taskData, config, fases]);
 
-    // SQL generation moved to backend sp-builder
-    const sql = useMemo(() => {
-        if (!editedTask) return '';
-        return '-- SQL generation moved to backend. Use the preview endpoint.';
-    }, [editedTask]);
+    // Fetch preview SQL from backend when editedTask changes
+    const fetchPreview = useCallback(async () => {
+        if (!editedTask || !editedTask.fase?.trim()) {
+            setPreviewSql('');
+            return;
+        }
+
+        const dto = buildDTOFromTask(editedTask, config);
+        const configStore = dbConfig.get();
+        if (!configStore) {
+            setPreviewSql('-- Configura la conexión a la base de datos para ver la vista previa.');
+            return;
+        }
+
+        setIsLoadingPreview(true);
+        try {
+            const result = await apiClient.post<{ sql: string }>('/preview-process-sql', {
+                server: configStore.server,
+                database: configStore.database,
+                username: configStore.username,
+                password: configStore.password || '',
+                dto,
+            });
+            if (result.success && result.data?.sql) {
+                setPreviewSql(result.data.sql);
+            } else {
+                setPreviewSql('-- Error al generar la vista previa.');
+            }
+        } catch {
+            setPreviewSql('-- Error al conectar con el backend para la vista previa.');
+        } finally {
+            setIsLoadingPreview(false);
+        }
+    }, [editedTask, config]);
+
+    useEffect(() => {
+        if (open) {
+            fetchPreview();
+        }
+    }, [open, fetchPreview]);
 
     const handleCopy = async () => {
-        await navigator.clipboard.writeText(sql);
+        await navigator.clipboard.writeText(previewSql);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
     };
@@ -128,6 +180,12 @@ export function SQLPreviewModal({
                     !!editedTask?.fase?.trim();
 
     const currentHours = editedTask ? (editedTask.minutos / 60) : 0;
+
+    const handleExecute = () => {
+        if (!onExecute || !editedTask) return;
+        const dto = buildDTOFromTask(editedTask, config);
+        onExecute(dto);
+    };
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -308,12 +366,12 @@ export function SQLPreviewModal({
 
                     <ScrollArea className="flex-1 border rounded-lg bg-slate-950">
                         <pre className="p-4 text-sm font-mono whitespace-pre-wrap text-slate-300" data-testid="sql-preview">
-                            {sql}
+                            {isLoadingPreview ? 'Cargando vista previa...' : previewSql}
                         </pre>
                     </ScrollArea>
 
                     <div className="flex gap-2 justify-end pt-2">
-                        <Button variant="outline" onClick={handleCopy}>
+                        <Button variant="outline" onClick={handleCopy} disabled={isLoadingPreview || !previewSql}>
                             {copied ? (
                                 <>
                                     <Check className="w-4 h-4 mr-2" />
@@ -328,8 +386,8 @@ export function SQLPreviewModal({
                         </Button>
                         {onExecute && (
                             <Button 
-                                onClick={() => onExecute(sql)}
-                                disabled={isExecuting || !isValid}
+                                onClick={handleExecute}
+                                disabled={isExecuting || !isValid || isLoadingPreview}
                             >
                                 {isExecuting ? (
                                     <>

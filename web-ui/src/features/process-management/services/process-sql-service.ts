@@ -1,27 +1,16 @@
 /**
- * ProcessSQLService - Pure logic for generating SQL to create processes
+ * ProcessSQLService - Pure logic for process creation utilities
  * 
- * This service handles the generation of SQL statements for creating
- * new processes (tareas) in the intranet database.
- * 
- * Uses utilities from @/lib/sql-utils
- * with domain-specific logic for process creation.
+ * SQL generation has been moved to the backend (sp-builder.ts).
+ * This service retains helper utilities for formatting and clipboard.
  */
 
 import { copyToClipboard as copyToClipboardUtil } from '@/lib/sql-utils';
-import type { ProcessCreationParams } from '../types';
 
 /**
- * Service for generating SQL related to process creation
+ * Service for process creation utilities
  */
 export class ProcessSQLService {
-  /**
-   * Generate SQL for creating a new process
-   */
-  generateCreateSQL(_params: ProcessCreationParams): string {
-    return '-- SQL generation moved to backend. Use the preview endpoint.';
-  }
-
   /**
    * Copy SQL to clipboard
    */
@@ -30,7 +19,7 @@ export class ProcessSQLService {
   }
 
   /**
-   * Format ISO date to DD/MM/YYYY format for SQL
+   * Format ISO date to DD/MM/YYYY format
    */
   formatDateToDDMMYYYY(isoDate: string | undefined | null): string {
     if (!isoDate) return '';

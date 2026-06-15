@@ -32,7 +32,7 @@ vi.mock('@/components/SQLPreviewModal', () => ({
         <span data-testid="sql-preview-executing">{String(isExecuting)}</span>
         <span data-testid="sql-preview-result">{JSON.stringify(executeResult)}</span>
         {onExecute && (
-          <button data-testid="sql-execute-btn" onClick={() => onExecute('SELECT 1')}>Execute</button>
+          <button data-testid="sql-execute-btn" onClick={() => onExecute({ nombre: 'Test', fechaInicio: '01/06/2026', fechaFin: '08/06/2026', fechaEstimacion: '01/06/2026', minutos: 120, usuario: 'MG01', fase: '100' })}>Execute</button>
         )}
       </div>
     );

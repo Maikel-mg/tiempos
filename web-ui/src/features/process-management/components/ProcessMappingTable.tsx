@@ -294,7 +294,7 @@ export function ProcessMappingTable({
           fase: config.fase,
         }}
         title="Crear Proceso"
-        onExecute={(sql) => createProcess.mutateAsync(sql)}
+        onExecute={(dto) => createProcess.mutateAsync(dto)}
         isExecuting={createProcess.isPending}
         executeResult={createProcess.data ? {
           success: true,

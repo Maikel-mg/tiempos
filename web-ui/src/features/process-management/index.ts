@@ -16,7 +16,8 @@ export type {
   TaskProcessMapping,
   ProcessWithDisplay,
   ProcessFilterType,
-  ProcessConfig
+  ProcessConfig,
+  CreateProcessDTO
 } from './types';
 
 // Services (pure logic, no React)

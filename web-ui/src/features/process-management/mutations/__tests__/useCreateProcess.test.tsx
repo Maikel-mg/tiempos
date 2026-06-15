@@ -5,6 +5,7 @@ import { apiClient } from '@/lib/api/client';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import React from 'react';
 import { dbConfig } from '@/config/stores';
+import type { CreateProcessDTO } from '../../types';
 
 // Mock the apiClient and dbConfig
 vi.mock('@/lib/api/client', () => ({
@@ -37,6 +38,16 @@ const wrapper = ({ children }: { children: React.ReactNode }) => (
   <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 );
 
+const validDTO: CreateProcessDTO = {
+  nombre: 'Test Task',
+  fechaInicio: '01/06/2026',
+  fechaFin: '08/06/2026',
+  fechaEstimacion: '01/06/2026',
+  minutos: 120,
+  usuario: 'MG01',
+  fase: '100',
+};
+
 describe('useCreateProcess', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -45,8 +56,7 @@ describe('useCreateProcess', () => {
     vi.mocked(dbConfig.get).mockReturnValue(null);
   });
 
-  it('should execute SQL successfully', async () => {
-    const mockSql = 'INSERT INTO procesos (id, nombre) VALUES (1, \'Test\')';
+  it('should create process successfully via DTO', async () => {
     const mockDbConfig = {
       server: 'localhost\\SQLEXPRESS',
       database: 'TiemposDB',
@@ -60,29 +70,27 @@ describe('useCreateProcess', () => {
       success: true,
       data: {
         success: true,
-        message: 'SQL ejecutado exitosamente',
+        message: 'Proceso creado exitosamente',
         totalRowsAffected: 1,
       },
     });
 
     const { result } = renderHook(() => useCreateProcess(), { wrapper });
 
-    // Call mutateAsync to trigger the mutation
-    const response = await result.current.mutateAsync(mockSql);
+    const response = await result.current.mutateAsync(validDTO);
 
     expect(response.success).toBe(true);
     expect(response.totalRowsAffected).toBe(1);
-    expect(apiClient.post).toHaveBeenCalledWith('/execute-sql', {
+    expect(apiClient.post).toHaveBeenCalledWith('/create-process', {
       server: mockDbConfig.server,
       database: mockDbConfig.database,
       username: mockDbConfig.username,
       password: mockDbConfig.password,
-      sqlStatements: [mockSql],
+      dto: validDTO,
     });
   });
 
   it('should handle API error response', async () => {
-    const mockSql = 'INVALID SQL';
     const mockDbConfig = {
       server: 'localhost',
       database: 'test-db',
@@ -94,41 +102,31 @@ describe('useCreateProcess', () => {
 
     vi.mocked(apiClient.post).mockResolvedValue({
       success: false,
-      message: 'Error en la consulta SQL',
+      message: 'Error al crear el proceso',
     });
 
     const { result } = renderHook(() => useCreateProcess(), { wrapper });
 
-    // Start the mutation and capture the promise
-    const mutationPromise = result.current.mutateAsync(mockSql);
+    const mutationPromise = result.current.mutateAsync(validDTO);
 
-    // Wait for the error state to be set
     await waitFor(() => expect(result.current.isError).toBe(true));
 
-    // Verify the promise rejected with the correct message
-    await expect(mutationPromise).rejects.toThrow('Error en la consulta SQL');
+    await expect(mutationPromise).rejects.toThrow('Error al crear el proceso');
 
-    // Verify error message is set correctly
-    expect(result.current.error?.message).toBe('Error en la consulta SQL');
+    expect(result.current.error?.message).toBe('Error al crear el proceso');
   });
 
   it('should throw descriptive error when dbConfig is missing', async () => {
-    const mockSql = 'INSERT INTO test VALUES (1)';
-
-    // dbConfig.get returns null (no config saved or error)
     vi.mocked(dbConfig.get).mockReturnValue(null);
 
     const { result } = renderHook(() => useCreateProcess(), { wrapper });
 
-    await expect(result.current.mutateAsync(mockSql)).rejects.toThrow(
+    await expect(result.current.mutateAsync(validDTO)).rejects.toThrow(
       'No se encontró configuración de base de datos. Configure las credenciales en la página de conexión.'
     );
   });
 
   it('should throw descriptive error when required fields are missing', async () => {
-    const mockSql = 'INSERT INTO test VALUES (1)';
-
-    // Missing database field (empty string)
     vi.mocked(dbConfig.get).mockReturnValue({
       server: 'localhost',
       database: '',
@@ -138,14 +136,12 @@ describe('useCreateProcess', () => {
 
     const { result } = renderHook(() => useCreateProcess(), { wrapper });
 
-    await expect(result.current.mutateAsync(mockSql)).rejects.toThrow(
+    await expect(result.current.mutateAsync(validDTO)).rejects.toThrow(
       'Configuración de base de datos incompleta. Debe completar: servidor, base de datos y usuario.'
     );
   });
 
   it('should use empty string for password if not provided in config', async () => {
-    const mockSql = 'INSERT INTO test VALUES (1)';
-    // Config with empty password (default case)
     const mockDbConfig = {
       server: 'localhost',
       database: 'test-db',
@@ -165,14 +161,14 @@ describe('useCreateProcess', () => {
 
     const { result } = renderHook(() => useCreateProcess(), { wrapper });
 
-    await result.current.mutateAsync(mockSql);
+    await result.current.mutateAsync(validDTO);
 
-    expect(apiClient.post).toHaveBeenCalledWith('/execute-sql', {
+    expect(apiClient.post).toHaveBeenCalledWith('/create-process', {
       server: mockDbConfig.server,
       database: mockDbConfig.database,
       username: mockDbConfig.username,
       password: '',
-      sqlStatements: [mockSql],
+      dto: validDTO,
     });
   });
 });

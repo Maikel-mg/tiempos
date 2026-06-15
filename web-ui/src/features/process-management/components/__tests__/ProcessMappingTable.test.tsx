@@ -3,6 +3,26 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ProcessMappingTable } from '../ProcessMappingTable';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
+// Mock apiClient and dbConfig for SQLPreviewModal's backend preview fetch
+vi.mock('@/lib/api/client', () => ({
+  apiClient: {
+    post: vi.fn().mockResolvedValue({
+      success: true,
+      data: { sql: "SET LANGUAGE Spanish;\nSET DATEFORMAT dmy;\n\nEXEC spNETTiempos_Procesos_Mantenimiento @pNombre='Task', @pFase=100;" },
+    }),
+  },
+}));
+vi.mock('@/config/stores', () => ({
+  dbConfig: {
+    get: () => ({
+      server: 'localhost',
+      database: 'testdb',
+      username: 'sa',
+      password: '',
+    }),
+  },
+}));
+
 // Mock ProcessSelector to avoid full render complexity here
 // Capture onSelect and onCreateNew to verify callback chain works
 let capturedOnSelect: ((projectCode: string, processId: string) => void) | null = null;

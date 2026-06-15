@@ -77,3 +77,17 @@ export interface ProcessConfig {
   fase: string;
   tipoHora: string;
 }
+
+/**
+ * DTO sent to backend for creating a process.
+ * Backend generates and executes the INSERT SQL from this.
+ */
+export interface CreateProcessDTO {
+  nombre: string;
+  fechaInicio: string;   // DD/MM/YYYY
+  fechaFin: string;      // DD/MM/YYYY
+  fechaEstimacion: string; // DD/MM/YYYY
+  minutos: number;
+  usuario: string;
+  fase: string;
+}

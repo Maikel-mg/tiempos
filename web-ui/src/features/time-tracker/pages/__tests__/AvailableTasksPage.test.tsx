@@ -8,6 +8,21 @@ import type { Proceso } from '../../types';
 // ── Mocks ────────────────────────────────────────────────────────────────────
 
 vi.mock('../../hooks/useProcessCache');
+vi.mock('@/features/process-management/mutations/useCreateProcess', () => ({
+  useCreateProcess: () => ({
+    mutateAsync: vi.fn().mockResolvedValue({}),
+    isPending: false,
+    data: null,
+    error: null,
+  }),
+}));
+vi.mock('@/components/SQLPreviewModal', () => ({
+  SQLPreviewModal: ({ open, onOpenChange }: any) =>
+    open ? <div data-testid="sql-preview-modal"><button onClick={() => onOpenChange(false)}>Close</button></div> : null,
+}));
+vi.mock('@/config/stores', () => ({
+  wizardConfig: { get: () => ({ usuario: 'test', fase: '1', tipoHora: '11' }) },
+}));
 
 // ── Test data ────────────────────────────────────────────────────────────────
 
@@ -201,5 +216,36 @@ describe('AvailableTasksPage', () => {
     // Toggle back to "Mi departamento"
     await user.click(switchEl);
     expect(screen.queryByText('Desarrollo Backend')).toBeNull();
+  });
+
+  it('renders "Crear tarea" button', () => {
+    vi.mocked(useProcessCache).mockReturnValue({
+      processes: mockProcesses,
+      loading: false,
+      error: null,
+      refresh: vi.fn(),
+    });
+
+    render(<AvailableTasksPage />);
+    expect(screen.getByRole('button', { name: /crear tarea/i })).toBeDefined();
+  });
+
+  it('opens SQLPreviewModal when "Crear tarea" is clicked', async () => {
+    const user = userEvent.setup();
+    vi.mocked(useProcessCache).mockReturnValue({
+      processes: mockProcesses,
+      loading: false,
+      error: null,
+      refresh: vi.fn(),
+    });
+
+    render(<AvailableTasksPage />);
+
+    expect(screen.queryByTestId('sql-preview-modal')).toBeNull();
+
+    const createBtn = screen.getByRole('button', { name: /crear tarea/i });
+    await user.click(createBtn);
+
+    expect(screen.getByTestId('sql-preview-modal')).toBeDefined();
   });
 });

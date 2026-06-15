@@ -1,9 +1,11 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SQLPreviewModal } from '../SQLPreviewModal';
 import { useProjects } from '@/features/projects/hooks/use-projects';
 import { useProjectTree } from '@/features/projects/hooks/use-project-tree';
+import { apiClient } from '@/lib/api/client';
+import { dbConfig } from '@/config/stores';
 
 // Mock hooks used by SinFasesSelector
 vi.mock('@/features/projects/hooks/use-projects', () => ({
@@ -12,6 +14,20 @@ vi.mock('@/features/projects/hooks/use-projects', () => ({
 
 vi.mock('@/features/projects/hooks/use-project-tree', () => ({
     useProjectTree: vi.fn(),
+}));
+
+// Mock apiClient
+vi.mock('@/lib/api/client', () => ({
+    apiClient: {
+        post: vi.fn(),
+    },
+}));
+
+// Mock dbConfig
+vi.mock('@/config/stores', () => ({
+    dbConfig: {
+        get: vi.fn(),
+    },
 }));
 
 // Helper to format date as used in component
@@ -27,6 +43,13 @@ describe('SQLPreviewModal', () => {
     const mockOnOpenChange = vi.fn();
     const mockOnExecute = vi.fn();
 
+    const mockDbConfig = {
+        server: 'localhost\\SQLEXPRESS',
+        database: 'TiemposDB',
+        username: 'sa',
+        password: 'password123',
+    };
+
     beforeEach(() => {
         vi.clearAllMocks();
         // Default mocks for SinFasesSelector hooks — loading state prevents
@@ -39,6 +62,15 @@ describe('SQLPreviewModal', () => {
         vi.mocked(useProjectTree).mockReturnValue({
             isLoading: false,
         } as any);
+        // Default dbConfig mock
+        vi.mocked(dbConfig.get).mockReturnValue(mockDbConfig);
+        // Default API mock — returns the SQL that would be generated
+        vi.mocked(apiClient.post).mockResolvedValue({
+            success: true,
+            data: {
+                sql: "SET LANGUAGE Spanish;\nSET DATEFORMAT dmy;\n\nEXEC spNETTiempos_Procesos_Mantenimiento @pNombre='Task', @pFechaInicio='20260601', @pFechaFin='20260608', @pFechaEstimacion='20260601', @pMinutos=120, @pUsuario='MG01', @pFase=100;",
+            },
+        });
     });
 
     const renderModal = (props: Partial<React.ComponentProps<typeof SQLPreviewModal>> = {}) => {
@@ -265,45 +297,36 @@ describe('SQLPreviewModal', () => {
         });
     });
 
-    describe('SQL Generation', () => {
-        it('generates SQL with correct values', () => {
-            const taskData = {
-                name: 'Test Task',
-                fechaInicio: '01/06/2026',
-                fechaFin: '08/06/2026',
-                totalMinutes: 120,
-            };
-            renderModal({ taskData });
+    describe('SQL Preview (backend-fetched)', () => {
+        it('fetches and displays SQL preview from backend', async () => {
+            renderModal({
+                taskData: {
+                    name: 'Test Task',
+                    fechaInicio: '01/06/2026',
+                    fechaFin: '08/06/2026',
+                    totalMinutes: 120,
+                },
+            });
 
-            const sqlBlock = screen.getByTestId('sql-preview');
-            expect(sqlBlock).toBeInTheDocument();
-            const sql = sqlBlock?.textContent || '';
-            expect(sql).toContain('Test Task');
-            // Dates are converted to YYYYMMDD in the SQL (unambiguous for SQL Server)
-            expect(sql).toContain('20260601');
-            expect(sql).toContain('20260608');
-            expect(sql).toContain('@pFase');
+            await waitFor(() => {
+                const sqlBlock = screen.getByTestId('sql-preview');
+                expect(sqlBlock.textContent).toContain('spNETTiempos_Procesos_Mantenimiento');
+            });
+
+            expect(apiClient.post).toHaveBeenCalledWith('/preview-process-sql', expect.objectContaining({
+                dto: expect.objectContaining({
+                    nombre: 'Test Task',
+                    fase: '100',
+                }),
+            }));
         });
 
-        it('updates SQL when hours change', () => {
-            const taskData = {
-                name: 'Task',
-                fechaInicio: '01/06/2026',
-                fechaFin: '08/06/2026',
-                totalMinutes: 120,
-            };
-            renderModal({ taskData });
+        it('updates preview when phase changes', async () => {
+            vi.mocked(apiClient.post).mockResolvedValueOnce({
+                success: true,
+                data: { sql: "EXEC spNETTiempos_Procesos_Mantenimiento @pFase=100;" },
+            });
 
-            const hoursInput = document.querySelector('input[type="number"][step="0.25"]') as HTMLInputElement;
-            fireEvent.change(hoursInput, { target: { value: '3' } });
-
-            const sqlBlock = screen.getByTestId('sql-preview');
-            const sql = sqlBlock?.textContent || '';
-            // 3 hours -> 180 minutes
-            expect(sql).toContain('180');
-        });
-
-        it('updates SQL when phase text input changes', () => {
             renderModal({
                 taskData: {
                     name: 'Task',
@@ -313,47 +336,28 @@ describe('SQLPreviewModal', () => {
                 },
             });
 
-            const phaseInput = screen.getByPlaceholderText('Código de fase') as HTMLInputElement;
+            // Wait for initial fetch
+            await waitFor(() => {
+                expect(apiClient.post).toHaveBeenCalled();
+            });
+
+            // Mock updated response for phase change
+            vi.mocked(apiClient.post).mockResolvedValueOnce({
+                success: true,
+                data: { sql: "EXEC spNETTiempos_Procesos_Mantenimiento @pFase=999;" },
+            });
+
+            const phaseInput = screen.getByPlaceholderText('Código de fase');
             fireEvent.change(phaseInput, { target: { value: '999' } });
 
-            const sqlBlock = screen.getByTestId('sql-preview');
-            const sql = sqlBlock?.textContent || '';
-            expect(sql).toContain('999');
+            await waitFor(() => {
+                expect(apiClient.post).toHaveBeenCalledTimes(2);
+            });
         });
 
-        it('generates SQL with project code in SinFases mode after selecting a project', () => {
-            vi.mocked(useProjects).mockReturnValue({
-                data: [
-                    {
-                        CodCli: '1',
-                        NomCliente: 'Client A',
-                        NomProy: 'Project A',
-                        Proyecto: 'PA',
-                    },
-                ],
-                isLoading: false,
-                isError: false,
-            } as any);
-            vi.mocked(useProjectTree).mockReturnValue({
-                isLoading: false,
-                data: {
-                    data: {
-                        cliente: { codCli: 1, cliente: 'C1', nomCliente: 'Client 1' },
-                        proyecto: { codCli: 1, proyecto: 1, nomProy: 'P1', cerrado: false, cmmi: false, esCM: false, esPET: false },
-                        disciplinas: [
-                            {
-                                idDisciplina: 10,
-                                nombre: 'Diseño',
-                                sinDisciplina: false,
-                                orden: 1,
-                                fases: [
-                                    { fase: 20, nombre: 'Fase 1', cerrado: false, orden: 1, procesos: [] },
-                                ],
-                            },
-                        ],
-                    },
-                },
-            } as any);
+        it('shows loading state while fetching preview', async () => {
+            // Never resolve the API call
+            vi.mocked(apiClient.post).mockReturnValue(new Promise(() => {}));
 
             renderModal({
                 taskData: {
@@ -362,95 +366,9 @@ describe('SQLPreviewModal', () => {
                     fechaFin: '08/06/2026',
                     totalMinutes: 120,
                 },
-                fases: undefined as any,
             });
 
-            // Select project
-            const projectCombobox = screen.getByRole('combobox');
-            fireEvent.click(projectCombobox);
-            fireEvent.click(screen.getByText('Client A / Project A (PA)'));
-
-            const sql = screen.getByTestId('sql-preview').textContent || '';
-            expect(sql).toContain('PA');
-        });
-
-        it('generates SQL with phase ID in SinFases mode after selecting project and phase', () => {
-            vi.mocked(useProjects).mockReturnValue({
-                data: [
-                    {
-                        CodCli: '1',
-                        NomCliente: 'Client A',
-                        NomProy: 'Project A',
-                        Proyecto: 'PA',
-                    },
-                ],
-                isLoading: false,
-                isError: false,
-            } as any);
-            vi.mocked(useProjectTree).mockReturnValue({
-                isLoading: false,
-                data: {
-                    data: {
-                        cliente: { codCli: 1, cliente: 'C1', nomCliente: 'Client 1' },
-                        proyecto: { codCli: 1, proyecto: 1, nomProy: 'P1', cerrado: false, cmmi: false, esCM: false, esPET: false },
-                        disciplinas: [
-                            {
-                                idDisciplina: 10,
-                                nombre: 'Diseño',
-                                sinDisciplina: false,
-                                orden: 1,
-                                fases: [
-                                    { fase: 20, nombre: 'Fase 1', cerrado: false, orden: 1, procesos: [] },
-                                ],
-                            },
-                        ],
-                    },
-                },
-            } as any);
-
-            renderModal({
-                taskData: {
-                    name: 'Task',
-                    fechaInicio: '01/06/2026',
-                    fechaFin: '08/06/2026',
-                    totalMinutes: 120,
-                },
-                fases: undefined as any,
-            });
-
-            // Select project
-            const projectCombobox = screen.getByRole('combobox');
-            fireEvent.click(projectCombobox);
-            fireEvent.click(screen.getByText('Client A / Project A (PA)'));
-
-            // Select phase
-            const phaseCombobox = screen.getAllByRole('combobox')[1];
-            fireEvent.click(phaseCombobox);
-            fireEvent.click(screen.getByText('Diseño / Fase 1'));
-
-            const sql = screen.getByTestId('sql-preview').textContent || '';
-            expect(sql).toContain('20');
-        });
-
-        it('generates SQL with dropdown-selected phase ID in Select mode', () => {
-            renderModal({
-                taskData: {
-                    name: 'Task',
-                    fechaInicio: '01/06/2026',
-                    fechaFin: '08/06/2026',
-                    totalMinutes: 120,
-                },
-                fases: [{ id: '100', label: 'Fase 100' }],
-                config: { usuario: 'MG01', fase: '' },
-            });
-
-            // Open dropdown and select fase
-            const combobox = screen.getByRole('combobox');
-            fireEvent.click(combobox);
-            fireEvent.click(screen.getByText('Fase 100'));
-
-            const sql = screen.getByTestId('sql-preview').textContent || '';
-            expect(sql).toContain('100');
+            expect(screen.getByTestId('sql-preview').textContent).toContain('Cargando vista previa');
         });
     });
 
@@ -516,6 +434,39 @@ describe('SQLPreviewModal', () => {
         });
     });
 
+    describe('Execute sends DTO', () => {
+        it('calls onExecute with CreateProcessDTO when execute button is clicked', async () => {
+            renderModal({
+                taskData: {
+                    name: 'My Task',
+                    fechaInicio: '01/06/2026',
+                    fechaFin: '08/06/2026',
+                    totalMinutes: 120,
+                },
+                config: { usuario: 'MG01', fase: '100' },
+                onExecute: mockOnExecute,
+            });
+
+            // Wait for preview to load
+            await waitFor(() => {
+                expect(apiClient.post).toHaveBeenCalled();
+            });
+
+            const executeButton = screen.getByRole('button', { name: /Ejecutar en BD/i });
+            fireEvent.click(executeButton);
+
+            expect(mockOnExecute).toHaveBeenCalledWith({
+                nombre: 'My Task',
+                fechaInicio: '01/06/2026',
+                fechaFin: '08/06/2026',
+                fechaEstimacion: expect.any(String),
+                minutos: 120,
+                usuario: 'MG01',
+                fase: '100',
+            });
+        });
+    });
+
     describe('Validation: SinFases mode', () => {
         it('disables execute button when no project or phase selected in SinFases mode', () => {
             vi.mocked(useProjects).mockReturnValue({
@@ -566,7 +517,7 @@ describe('SQLPreviewModal', () => {
             expect(executeButton).toBeDisabled();
         });
 
-        it('enables execute button after selecting project and phase in SinFases mode', () => {
+        it('enables execute button after selecting project and phase in SinFases mode', async () => {
             vi.mocked(useProjects).mockReturnValue({
                 data: [
                     {

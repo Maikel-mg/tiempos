@@ -10,7 +10,7 @@ import {
   executeForYearMonthPairs,
   executeTimeEntriesInTransaction,
 } from './src/application/sql-executor';
-import { buildProjectsQuery, buildProjectsTreeQuery, buildProcessesQuery, buildExecuteTimeEntriesSQL } from './src/application/sp-builder';
+import { buildProjectsQuery, buildProjectsTreeQuery, buildProcessesQuery, buildExecuteTimeEntriesSQL, buildCreateProcessSQL, type CreateProcessDTO } from './src/application/sp-builder';
 import { classifyEntries, type TimeEntry } from './src/application/entry-classifier';
 import * as clockifyApp from './src/application/clockify-app';
 
@@ -350,6 +350,66 @@ app.post('/api/preview-sql', async (req: Request, res: Response) => {
     res.json({ success: true, sql });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// --- Preview Process SQL: returns constructed SQL without executing ---
+interface PreviewProcessParams extends DbConnectionParams {
+  dto: CreateProcessDTO;
+}
+
+app.post('/api/preview-process-sql', async (req: Request, res: Response) => {
+  try {
+    const { dto } = req.body as PreviewProcessParams;
+
+    if (!dto || !dto.nombre || !dto.usuario || !dto.fase) {
+      return res.status(400).json({ success: false, message: 'dto with nombre, usuario, and fase is required' });
+    }
+
+    const sql = buildCreateProcessSQL(dto);
+    res.json({ success: true, sql });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// --- Create Process: generates INSERT SQL from DTO and executes it ---
+interface CreateProcessParams extends DbConnectionParams {
+  dto: CreateProcessDTO;
+}
+
+app.post('/api/create-process', async (req: Request, res: Response) => {
+  const { server, database, username, password, dto } = req.body as CreateProcessParams;
+
+  if (!dto || !dto.nombre || !dto.usuario || !dto.fase) {
+    return res.status(400).json({ success: false, message: 'dto with nombre, usuario, and fase is required' });
+  }
+
+  try {
+    const sql = buildCreateProcessSQL(dto);
+    const results = await executeStatements(
+      { server, database, username, password: password || '' } as DbConnectionParams,
+      [sql]
+    );
+    const totalRowsAffected = results.reduce((sum, r) => sum + r.rowsAffected, 0);
+
+    res.json({
+      success: true,
+      message: 'Proceso creado exitosamente',
+      totalRowsAffected,
+      results
+    });
+  } catch (error: any) {
+    console.error('Create Process Error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+      suggestions: [
+        'Check SQL syntax',
+        'Verify constraint compliance',
+        'Ensure all referenced entities exist'
+      ]
+    });
   }
 });
 

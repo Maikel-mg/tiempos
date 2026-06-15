@@ -12,6 +12,7 @@ import { calculateHours } from '@/lib/utils';
 import { CSVPreviewModal } from './CSVPreviewModal';
 import { SQLPreviewModal } from '@/components/SQLPreviewModal';
 import type { UniqueTask, ParsedData } from '../services/csv-parser';
+import type { CreateProcessDTO } from '@/features/process-management/types';
 
 export interface Step2TasksProps {
     tasks: UniqueTask[];
@@ -71,7 +72,7 @@ export function Step2Tasks({
         setSqlPreviewOpen(true);
     };
 
-    const handleExecuteSQL = async (sqlToExecute: string) => {
+    const handleExecuteDTO = async (dto: CreateProcessDTO) => {
         if (!dbConfig.server || !dbConfig.database || !dbConfig.username) {
             setExecuteResult({
                 success: false,
@@ -84,7 +85,7 @@ export function Step2Tasks({
         setExecuteResult(null);
 
         try {
-            const response = await fetch('http://localhost:3001/api/execute-sql', {
+            const response = await fetch('http://localhost:3001/api/create-process', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -92,7 +93,7 @@ export function Step2Tasks({
                     database: dbConfig.database,
                     username: dbConfig.username,
                     password: dbConfig.password,
-                    sqlStatements: [sqlToExecute]
+                    dto,
                 })
             });
 
@@ -404,7 +405,7 @@ export function Step2Tasks({
                 taskData={selectedTaskData}
                 config={config}
                 title={`SQL: ${selectedTaskName}`}
-                onExecute={handleExecuteSQL}
+                onExecute={handleExecuteDTO}
                 isExecuting={isExecuting}
                 executeResult={executeResult}
             />

@@ -187,7 +187,7 @@ export function TaskProposalModal({
         fase: config.fase,
       }}
       title="Vista Previa - Crear Proceso"
-      onExecute={(sql) => createProcess.mutateAsync(sql)}
+      onExecute={(dto) => createProcess.mutateAsync(dto)}
       isExecuting={createProcess.isPending}
       executeResult={createProcess.data ? {
         success: true,

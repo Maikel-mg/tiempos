@@ -1,10 +1,13 @@
 import { useState, useMemo, useCallback } from 'react';
-import { ListTodo, Loader2, RefreshCw, AlertCircle } from 'lucide-react';
+import { ListTodo, Loader2, RefreshCw, AlertCircle, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
 import { DataTable, ColumnDef } from '@/components/ui/data-table';
+import { SQLPreviewModal } from '@/components/SQLPreviewModal';
+import { useCreateProcess } from '@/features/process-management/mutations/useCreateProcess';
 import { useProcessCache } from '../hooks/useProcessCache';
+import { wizardConfig } from '@/config/stores';
 import type { Proceso } from '../types';
 
 const MY_DEPARTMENT_ID = 5;
@@ -63,6 +66,8 @@ export function AvailableTasksPage() {
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(
     () => Object.fromEntries(columnDefinitions.map((c) => [c.id, c.visible]))
   );
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const createProcess = useCreateProcess();
 
   const filteredProcesses = useMemo(() => {
     if (showAll) return processes;
@@ -88,6 +93,15 @@ export function AvailableTasksPage() {
       <div className="flex items-center gap-3 mb-6">
         <ListTodo className="w-6 h-6 text-muted-foreground" />
         <h1 className="text-2xl font-semibold tracking-tight">Mis Tareas</h1>
+        <Button
+          variant="outline"
+          size="sm"
+          className="ml-auto"
+          onClick={() => setIsCreateOpen(true)}
+        >
+          <Plus className="w-4 h-4 mr-1" />
+          Crear tarea
+        </Button>
       </div>
 
       {loading ? (
@@ -132,6 +146,27 @@ export function AvailableTasksPage() {
           />
         </div>
       )}
+
+      <SQLPreviewModal
+        open={isCreateOpen}
+        onOpenChange={setIsCreateOpen}
+        taskData={null}
+        config={{
+          usuario: wizardConfig.get()?.usuario ?? '',
+          fase: wizardConfig.get()?.fase ?? '',
+        }}
+        title="Crear Tarea"
+        onExecute={(dto) => createProcess.mutateAsync(dto)}
+        isExecuting={createProcess.isPending}
+        executeResult={createProcess.data ? {
+          success: true,
+          message: createProcess.data.message,
+          totalRowsAffected: createProcess.data.totalRowsAffected,
+        } : createProcess.error ? {
+          success: false,
+          message: (createProcess.error as Error).message,
+        } : null}
+      />
     </main>
   );
 }

@@ -5,11 +5,10 @@
  * - Extracting processes from time entries
  * - Validating process IDs
  * - Managing task-to-process mappings
- * - Generating SQL for process creation
  */
 
 import { useState, useCallback, useMemo } from 'react';
-import { processExtractor, processValidation, processSQLService } from '../services';
+import { processExtractor, processValidation } from '../services';
 import { saveMappings } from '@/lib/task-mapping-storage';
 import type { Process, ProcessIdValidation, ProcessFilterType, ProcessConfig, TimeEntry } from '../types';
 
@@ -34,8 +33,6 @@ export interface UseProcessManagementReturn {
   setEntries: (entries: TimeEntry[]) => void;
   updateProcessId: (processName: string, processId: string) => ProcessIdValidation;
   removeProcessIdError: (processName: string) => void;
-  generateProcessSQL: (process: Process) => string;
-  copyProcessSQL: (process: Process) => Promise<boolean>;
   updateConfig: (key: keyof ProcessConfig, value: string) => void;
   
   // Filtering
@@ -107,24 +104,6 @@ export function useProcessManagement(options: UseProcessManagementOptions = {}):
     });
   }, []);
 
-  // Generate SQL for a process
-  const generateProcessSQL = useCallback((process: Process): string => {
-    return processSQLService.generateCreateSQL({
-      nombre: process.name,
-      fechaInicio: processSQLService.formatDateToDDMMYYYY(process.fechaInicio),
-      fechaFin: processSQLService.formatDateToDDMMYYYY(process.fechaFin),
-      minutos: Math.ceil(process.totalMinutes),
-      usuario: config.usuario,
-      fase: config.fase
-    });
-  }, [config]);
-
-  // Copy process SQL to clipboard
-  const copyProcessSQL = useCallback(async (process: Process): Promise<boolean> => {
-    const sql = generateProcessSQL(process);
-    return processSQLService.copyToClipboard(sql);
-  }, [generateProcessSQL]);
-
   // Update config
   const updateConfig = useCallback((key: keyof ProcessConfig, value: string) => {
     setConfig(prev => ({ ...prev, [key]: value }));
@@ -166,8 +145,6 @@ export function useProcessManagement(options: UseProcessManagementOptions = {}):
     setEntries,
     updateProcessId,
     removeProcessIdError,
-    generateProcessSQL,
-    copyProcessSQL,
     updateConfig,
     getFilteredProcesses
   };
