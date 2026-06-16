@@ -248,10 +248,10 @@ export function TimeTrackerBar({ onSubmit, initialData, disabled, defaultMode = 
           aria-label="Permiso (recuperable)"
           aria-pressed={recoverable}
           title="Marcar como permiso"
-          className={`p-1.5 rounded-md transition-colors min-w-[44px] min-h-[44px] ${
+          className={`flex items-center gap-1.5 px-2.5 py-2 rounded-md text-sm font-medium transition-all ${
             recoverable
-              ? 'bg-amber-500/20 text-amber-600'
-              : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+              ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
+              : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
           }`}
         >
           {recoverable ? (
@@ -409,7 +409,7 @@ export function TimeTrackerBar({ onSubmit, initialData, disabled, defaultMode = 
 
         {/* Stacked mode icons — hidden while timer is running to prevent mode switching */}
         {!timer.isRunning && (
-          <div className="flex rounded-lg bg-muted p-0.5 border border-border">
+          <div className="flex rounded-lg bg-muted/80 p-1 border border-border/60">
             <button
               type="button"
               onClick={() => setMode('timer')}
@@ -417,10 +417,10 @@ export function TimeTrackerBar({ onSubmit, initialData, disabled, defaultMode = 
               aria-label="Modo temporizador"
               aria-pressed={mode === 'timer'}
               title="Timer"
-              className={`p-1.5 rounded-md transition-colors min-w-[44px] min-h-[44px] ${
+              className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${
                 mode === 'timer'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
               }`}
             >
               <Clock className="h-4 w-4" />
@@ -432,10 +432,10 @@ export function TimeTrackerBar({ onSubmit, initialData, disabled, defaultMode = 
               aria-label="Modo manual"
               aria-pressed={mode === 'manual'}
               title="Manual"
-              className={`p-1.5 rounded-md transition-colors min-w-[44px] min-h-[44px] ${
+              className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${
                 mode === 'manual'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
               }`}
             >
               <List className="h-4 w-4" />

@@ -79,19 +79,27 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       <div className="min-h-screen flex flex-grow">
         <Sidebar collapsible="icon" className="border-r border-border/50">
         <SidebarHeader>
-          <div className={`flex items-center ${open ? 'justify-between gap-2 p-2' : 'justify-center gap-0 p-1'}`}>
-            <div className="flex items-center gap-1">
-              <Timer className="w-5 h-5 text-primary" />
-              {open && (
+          {open ? (
+            <div className="flex items-center justify-between gap-2 p-2">
+              <div className="flex items-center gap-1">
+                <Timer className="w-5 h-5 text-primary" />
                 <div className="flex flex-col">
                   <span className="font-bold text-sm">Chronos</span>
                   <span className="text-xs text-muted-foreground">Time Tracker</span>
                 </div>
-              )}
+              </div>
+              <div className="flex items-center gap-1">
+                <SidebarTrigger className="h-5 w-5 p-1" />
+                <ThemeToggle className="!h-7 !w-7" />
+              </div>
             </div>
-            <SidebarTrigger className="h-5 w-5 p-1" />
-            <ThemeToggle />
-          </div>
+          ) : (
+            <div className="flex flex-col items-center gap-1 p-1">
+              <Timer className="w-5 h-5 text-primary" />
+              <SidebarTrigger className="h-5 w-5 p-1" />
+              <ThemeToggle className="!h-7 !w-7" />
+            </div>
+          )}
         </SidebarHeader>
           <SidebarContent>
             <SidebarGroup>
