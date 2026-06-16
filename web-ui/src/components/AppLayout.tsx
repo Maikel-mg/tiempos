@@ -14,14 +14,13 @@ import {
 } from "@/components/ui/sidebar"
 import {
   LayoutDashboard,
-  FileSpreadsheet,
+  Timer,
   Clock,
   FolderOpen,
   Settings,
   ListTodo,
 } from "lucide-react"
 import { ThemeToggle } from "@/components/ThemeToggle"
-import { Separator } from "@/components/ui/separator"
 import { uiConfig } from "@/config/stores"
 
 const mainNavItems = [
@@ -30,30 +29,30 @@ const mainNavItems = [
     url: "/dashboard",
     icon: LayoutDashboard,
   },
+  // {
+  //   title: "Importar CSV",
+  //   url: "/import",
+  //   icon: FileSpreadsheet,
+  // },
   {
-    title: "Importar CSV",
-    url: "/import",
-    icon: FileSpreadsheet,
+    title: "Mi TimeTracker",
+    url: "/time-tracker",
+    icon: Clock,
   },
   {
     title: "Proyectos",
     url: "/projects",
     icon: FolderOpen,
   },
-  {
-    title: "Tiempos en Vivo",
-    url: "/live-entries",
-    icon: Clock,
-  },
+  // {
+  //   title: "Tiempos en Vivo",
+  //   url: "/live-entries",
+  //   icon: Clock,
+  // },
   {
     title: "Mis Tareas",
     url: "/my-tasks",
     icon: ListTodo,
-  },
-  {
-    title: "Mi TimeTracker",
-    url: "/time-tracker",
-    icon: Clock,
   },
 ]
 
@@ -78,23 +77,29 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider open={open} onOpenChange={setOpen}>
       <div className="min-h-screen flex flex-grow">
-        <Sidebar collapsible="icon">
+        <Sidebar collapsible="icon" className="border-r border-border/50">
         <SidebarHeader>
-          <div className={`flex items-center ${open ? 'justify-between gap-2 p-2' : 'justify-center gap-0 p-1'}`}>
-            <div className="flex items-center gap-1">
-              <div className="p-1 bg-primary/10 rounded-lg">
-                <FileSpreadsheet className="w-5 h-5 text-primary" />
-              </div>
-              {open && (
+          {open ? (
+            <div className="flex items-center justify-between gap-2 p-2">
+              <div className="flex items-center gap-1">
+                <Timer className="w-5 h-5 text-primary" />
                 <div className="flex flex-col">
-                  <span className="font-bold text-sm">Importador</span>
-                  <span className="text-xs text-muted-foreground">de Tiempos</span>
+                  <span className="font-bold text-sm">Chronos</span>
+                  <span className="text-xs text-muted-foreground">Time Tracker</span>
                 </div>
-              )}
+              </div>
+              <div className="flex items-center gap-1">
+                <SidebarTrigger className="h-5 w-5 p-1" />
+                <ThemeToggle className="!h-7 !w-7" />
+              </div>
             </div>
-            <SidebarTrigger className="h-5 w-5 p-1" />
-            <ThemeToggle />
-          </div>
+          ) : (
+            <div className="flex flex-col items-center gap-1 p-1">
+              <Timer className="w-5 h-5 text-primary" />
+              <SidebarTrigger className="h-5 w-5 p-1" />
+              <ThemeToggle className="!h-7 !w-7" />
+            </div>
+          )}
         </SidebarHeader>
           <SidebarContent>
             <SidebarGroup>
@@ -122,8 +127,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
-            <Separator className="mx-auto w-4/5 my-2" />
-            <SidebarGroup>
+            <SidebarGroup className="mt-auto">
               <SidebarGroupContent>
                 <SidebarMenu>
                   {settingsNavItems.map((item) => (
@@ -150,7 +154,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             </SidebarGroup>
           </SidebarContent>
         </Sidebar>
-        <main className="flex-1 min-w-0 bg-background">
+        <main className="flex-1 min-w-0 bg-background font-sans">
           {children}
         </main>
       </div>

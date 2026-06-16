@@ -1,56 +1,110 @@
 import { Card, CardContent } from '@/components/ui/card';
+import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
-interface SummaryCardsProps {
-  totalSeconds: number;
-  entriesCount: number;
-  avgPerDaySeconds: number;
-}
-
-function formatDuration(seconds: number) {
-  const hrs = Math.floor(seconds / 3600);
-  const mins = Math.floor((seconds % 3600) / 60);
+function formatDuration(seconds: number): string {
+  const hrs = Math.floor(Math.abs(seconds) / 3600);
+  const mins = Math.floor((Math.abs(seconds) % 3600) / 60);
   return `${hrs}:${mins.toString().padStart(2, '0')}`;
 }
 
-function StatCard({ 
-  title, 
-  value, 
-  subtitle
-}: { 
-  title: string; 
-  value: string; 
+interface SummaryCardsProps {
+  hoursToday: number;
+  hoursWeek: number;
+  hoursMonth: number;
+  balance: number;
+  expectedDailySeconds: number;
+}
+
+interface StatCardProps {
+  label: string;
+  value: number;
+  accentColor: string;
   subtitle?: string;
-}) {
+}
+
+function StatCard({ label, value, accentColor, subtitle }: StatCardProps) {
+  const isPositive = value > 0;
+  const isZero = value === 0;
+
   return (
-    <Card>
-      <CardContent className="pt-6">
-        <p className="text-sm text-muted-foreground mb-1">{title}</p>
-        <p className="text-3xl font-bold">{value}</p>
+    <Card
+      className="relative overflow-hidden border-l-2"
+      style={{ borderLeftColor: accentColor }}
+    >
+      <CardContent className="pt-5 pb-4 px-5">
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+          {label}
+        </p>
+        <p className="font-mono font-semibold text-2xl tabular-nums text-foreground">
+          {formatDuration(value)}
+        </p>
         {subtitle && (
-          <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>
+          <div className="flex items-center gap-1.5 mt-2">
+            {!isZero && (
+              isPositive
+                ? <TrendingUp className="h-3 w-3" style={{ color: accentColor }} />
+                : <TrendingDown className="h-3 w-3" style={{ color: accentColor }} />
+            )}
+            {isZero && <Minus className="h-3 w-3 text-muted-foreground" />}
+            <span className={cn(
+              'text-xs',
+              isPositive ? 'text-green-500' : isZero ? 'text-muted-foreground' : 'text-red-500'
+            )}>
+              {subtitle}
+            </span>
+          </div>
         )}
       </CardContent>
     </Card>
   );
 }
 
-export function SummaryCards({ totalSeconds, entriesCount, avgPerDaySeconds }: SummaryCardsProps) {
+export function SummaryCards({
+  hoursToday,
+  hoursWeek,
+  hoursMonth,
+  balance,
+  expectedDailySeconds,
+}: SummaryCardsProps) {
+  const todayTarget = expectedDailySeconds;
+  const weekTarget = expectedDailySeconds * 5;
+  const monthTarget = expectedDailySeconds * 22;
+
+  const todayBalance = hoursToday - todayTarget;
+  const weekBalance = hoursWeek - weekTarget;
+  const monthBalance = hoursMonth - monthTarget;
+
+  function formatBalance(seconds: number): string {
+    const sign = seconds >= 0 ? '+' : '-';
+    return `${sign}${formatDuration(seconds)}`;
+  }
+
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <StatCard
-        title="Total Horas"
-        value={formatDuration(totalSeconds)}
-        subtitle="trabajadas"
+        label="Horas Hoy"
+        value={hoursToday}
+        accentColor="hsl(var(--chart-1))"
+        subtitle={formatBalance(todayBalance)}
       />
       <StatCard
-        title="Entradas"
-        value={entriesCount.toString()}
-        subtitle="registros"
+        label="Horas Semana"
+        value={hoursWeek}
+        accentColor="hsl(var(--chart-2))"
+        subtitle={formatBalance(weekBalance)}
       />
       <StatCard
-        title="Promedio/Día"
-        value={formatDuration(avgPerDaySeconds)}
-        subtitle="días laborables"
+        label="Horas Mes"
+        value={hoursMonth}
+        accentColor="hsl(var(--chart-3))"
+        subtitle={formatBalance(monthBalance)}
+      />
+      <StatCard
+        label="Balance"
+        value={balance}
+        accentColor={balance >= 0 ? 'hsl(var(--chart-2))' : 'hsl(var(--destructive))'}
+        subtitle={balance >= 0 ? 'sobre objetivo' : 'bajo objetivo'}
       />
     </div>
   );

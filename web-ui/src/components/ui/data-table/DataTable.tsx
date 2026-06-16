@@ -128,14 +128,14 @@ export function DataTable<TData, TValue>({
   }, [rowSelection, data, onRowSelectionChange, getRowId])
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <DataTableToolbar
         searchValue={searchValue}
         onSearchChange={setSearchValue}
         searchKey={searchKey}
         columnToggle={columnToggle}
       />
-      <div className="rounded-md border">
+      <div className="rounded-lg border border-border/50 overflow-hidden">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (

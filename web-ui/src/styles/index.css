@@ -1,72 +1,86 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    /* Light mode - keep minimal, app is dark-first */
-    --background: 220 14% 98%;      /* off-white with slight cool tint */
-    --foreground: 222.2 84% 4.9%;
+    /* Light mode */
+    --background: 240 5% 97%;
+    --foreground: 240 10% 10%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 240 10% 10%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 235 46% 57%;
+    --popover-foreground: 240 10% 10%;
+    --primary: 24 80% 52%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 220 14% 96%;
-    --secondary-foreground: 220 9% 46%;
-    --muted: 220 14% 96%;
-    --muted-foreground: 220 9% 46%;
-    --accent: 220 14% 96%;
-    --accent-foreground: 222.2 84% 4.9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 235 46% 57%;
-    --radius: 0.5rem;
-    /* Semantic colors */
-    --success: 142 71% 45%;
+    --secondary: 240 5% 94%;
+    --secondary-foreground: 240 6% 40%;
+    --muted: 240 5% 94%;
+    --muted-foreground: 240 5% 50%;
+    --accent: 240 5% 94%;
+    --accent-foreground: 240 10% 10%;
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 6% 90%;
+    --input: 240 5% 94%;
+    --ring: 24 80% 52%;
+    --radius: 0.625rem;
+    /* Semantic */
+    --success: 152 60% 42%;
     --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;
+    --warning: 32 90% 50%;
     --warning-foreground: 0 0% 100%;
-    --info: 217 91% 60%;
+    --info: 210 85% 52%;
     --info-foreground: 0 0% 100%;
-    --error: 0 84% 60%;
+    --error: 0 72% 55%;
     --error-foreground: 0 0% 100%;
+    /* Chart palette */
+    --chart-1: 24 80% 52%;
+    --chart-2: 152 60% 42%;
+    --chart-3: 210 85% 52%;
+    --chart-4: 32 90% 50%;
+    --chart-5: 280 65% 55%;
   }
 
   .dark {
-    /* Linear-inspired dark theme */
-    --background: 228 16% 6%;       /* #0c0d12 canvas — softer than pure black */
-    --foreground: 220 8% 96%;       /* #f7f8f8 ink */
-    --card: 228 12% 8%;             /* #13151a surface-1 */
-    --card-foreground: 220 8% 96%;  /* #f7f8f8 ink */
-    --popover: 240 10% 6%;          /* #0f1011 surface-1 */
-    --popover-foreground: 220 8% 96%;
-    --primary: 235 46% 57%;         /* #5e6ad2 lavender */
+    /* Precision dark — deep charcoal, warm amber accent */
+    --background: 230 12% 7%;        /* #101218 deep canvas */
+    --foreground: 240 6% 93%;        /* #ececef ink */
+    --card: 230 10% 9%;              /* #15171e surface-1 */
+    --card-foreground: 240 6% 93%;
+    --popover: 230 10% 9%;
+    --popover-foreground: 240 6% 93%;
+    --primary: 24 80% 52%;           /* #e88a2e warm amber — action, focus */
     --primary-foreground: 0 0% 100%;
-    --secondary: 228 10% 10%;       /* #181a20 surface-2 */
-    --secondary-foreground: 220 8% 96%;
-    --muted: 228 10% 10%;           /* #181a20 surface-2 */
-    --muted-foreground: 220 5% 56%; /* #8a8f98 ink-subtle */
-    --accent: 228 10% 10%;          /* #181a20 surface-2 for hover */
-    --accent-foreground: 220 8% 96%;
-    --destructive: 0 72% 55%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 230 12% 14%;          /* #23252a hairline */
-    --input: 228 12% 8%;            /* surface-1 for inputs */
-    --ring: 235 46% 57%;            /* lavender focus ring */
-    --radius: 0.5rem;
-    /* Semantic colors for enterprise SaaS */
-    --success: 142 71% 45%;          /* #22c55e green — sync success */
+    --secondary: 230 10% 11%;        /* #1a1d26 surface-2 */
+    --secondary-foreground: 240 6% 93%;
+    --muted: 230 10% 11%;            /* #1a1d26 surface-2 */
+    --muted-foreground: 225 6% 52%;  /* #7c8194 ink-subtle */
+    --accent: 230 10% 11%;           /* surface-2 for hover */
+    --accent-foreground: 240 6% 93%;
+    --destructive: 0 65% 52%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 230 10% 13%;           /* #1f222c hairline */
+    --input: 230 10% 9%;             /* surface-1 for inputs */
+    --ring: 24 80% 52%;              /* amber focus ring */
+    --radius: 0.625rem;
+    /* Semantic — desaturated for dark */
+    --success: 152 50% 40%;          /* muted green */
     --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;           /* #f59e0b amber — warnings, overlaps */
+    --warning: 32 80% 48%;           /* muted amber */
     --warning-foreground: 0 0% 100%;
-    --info: 217 91% 60%;             /* #3b82f6 blue — info, links */
+    --info: 210 70% 50%;             /* muted blue */
     --info-foreground: 0 0% 100%;
-    --error: 0 84% 60%;              /* #ef4444 red — errors, validation */
+    --error: 0 65% 52%;              /* muted red */
     --error-foreground: 0 0% 100%;
+    /* Chart palette — dark optimized */
+    --chart-1: 24 80% 52%;           /* amber */
+    --chart-2: 152 50% 40%;          /* green */
+    --chart-3: 210 70% 50%;          /* blue */
+    --chart-4: 32 80% 48%;           /* orange */
+    --chart-5: 280 55% 50%;          /* purple */
   }
 }
 
@@ -75,12 +89,18 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight;
   }
 }
 
 @layer utilities {
   .tabular-nums {
     font-variant-numeric: tabular-nums;
+  }
+  .text-balance {
+    text-wrap: balance;
   }
 }

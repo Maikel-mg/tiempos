@@ -6,8 +6,13 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useTheme } from '@/hooks/useTheme';
+import { cn } from '@/lib/utils';
 
-export function ThemeToggle() {
+interface ThemeToggleProps {
+  className?: string;
+}
+
+export function ThemeToggle({ className }: ThemeToggleProps) {
   const { theme, toggle } = useTheme();
 
   return (
@@ -18,6 +23,7 @@ export function ThemeToggle() {
           size="icon"
           onClick={toggle}
           aria-label="Cambiar tema"
+          className={cn("h-9 w-9", className)}
         >
           {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
         </Button>
