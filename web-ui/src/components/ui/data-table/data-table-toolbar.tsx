@@ -20,9 +20,9 @@ export function DataTableToolbar({
   columnToggle,
 }: DataTableToolbarProps) {
   return (
-    <div className="flex items-center justify-between">
+    <div className="flex items-center justify-between gap-4">
       <div className="flex flex-1 items-center space-x-2">
-        <div className="relative flex-1 max-w-sm">
+        <div className="relative flex-1">
           <Input
             placeholder="Buscar en cualquier columna..."
             value={searchValue}

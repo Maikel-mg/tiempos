@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { ListTodo, Loader2, RefreshCw, AlertCircle, Plus } from 'lucide-react';
+import { ListTodo, Loader2, RefreshCw, AlertCircle, Plus, Inbox } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
@@ -89,12 +89,18 @@ export function AvailableTasksPage() {
   );
 
   return (
-    <main className="w-full px-4 sm:px-6 py-5">
-      <div className="flex items-center gap-3 mb-6">
-        <ListTodo className="w-6 h-6 text-muted-foreground" />
-        <h1 className="text-2xl font-semibold tracking-tight">Mis Tareas</h1>
+    <main className="w-full px-4 sm:px-6 lg:px-8 py-5">
+      <div className="flex items-center gap-3 mb-5">
+        <div className="p-2 bg-primary/10 rounded-lg text-primary">
+          <ListTodo className="w-5 h-5" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Mis Tareas</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Gestioná las tareas disponibles para registrar tiempo
+          </p>
+        </div>
         <Button
-          variant="outline"
           size="sm"
           className="ml-auto"
           onClick={() => setIsCreateOpen(true)}
@@ -105,26 +111,40 @@ export function AvailableTasksPage() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center p-8">
+        <div className="flex items-center justify-center p-8 text-muted-foreground">
           <Loader2 className="w-6 h-6 animate-spin mr-2" />
           <span>Cargando tareas...</span>
         </div>
       ) : error ? (
-        <div className="flex flex-col items-center justify-center p-8 space-y-4">
-          <Alert variant="destructive" className="max-w-md">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Error al cargar tareas</AlertTitle>
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-          <Button onClick={refresh}>
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Reintentar
-          </Button>
+        <div className="border border-border/50 rounded-lg p-8">
+          <div className="flex flex-col items-center justify-center space-y-4">
+            <Alert variant="destructive" className="max-w-md">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Error al cargar tareas</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+            <Button variant="outline" size="sm" onClick={refresh}>
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Reintentar
+            </Button>
+          </div>
         </div>
       ) : processes.length === 0 ? (
-        <p className="text-center p-8 text-muted-foreground">No hay tareas disponibles</p>
+        <div className="border border-border/50 rounded-lg p-8">
+          <div className="flex flex-col items-center justify-center text-center space-y-3">
+            <div className="p-3 bg-muted/50 rounded-full">
+              <Inbox className="w-8 h-8 text-muted-foreground/70" />
+            </div>
+            <div>
+              <p className="text-sm font-medium">No hay tareas disponibles</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Creá una tarea o ajustá los filtros para ver resultados
+              </p>
+            </div>
+          </div>
+        </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3">
           <div className="flex items-center gap-3">
             <Switch
               id="department-filter"
