@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { ListTodo, Loader2, RefreshCw, AlertCircle, Plus, Inbox } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -8,6 +8,7 @@ import { SQLPreviewModal } from '@/components/SQLPreviewModal';
 import { useCreateProcess } from '@/features/process-management/mutations/useCreateProcess';
 import { useProcessCache } from '../hooks/useProcessCache';
 import { useCommandActions } from '@/components/CommandActionsContext';
+import { useTableKeyboardNavigation } from '@/hooks/useTableKeyboardNavigation';
 import { wizardConfig } from '@/config/stores';
 import type { Proceso } from '../types';
 
@@ -69,6 +70,7 @@ export function AvailableTasksPage() {
   );
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const createProcess = useCreateProcess();
+  const tableRef = useRef<HTMLTableElement>(null);
 
   const filteredProcesses = useMemo(() => {
     if (showAll) return processes;
@@ -79,6 +81,12 @@ export function AvailableTasksPage() {
     () => (proceso: Proceso) => String(proceso.proceso),
     []
   );
+
+  const { activeIndex, getRowProps, focusFirst } = useTableKeyboardNavigation({
+    containerRef: tableRef,
+    items: filteredProcesses,
+    getRowId: (item) => String(item.proceso),
+  });
 
   const handleColumnToggle = useCallback((columnId: string, visible: boolean) => {
     setColumnVisibility((prev) => ({ ...prev, [columnId]: visible }));
@@ -169,15 +177,18 @@ export function AvailableTasksPage() {
               {showAll ? 'Todos los departamentos' : 'Mi departamento'}
             </label>
           </div>
-          <DataTable
-            columns={columns}
-            data={filteredProcesses}
-            getRowId={getRowId}
-            columnToggle={{
-              columns: toggleColumns,
-              onToggle: handleColumnToggle,
-            }}
-          />
+            <DataTable
+              columns={columns}
+              data={filteredProcesses}
+              getRowId={getRowId}
+              columnToggle={{
+                columns: toggleColumns,
+                onToggle: handleColumnToggle,
+              }}
+              activeIndex={activeIndex}
+              getRowProps={getRowProps}
+              tableRef={tableRef}
+            />
         </div>
       )}
 

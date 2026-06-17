@@ -2,6 +2,7 @@ import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components
 import { TimeEntryRow } from './TimeEntryRow';
 import { TimerRow } from './TimerRow';
 import type { TimeEntry } from '../types';
+import type { RefObject } from 'react';
 
 interface TimerEntryData {
   taskName: string;
@@ -23,13 +24,17 @@ interface TimeEntryListProps {
   onSync?: (entry: TimeEntry) => void;
   loading?: boolean;
   timerEntry?: TimerEntryData | null;
+  /** Ref to attach to the <table> element for keyboard navigation. */
+  tableRef?: RefObject<HTMLTableElement>;
+  /** Returns props to spread on each data row for keyboard navigation. */
+  getRowProps?: (index: number) => Record<string, unknown>;
 }
 
 /**
  * Listado de registros de tiempo con selección.
  * Los filtros son manejados por TimeEntryViewSwitcher.
  */
-export function TimeEntryList({ entries, selectedIds, onSelect, onDelete, onEdit, onPlay, onDuplicate, onSync, loading, timerEntry }: TimeEntryListProps) {
+export function TimeEntryList({ entries, selectedIds, onSelect, onDelete, onEdit, onPlay, onDuplicate, onSync, loading, timerEntry, tableRef, getRowProps }: TimeEntryListProps) {
   const toggleSelect = (id: string) => {
     const newSet = new Set(selectedIds);
     if (newSet.has(id)) {
@@ -53,7 +58,7 @@ export function TimeEntryList({ entries, selectedIds, onSelect, onDelete, onEdit
           No hay registros que coincidan con los filtros
         </div>
       ) : (
-        <Table>
+        <Table ref={tableRef as React.RefObject<HTMLTableElement>}>
           <TableHeader>
             <TableRow>
               <TableHead className="w-12"></TableHead>
@@ -71,7 +76,7 @@ export function TimeEntryList({ entries, selectedIds, onSelect, onDelete, onEdit
             {timerEntry && (
               <TimerRow {...timerEntry} />
             )}
-            {entries.map((entry) => (
+            {entries.map((entry, entryIndex) => (
               <TimeEntryRow
                 key={entry.id}
                 entry={entry}
@@ -82,6 +87,7 @@ export function TimeEntryList({ entries, selectedIds, onSelect, onDelete, onEdit
                 onPlay={onPlay ? () => onPlay(entry) : undefined}
                 onDuplicate={onDuplicate ? () => onDuplicate(entry) : undefined}
                 onSync={onSync ? () => onSync(entry) : undefined}
+                rowProps={getRowProps ? getRowProps(timerEntry ? entryIndex + 1 : entryIndex) : undefined}
               />
             ))}
           </TableBody>

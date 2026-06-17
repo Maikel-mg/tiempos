@@ -248,4 +248,80 @@ describe('AvailableTasksPage', () => {
 
     expect(screen.getByTestId('sql-preview-modal')).toBeDefined();
   });
+
+  describe('Keyboard navigation', () => {
+    it(' ArrowDown moves active row highlight to first row', async () => {
+      const user = userEvent.setup();
+      vi.mocked(useProcessCache).mockReturnValue({
+        processes: mockProcesses,
+        loading: false,
+        error: null,
+        refresh: vi.fn(),
+      });
+
+      render(<AvailableTasksPage />);
+
+      // Focus the table to activate keyboard nav
+      const table = screen.getByRole('table');
+      table.focus();
+
+      await user.keyboard('{ArrowDown}');
+
+      // First data row should have data-state="active"
+      const rows = screen.getAllByRole('row');
+      // rows[0] is header, rows[1] is first data row
+      expect(rows[1]?.getAttribute('data-state')).toBe('active');
+    });
+
+    it('Enter on active row is a no-op (no onRowClick)', async () => {
+      const user = userEvent.setup();
+      vi.mocked(useProcessCache).mockReturnValue({
+        processes: mockProcesses,
+        loading: false,
+        error: null,
+        refresh: vi.fn(),
+      });
+
+      render(<AvailableTasksPage />);
+
+      const table = screen.getByRole('table');
+      table.focus();
+
+      // Move to first row
+      await user.keyboard('{ArrowDown}');
+      const rows = screen.getAllByRole('row');
+      expect(rows[1]?.getAttribute('data-state')).toBe('active');
+
+      // Press Enter — should not throw or navigate
+      await user.keyboard('{Enter}');
+
+      // Row should still be active (no-op)
+      expect(rows[1]?.getAttribute('data-state')).toBe('active');
+    });
+
+    it('Escape clears active row', async () => {
+      const user = userEvent.setup();
+      vi.mocked(useProcessCache).mockReturnValue({
+        processes: mockProcesses,
+        loading: false,
+        error: null,
+        refresh: vi.fn(),
+      });
+
+      render(<AvailableTasksPage />);
+
+      const table = screen.getByRole('table');
+      table.focus();
+
+      await user.keyboard('{ArrowDown}');
+      const rows = screen.getAllByRole('row');
+      expect(rows[1]?.getAttribute('data-state')).toBe('active');
+
+      await user.keyboard('{Escape}');
+
+      // No row should have active state
+      const activeRows = rows.filter(r => r.getAttribute('data-state') === 'active');
+      expect(activeRows).toHaveLength(0);
+    });
+  });
 });

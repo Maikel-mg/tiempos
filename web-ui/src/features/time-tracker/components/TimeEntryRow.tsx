@@ -15,6 +15,8 @@ interface TimeEntryRowProps {
   onSync?: () => void;
   /** Información de recuperación para entries recuperables (permisos). */
   recoveryInfo?: { recovered: number; total: number };
+  /** Props to spread on the <TableRow> for keyboard navigation. */
+  rowProps?: Record<string, unknown>;
 }
 
 /**
@@ -49,12 +51,12 @@ function formatDate(dateStr: string): string {
 /**
  * Fila individual del listado de registros de tiempo.
  */
-export function TimeEntryRow({ entry, selected, onToggle, onDelete, onEdit, onPlay, onDuplicate, onSync, recoveryInfo }: TimeEntryRowProps) {
+export function TimeEntryRow({ entry, selected, onToggle, onDelete, onEdit, onPlay, onDuplicate, onSync, recoveryInfo, rowProps }: TimeEntryRowProps) {
   const SYNCED_TOOLTIP = 'Ya sincronizado con la BD — no se puede editar desde aquí';
 
   return (
     <TooltipProvider>
-      <TableRow className={[
+      <TableRow {...rowProps} className={[
         selected ? 'bg-green-50' : '',
         entry.recoverable && !selected ? 'bg-amber-50 dark:bg-amber-950/20' : '',
       ].filter(Boolean).join(' ')}>

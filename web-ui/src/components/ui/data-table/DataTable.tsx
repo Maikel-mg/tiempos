@@ -38,6 +38,12 @@ interface DataTableProps<TData, TValue> {
     columns: { id: string; label: string; visible: boolean }[];
     onToggle: (columnId: string, visible: boolean) => void;
   };
+  /** Index of the currently active row for keyboard navigation (-1 = none). */
+  activeIndex?: number;
+  /** Returns props to spread on each <tr> for keyboard navigation. */
+  getRowProps?: (index: number) => Record<string, unknown>;
+  /** Ref to attach to the <table> element for keyboard navigation container. */
+  tableRef?: React.RefObject<HTMLTableElement>;
 }
 
 export function DataTable<TData, TValue>({
@@ -50,6 +56,9 @@ export function DataTable<TData, TValue>({
   getRowId,
   onRowClick,
   columnToggle,
+  activeIndex,
+  getRowProps,
+  tableRef,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
@@ -136,7 +145,7 @@ export function DataTable<TData, TValue>({
         columnToggle={columnToggle}
       />
       <div className="rounded-lg border border-border/50 overflow-hidden">
-        <Table>
+        <Table ref={tableRef as React.RefObject<HTMLTableElement>}>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
@@ -157,14 +166,16 @@ export function DataTable<TData, TValue>({
           </TableHeader>
           <TableBody>
             {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => {
+              table.getRowModel().rows.map((row, rowIndex) => {
                 const rowData = row.original;
+                const keyboardProps = getRowProps ? getRowProps(rowIndex) : {};
                 return (
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
                   onClick={() => onRowClick?.(rowData)}
                   className={onRowClick ? "cursor-pointer hover:bg-muted/50" : undefined}
+                  {...keyboardProps}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>

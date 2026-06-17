@@ -7,6 +7,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { TimeEntryList } from './TimeEntryList';
 import { GroupedEntryView } from './GroupedEntryView';
 import type { TimeEntry } from '../types';
+import type { RefObject } from 'react';
 
 interface TimerEntryData {
   taskName: string;
@@ -28,6 +29,8 @@ interface TimeEntryViewSwitcherProps {
   onSync?: (entry: TimeEntry) => void;
   activeTab: string;
   timerEntry?: TimerEntryData | null;
+  tableRef?: RefObject<HTMLTableElement>;
+  getRowProps?: (index: number) => Record<string, unknown>;
 }
 
 export function TimeEntryViewSwitcher({
@@ -41,6 +44,8 @@ export function TimeEntryViewSwitcher({
   onSync,
   activeTab,
   timerEntry,
+  tableRef,
+  getRowProps,
 }: TimeEntryViewSwitcherProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'date' | 'duration' | 'task'>('date');
@@ -195,6 +200,8 @@ export function TimeEntryViewSwitcher({
             onDuplicate={onDuplicate}
             onSync={onSync}
             timerEntry={timerEntry}
+            tableRef={activeTab === 'table' ? tableRef : undefined}
+            getRowProps={activeTab === 'table' ? getRowProps : undefined}
           />
         ) : (
           <GroupedEntryView

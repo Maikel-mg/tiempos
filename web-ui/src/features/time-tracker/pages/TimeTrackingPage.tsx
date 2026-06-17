@@ -12,6 +12,7 @@ import { PeriodProgressPanel } from '../components/PeriodProgressPanel';
 import { useTimeEntries } from '../hooks/useTimeEntries';
 import { useTimer } from '../hooks/useTimer';
 import { useCommandActions } from '@/components/CommandActionsContext';
+import { useTableKeyboardNavigation } from '@/hooks/useTableKeyboardNavigation';
 import { createVirtualTimerEntry } from '../lib/timerVirtualEntry';
 import { computePeriodTotal } from '../lib/computePeriodTotal';
 import { syncTimeEntries } from '../services/timeEntrySyncService';
@@ -39,6 +40,14 @@ export function TimeTrackingPage() {
 
   const undoBuffer = useRef<Map<string, TimeEntry>>(new Map());
   const pendingDescription = useRef<string | undefined>(undefined);
+  const tableRef = useRef<HTMLTableElement>(null);
+
+  const { activeIndex, getRowProps } = useTableKeyboardNavigation({
+    containerRef: tableRef,
+    items: filteredByPeriod,
+    getRowId: (entry) => entry.id,
+    isEnabled: activeTab === 'table',
+  });
 
   const pendingEntries = useMemo(
     () => entries.filter((e) => !e.synced),
@@ -452,6 +461,8 @@ export function TimeTrackingPage() {
           onSync={handleSyncEntry}
           activeTab={activeTab}
           timerEntry={virtualTimerEntry}
+          tableRef={tableRef}
+          getRowProps={getRowProps}
         />
       </div>
       </div>

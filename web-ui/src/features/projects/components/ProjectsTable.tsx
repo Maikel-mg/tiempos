@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { DataTable, ColumnDef } from '@/components/ui/data-table';
 import { Loader2, RefreshCw, AlertCircle } from 'lucide-react';
 import type { Project } from '../types';
+import type { RefObject } from 'react';
 
 export interface ProjectsTableProps {
   projects: Project[];
@@ -11,6 +12,9 @@ export interface ProjectsTableProps {
   error?: unknown;
   onRetry?: () => void;
   emptyMessage?: string;
+  activeIndex?: number;
+  getRowProps?: (index: number) => Record<string, unknown>;
+  tableRef?: RefObject<HTMLTableElement>;
 }
 
 export function ProjectsTable({
@@ -18,7 +22,10 @@ export function ProjectsTable({
   isLoading = false,
   error,
   onRetry,
-  emptyMessage
+  emptyMessage,
+  activeIndex,
+  getRowProps,
+  tableRef,
 }: ProjectsTableProps) {
   const navigate = useNavigate();
 
@@ -107,6 +114,9 @@ export function ProjectsTable({
       data={projects}
       getRowId={getRowId}
       onRowClick={handleRowClick}
+      activeIndex={activeIndex}
+      getRowProps={getRowProps}
+      tableRef={tableRef}
     />
   );
 }
