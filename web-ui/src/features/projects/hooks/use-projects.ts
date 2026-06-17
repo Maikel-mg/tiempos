@@ -4,7 +4,7 @@ import type { Project, ProjectsParams, ProjectsRequest } from '../types';
 import { dbConfig } from '@/config/stores';
 
 export function useProjects(params: ProjectsParams = {}) {
-  return useQuery({
+  return useQuery<Project[]>({
     queryKey: ['projects', params],
     queryFn: async () => {
       const config = dbConfig.get();
@@ -22,14 +22,14 @@ export function useProjects(params: ProjectsParams = {}) {
         usured: params.usured || '',
       };
 
-      const response = await apiClient.post<{success: boolean , message: string; data : {success: boolean; message: string; data: Project[]}}>('/projects', request);
-      console.log(`TCL ~ useProjects ~ response:`, response.data.data)
+      const response = await apiClient.post<{success: boolean ; message: string; data : {success: boolean; message: string; data: Project[]}}>('/projects', request);
       
       if (!response.success) {
         throw new Error(response.message);
       }
 
-      return response.data?.data;
+      const result = response.data?.data;
+      return Array.isArray(result) ? result : [];
     },
   });
 }

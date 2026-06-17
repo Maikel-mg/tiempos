@@ -268,7 +268,7 @@ describe('useTableKeyboardNavigation', () => {
     const containerRef = { current: container } as RefObject<HTMLElement>;
     const onActivate = vi.fn();
 
-    const { result } = renderHook(() =>
+    renderHook(() =>
       useTableKeyboardNavigation({
         containerRef,
         items: defaultItems,

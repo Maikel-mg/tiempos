@@ -42,13 +42,6 @@ export function TimeTrackingPage() {
   const pendingDescription = useRef<string | undefined>(undefined);
   const tableRef = useRef<HTMLTableElement>(null);
 
-  const { activeIndex, getRowProps } = useTableKeyboardNavigation({
-    containerRef: tableRef,
-    items: filteredByPeriod,
-    getRowId: (entry) => entry.id,
-    isEnabled: activeTab === 'table',
-  });
-
   const pendingEntries = useMemo(
     () => entries.filter((e) => !e.synced),
     [entries]
@@ -144,6 +137,13 @@ export function TimeTrackingPage() {
     const endDay = end.getFullYear() * 10000 + (end.getMonth() + 1) * 100 + end.getDate();
     return todayDay >= startDay && todayDay <= endDay;
   }, [period, customRange]);
+
+  const { getRowProps } = useTableKeyboardNavigation({
+    containerRef: tableRef,
+    items: filteredByPeriod,
+    getRowId: (entry) => entry.id,
+    isEnabled: activeTab === 'table',
+  });
 
   const virtualTimerEntry = useMemo(() => {
     console.log(`TCL ~ TimeTrackingPage ~ timerHook:`, timerHook)

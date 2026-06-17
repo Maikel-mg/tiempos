@@ -250,6 +250,92 @@ describe('AvailableTasksPage', () => {
   });
 
   describe('Keyboard navigation', () => {
+    it('ArrowDown moves sequentially through rows', async () => {
+      const user = userEvent.setup();
+      vi.mocked(useProcessCache).mockReturnValue({
+        processes: mockProcesses,
+        loading: false,
+        error: null,
+        refresh: vi.fn(),
+      });
+
+      render(<AvailableTasksPage />);
+
+      const table = screen.getByRole('table');
+      table.focus();
+
+      const rows = screen.getAllByRole('row');
+
+      // Move to first data row
+      await user.keyboard('{ArrowDown}');
+      expect(rows[1]?.getAttribute('data-state')).toBe('active');
+
+      // Move to second data row
+      await user.keyboard('{ArrowDown}');
+      expect(rows[2]?.getAttribute('data-state')).toBe('active');
+
+      // Move back up
+      await user.keyboard('{ArrowUp}');
+      expect(rows[1]?.getAttribute('data-state')).toBe('active');
+    });
+
+    it('Arrow keys are ignored when filter input is focused', async () => {
+      const user = userEvent.setup();
+      vi.mocked(useProcessCache).mockReturnValue({
+        processes: mockProcesses,
+        loading: false,
+        error: null,
+        refresh: vi.fn(),
+      });
+
+      render(<AvailableTasksPage />);
+
+      // Focus the table first
+      const table = screen.getByRole('table');
+      table.focus();
+
+      // Move to a row
+      await user.keyboard('{ArrowDown}');
+      const rows = screen.getAllByRole('row');
+      expect(rows[1]?.getAttribute('data-state')).toBe('active');
+
+      // Now focus an input (the filter switch label or any input)
+      const inputs = document.querySelectorAll('input');
+      if (inputs.length > 0) {
+        (inputs[0] as HTMLInputElement).focus();
+      }
+
+      // ArrowDown should NOT move the active row
+      await user.keyboard('{ArrowDown}');
+      // Row 1 should still be active (unchanged)
+      expect(rows[1]?.getAttribute('data-state')).toBe('active');
+    });
+
+    it('Home and End move to first and last rows', async () => {
+      const user = userEvent.setup();
+      vi.mocked(useProcessCache).mockReturnValue({
+        processes: mockProcesses,
+        loading: false,
+        error: null,
+        refresh: vi.fn(),
+      });
+
+      render(<AvailableTasksPage />);
+
+      const table = screen.getByRole('table');
+      table.focus();
+
+      const rows = screen.getAllByRole('row');
+
+      // End should go to last data row
+      await user.keyboard('{End}');
+      expect(rows[2]?.getAttribute('data-state')).toBe('active');
+
+      // Home should go to first data row
+      await user.keyboard('{Home}');
+      expect(rows[1]?.getAttribute('data-state')).toBe('active');
+    });
+
     it(' ArrowDown moves active row highlight to first row', async () => {
       const user = userEvent.setup();
       vi.mocked(useProcessCache).mockReturnValue({

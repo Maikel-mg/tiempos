@@ -52,6 +52,21 @@ export interface UseTableKeyboardNavigationReturn {
  * Manages a roving tabindex pattern: one row has `tabIndex={0}` and
  * `data-state="active"`; all others have `tabIndex={-1}`.
  *
+ * **Keyboard behavior:**
+ * - `ArrowDown` / `ArrowUp` — move to next / previous row
+ * - `Home` — jump to first row
+ * - `End` — jump to last row
+ * - `Enter` — trigger `onActivate` callback on the active row
+ * - `Escape` — clear active row and trigger `onEscape` callback
+ * - `PageUp` / `PageDown` — trigger page callbacks (for virtual scrolling)
+ *
+ * **Guard conditions:** keys are NOT intercepted when:
+ * - The focused element is an editable control (input, textarea, select, contentEditable)
+ * - A dialog or command palette is open
+ * - `isEnabled` is `false`
+ *
+ * Rows with `aria-disabled="true"` are skipped during navigation.
+ *
  * @example
  * ```tsx
  * const { activeIndex, getRowProps, focusFirst } = useTableKeyboardNavigation({
@@ -299,7 +314,7 @@ export function useTableKeyboardNavigation<TData>({
       return {
         'data-row-index': index,
         'data-state': isActive ? ('active' as const) : undefined,
-        tabIndex: isActive ? 0 : -1,
+        tabIndex: (isActive ? 0 : -1) as 0 | -1,
         ref: (_el: HTMLElement | null) => {
           // scrollIntoView is handled via the keydown handler
         },

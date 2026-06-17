@@ -56,7 +56,6 @@ export function DataTable<TData, TValue>({
   getRowId,
   onRowClick,
   columnToggle,
-  activeIndex,
   getRowProps,
   tableRef,
 }: DataTableProps<TData, TValue>) {

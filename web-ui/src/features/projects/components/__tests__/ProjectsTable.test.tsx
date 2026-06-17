@@ -1,7 +1,12 @@
 import { render, screen, fireEvent } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { ProjectsTable } from '../ProjectsTable';
 import { describe, it, expect, vi } from 'vitest';
 import type { Project } from '../../types';
+
+function renderWithRouter(ui: React.ReactElement) {
+  return render(<MemoryRouter>{ui}</MemoryRouter>);
+}
 
 describe('ProjectsTable', () => {
   const mockProjects: Project[] = [
@@ -32,7 +37,7 @@ describe('ProjectsTable', () => {
   ];
 
   it('should render table headers with correct columns', () => {
-    render(<ProjectsTable projects={mockProjects} />);
+    renderWithRouter(<ProjectsTable projects={mockProjects} />);
     
     expect(screen.getByText('Cliente')).toBeDefined();
     expect(screen.getByText('Proyecto')).toBeDefined();
@@ -43,7 +48,7 @@ describe('ProjectsTable', () => {
   });
 
   it('should render project data in table rows', () => {
-    render(<ProjectsTable projects={mockProjects} />);
+    renderWithRouter(<ProjectsTable projects={mockProjects} />);
     
     expect(screen.getByText('Client One')).toBeDefined();
     expect(screen.getByText('Project One')).toBeDefined();
@@ -53,7 +58,7 @@ describe('ProjectsTable', () => {
   });
 
   it('should display "Sí" for open projects and "No" for closed projects', () => {
-    render(<ProjectsTable projects={mockProjects} />);
+    renderWithRouter(<ProjectsTable projects={mockProjects} />);
     
     // First project is open (Abierto: true)
     expect(screen.getByText('Sí')).toBeDefined();
@@ -62,25 +67,25 @@ describe('ProjectsTable', () => {
   });
 
   it('should render loading state when isLoading is true', () => {
-    render(<ProjectsTable projects={[]} isLoading={true} />);
+    renderWithRouter(<ProjectsTable projects={[]} isLoading={true} />);
     
     expect(screen.getByText('Cargando proyectos...')).toBeDefined();
   });
 
   it('should render empty state when there are no projects', () => {
-    render(<ProjectsTable projects={[]} isLoading={false} />);
+    renderWithRouter(<ProjectsTable projects={[]} isLoading={false} />);
     
     expect(screen.getByText('No se encontraron proyectos')).toBeDefined();
   });
 
   it('should render empty state with custom message when provided', () => {
-    render(<ProjectsTable projects={[]} isLoading={false} emptyMessage="Custom empty message" />);
+    renderWithRouter(<ProjectsTable projects={[]} isLoading={false} emptyMessage="Custom empty message" />);
     
     expect(screen.getByText('Custom empty message')).toBeDefined();
   });
 
   it('should not render empty state when loading', () => {
-    render(<ProjectsTable projects={[]} isLoading={true} />);
+    renderWithRouter(<ProjectsTable projects={[]} isLoading={true} />);
     
     expect(screen.queryByText('No se encontraron proyectos')).toBeNull();
   });
@@ -88,7 +93,7 @@ describe('ProjectsTable', () => {
   it('should render error state with retry button when error is provided', () => {
     const mockError = new Error('Failed to fetch projects');
     const mockRetry = vi.fn();
-    render(<ProjectsTable projects={[]} isLoading={false} error={mockError} onRetry={mockRetry} />);
+    renderWithRouter(<ProjectsTable projects={[]} isLoading={false} error={mockError} onRetry={mockRetry} />);
     
     // Check that error message is displayed
     expect(screen.getByText(/Failed to fetch projects/i)).toBeDefined();
@@ -99,7 +104,7 @@ describe('ProjectsTable', () => {
   it('should call onRetry when retry button is clicked', () => {
     const mockError = new Error('Network error');
     const mockRetry = vi.fn();
-    render(<ProjectsTable projects={[]} isLoading={false} error={mockError} onRetry={mockRetry} />);
+    renderWithRouter(<ProjectsTable projects={[]} isLoading={false} error={mockError} onRetry={mockRetry} />);
     
     fireEvent.click(screen.getByRole('button', { name: /reintentar/i }));
     expect(mockRetry).toHaveBeenCalledTimes(1);
@@ -107,7 +112,7 @@ describe('ProjectsTable', () => {
 
   it('should not render error state when loading', () => {
     const mockError = new Error('Error while loading');
-    render(<ProjectsTable projects={[]} isLoading={true} error={mockError} />);
+    renderWithRouter(<ProjectsTable projects={[]} isLoading={true} error={mockError} />);
     
     expect(screen.queryByText('Error while loading')).toBeNull();
   });

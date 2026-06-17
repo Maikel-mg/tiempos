@@ -82,7 +82,7 @@ export function AvailableTasksPage() {
     []
   );
 
-  const { activeIndex, getRowProps, focusFirst } = useTableKeyboardNavigation({
+  const { activeIndex, getRowProps } = useTableKeyboardNavigation({
     containerRef: tableRef,
     items: filteredProcesses,
     getRowId: (item) => String(item.proceso),

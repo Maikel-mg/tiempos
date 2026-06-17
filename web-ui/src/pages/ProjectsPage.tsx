@@ -2,17 +2,18 @@ import { useRef } from 'react';
 import { ProjectsTable } from '@/features/projects/components/ProjectsTable';
 import { useProjects } from '@/features/projects/hooks/use-projects';
 import { useTableKeyboardNavigation } from '@/hooks/useTableKeyboardNavigation';
+import type { Project } from '@/features/projects/types';
 
 export function ProjectsPage() {
   const { data, isLoading, error, refetch } = useProjects();
   const tableRef = useRef<HTMLTableElement>(null);
 
-  const projects = data || [];
+  const projects: Project[] = data ?? [];
 
   const { activeIndex, getRowProps } = useTableKeyboardNavigation({
     containerRef: tableRef,
     items: projects,
-    getRowId: (project, index) => `${project.CodCli}-${project.Proyecto}`,
+    getRowId: (project: Project) => `${project.CodCli}-${project.Proyecto}`,
   });
 
   return (

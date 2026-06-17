@@ -3,6 +3,14 @@
  *
  * Extracted from `useGlobalShortcuts` to enable reuse across the codebase
  * without duplicating editable-element detection logic.
+ *
+ * **Usage in table navigation:** `shouldInterceptTableKeys()` is called by
+ * `useTableKeyboardNavigation` to determine whether arrow keys should move
+ * the active row or be passed through to the browser/native handlers.
+ *
+ * **Usage in global shortcuts:** `isEditableElement()` is called by
+ * `useGlobalShortcuts` to decide whether Alt+letter navigation should fire
+ * (it should NOT fire when the user is typing in an input).
  */
 
 /**
