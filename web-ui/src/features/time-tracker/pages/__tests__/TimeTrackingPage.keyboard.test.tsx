@@ -97,6 +97,29 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
+describe('TimeTrackingPage auto-focus on mount', () => {
+  it('auto-focuses first table row on mount when entries exist', async () => {
+    const entries = [makeEntry('1'), makeEntry('2'), makeEntry('3')];
+    setupMocks(entries);
+
+    renderWithProviders(<TimeTrackingPage />);
+
+    const rows = screen.getAllByRole('row');
+    // rows[0] is header, rows[1] is first data row
+    expect(rows[1]?.getAttribute('data-state')).toBe('active');
+  });
+
+  it('does not auto-focus when no entries exist', () => {
+    setupMocks([]);
+
+    renderWithProviders(<TimeTrackingPage />);
+
+    // No table rendered — empty state shown
+    const rows = screen.queryAllByRole('row');
+    expect(rows).toHaveLength(0);
+  });
+});
+
 describe('TimeTrackingPage keyboard navigation', () => {
   it('ArrowDown moves highlight across visible rows', async () => {
     const user = userEvent.setup();
@@ -105,14 +128,8 @@ describe('TimeTrackingPage keyboard navigation', () => {
 
     renderWithProviders(<TimeTrackingPage />);
 
-    // Switch to table view (default is table)
-    const table = screen.getByRole('table');
-    table.focus();
-
+    // Auto-focus already on row 0
     const rows = screen.getAllByRole('row');
-
-    // Move to first data row
-    await user.keyboard('{ArrowDown}');
     expect(rows[1]?.getAttribute('data-state')).toBe('active');
 
     // Move to second data row
@@ -135,9 +152,7 @@ describe('TimeTrackingPage keyboard navigation', () => {
 
     renderWithProviders(<TimeTrackingPage />);
 
-    const table = screen.getByRole('table');
-    table.focus();
-
+    // Auto-focus already on row 0
     const rows = screen.getAllByRole('row');
 
     // End goes to last data row
@@ -156,10 +171,7 @@ describe('TimeTrackingPage keyboard navigation', () => {
 
     renderWithProviders(<TimeTrackingPage />);
 
-    const table = screen.getByRole('table');
-    table.focus();
-
-    await user.keyboard('{ArrowDown}');
+    // Auto-focus already on row 0
     const rows = screen.getAllByRole('row');
     expect(rows[1]?.getAttribute('data-state')).toBe('active');
 
@@ -175,10 +187,7 @@ describe('TimeTrackingPage keyboard navigation', () => {
 
     renderWithProviders(<TimeTrackingPage />);
 
-    // Table view is active by default — activate a row
-    const table = screen.getByRole('table');
-    table.focus();
-    await user.keyboard('{ArrowDown}');
+    // Auto-focus already on row 0 in table view
     const rows = screen.getAllByRole('row');
     expect(rows[1]?.getAttribute('data-state')).toBe('active');
 
@@ -187,8 +196,6 @@ describe('TimeTrackingPage keyboard navigation', () => {
     await user.click(groupedTab);
 
     // ArrowDown should NOT change active row (isEnabled=false in grouped view)
-    // Note: in grouped view the table is not rendered, so rows may be different
-    // Just verify no crash occurs
     await user.keyboard('{ArrowDown}');
   });
 });

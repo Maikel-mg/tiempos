@@ -48,6 +48,54 @@ const mockProjects: Project[] = [
   },
 ];
 
+describe('ProjectsPage auto-focus on mount', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('auto-focuses first table row on mount when data is loaded', async () => {
+    vi.mocked(useProjects).mockReturnValue({
+      data: mockProjects,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    } as any);
+
+    renderWithProviders(<ProjectsPage />);
+
+    const rows = screen.getAllByRole('row');
+    // rows[0] is header, rows[1] is first data row
+    expect(rows[1]?.getAttribute('data-state')).toBe('active');
+  });
+
+  it('does not auto-focus when projects list is empty', () => {
+    vi.mocked(useProjects).mockReturnValue({
+      data: [],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    } as any);
+
+    renderWithProviders(<ProjectsPage />);
+
+    // No table rendered — empty state shown
+    const rows = screen.queryAllByRole('row');
+    expect(rows).toHaveLength(0);
+  });
+
+  it('does not auto-focus during loading', () => {
+    vi.mocked(useProjects).mockReturnValue({
+      data: undefined,
+      isLoading: true,
+      error: null,
+      refetch: vi.fn(),
+    } as any);
+
+    renderWithProviders(<ProjectsPage />);
+    expect(screen.getByText('Cargando proyectos...')).toBeDefined();
+  });
+});
+
 describe('ProjectsPage keyboard navigation', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -64,13 +112,8 @@ describe('ProjectsPage keyboard navigation', () => {
 
     renderWithProviders(<ProjectsPage />);
 
-    const table = screen.getByRole('table');
-    table.focus();
-
+    // Auto-focus already on row 0
     const rows = screen.getAllByRole('row');
-
-    // Move to first data row
-    await user.keyboard('{ArrowDown}');
     expect(rows[1]?.getAttribute('data-state')).toBe('active');
 
     // Move to second data row
@@ -93,9 +136,7 @@ describe('ProjectsPage keyboard navigation', () => {
 
     renderWithProviders(<ProjectsPage />);
 
-    const table = screen.getByRole('table');
-    table.focus();
-
+    // Auto-focus already on row 0
     const rows = screen.getAllByRole('row');
 
     // End goes to last data row
@@ -118,10 +159,7 @@ describe('ProjectsPage keyboard navigation', () => {
 
     renderWithProviders(<ProjectsPage />);
 
-    const table = screen.getByRole('table');
-    table.focus();
-
-    await user.keyboard('{ArrowDown}');
+    // Auto-focus already on row 0
     const rows = screen.getAllByRole('row');
     expect(rows[1]?.getAttribute('data-state')).toBe('active');
 
@@ -141,10 +179,7 @@ describe('ProjectsPage keyboard navigation', () => {
 
     renderWithProviders(<ProjectsPage />);
 
-    // Focus table and activate a row
-    const table = screen.getByRole('table');
-    table.focus();
-    await user.keyboard('{ArrowDown}');
+    // Auto-focus already on row 0
     const rows = screen.getAllByRole('row');
     expect(rows[1]?.getAttribute('data-state')).toBe('active');
 

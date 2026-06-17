@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { ListTodo, Loader2, RefreshCw, AlertCircle, Plus, Inbox } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -82,11 +82,25 @@ export function AvailableTasksPage() {
     []
   );
 
-  const { activeIndex, getRowProps } = useTableKeyboardNavigation({
+  const { activeIndex, getRowProps, focusFirst } = useTableKeyboardNavigation({
     containerRef: tableRef,
     items: filteredProcesses,
     getRowId: (item) => String(item.proceso),
   });
+
+  // Auto-focus first table row on mount
+  useEffect(() => {
+    if (filteredProcesses.length === 0) return;
+    if (document.activeElement && (
+      document.activeElement.tagName === 'INPUT' ||
+      document.activeElement.tagName === 'TEXTAREA' ||
+      document.activeElement.tagName === 'SELECT' ||
+      document.activeElement.getAttribute('contenteditable') === 'true'
+    )) return;
+    if (document.querySelector('[role="dialog"][data-state="open"]')) return;
+    if (document.querySelector('[cmdk-dialog]')) return;
+    focusFirst();
+  }, [filteredProcesses.length, focusFirst]);
 
   const handleColumnToggle = useCallback((columnId: string, visible: boolean) => {
     setColumnVisibility((prev) => ({ ...prev, [columnId]: visible }));

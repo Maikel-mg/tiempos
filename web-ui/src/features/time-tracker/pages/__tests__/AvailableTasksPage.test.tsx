@@ -249,6 +249,50 @@ describe('AvailableTasksPage', () => {
     expect(screen.getByTestId('sql-preview-modal')).toBeDefined();
   });
 
+  describe('Auto-focus on mount', () => {
+    it('auto-focuses first table row on mount when data is loaded', () => {
+      vi.mocked(useProcessCache).mockReturnValue({
+        processes: mockProcesses,
+        loading: false,
+        error: null,
+        refresh: vi.fn(),
+      });
+
+      render(<AvailableTasksPage />);
+
+      const rows = screen.getAllByRole('row');
+      // rows[0] is header, rows[1] is first data row
+      expect(rows[1]?.getAttribute('data-state')).toBe('active');
+    });
+
+    it('does not auto-focus when no processes are loaded', () => {
+      vi.mocked(useProcessCache).mockReturnValue({
+        processes: [],
+        loading: false,
+        error: null,
+        refresh: vi.fn(),
+      });
+
+      render(<AvailableTasksPage />);
+
+      // No table rendered — empty state shown
+      const rows = screen.queryAllByRole('row');
+      expect(rows).toHaveLength(0);
+    });
+
+    it('does not auto-focus during loading', () => {
+      vi.mocked(useProcessCache).mockReturnValue({
+        processes: [],
+        loading: true,
+        error: null,
+        refresh: vi.fn(),
+      });
+
+      render(<AvailableTasksPage />);
+      expect(screen.getByText('Cargando tareas...')).toBeDefined();
+    });
+  });
+
   describe('Keyboard navigation', () => {
     it('ArrowDown moves sequentially through rows', async () => {
       const user = userEvent.setup();
@@ -261,16 +305,11 @@ describe('AvailableTasksPage', () => {
 
       render(<AvailableTasksPage />);
 
-      const table = screen.getByRole('table');
-      table.focus();
-
+      // Auto-focus already active on row 0
       const rows = screen.getAllByRole('row');
-
-      // Move to first data row
-      await user.keyboard('{ArrowDown}');
       expect(rows[1]?.getAttribute('data-state')).toBe('active');
 
-      // Move to second data row
+      // ArrowDown moves to second data row
       await user.keyboard('{ArrowDown}');
       expect(rows[2]?.getAttribute('data-state')).toBe('active');
 
@@ -290,16 +329,11 @@ describe('AvailableTasksPage', () => {
 
       render(<AvailableTasksPage />);
 
-      // Focus the table first
-      const table = screen.getByRole('table');
-      table.focus();
-
-      // Move to a row
-      await user.keyboard('{ArrowDown}');
+      // Auto-focus already on row 0
       const rows = screen.getAllByRole('row');
       expect(rows[1]?.getAttribute('data-state')).toBe('active');
 
-      // Now focus an input (the filter switch label or any input)
+      // Focus an input
       const inputs = document.querySelectorAll('input');
       if (inputs.length > 0) {
         (inputs[0] as HTMLInputElement).focus();
@@ -307,7 +341,6 @@ describe('AvailableTasksPage', () => {
 
       // ArrowDown should NOT move the active row
       await user.keyboard('{ArrowDown}');
-      // Row 1 should still be active (unchanged)
       expect(rows[1]?.getAttribute('data-state')).toBe('active');
     });
 
@@ -322,10 +355,9 @@ describe('AvailableTasksPage', () => {
 
       render(<AvailableTasksPage />);
 
-      const table = screen.getByRole('table');
-      table.focus();
-
+      // Auto-focus already on row 0
       const rows = screen.getAllByRole('row');
+      expect(rows[1]?.getAttribute('data-state')).toBe('active');
 
       // End should go to last data row
       await user.keyboard('{End}');
@@ -336,7 +368,7 @@ describe('AvailableTasksPage', () => {
       expect(rows[1]?.getAttribute('data-state')).toBe('active');
     });
 
-    it(' ArrowDown moves active row highlight to first row', async () => {
+    it('ArrowDown moves active row highlight to first row', async () => {
       const user = userEvent.setup();
       vi.mocked(useProcessCache).mockReturnValue({
         processes: mockProcesses,
@@ -347,15 +379,8 @@ describe('AvailableTasksPage', () => {
 
       render(<AvailableTasksPage />);
 
-      // Focus the table to activate keyboard nav
-      const table = screen.getByRole('table');
-      table.focus();
-
-      await user.keyboard('{ArrowDown}');
-
-      // First data row should have data-state="active"
+      // Auto-focus already on first data row
       const rows = screen.getAllByRole('row');
-      // rows[0] is header, rows[1] is first data row
       expect(rows[1]?.getAttribute('data-state')).toBe('active');
     });
 
@@ -370,11 +395,7 @@ describe('AvailableTasksPage', () => {
 
       render(<AvailableTasksPage />);
 
-      const table = screen.getByRole('table');
-      table.focus();
-
-      // Move to first row
-      await user.keyboard('{ArrowDown}');
+      // Auto-focus already on row 0
       const rows = screen.getAllByRole('row');
       expect(rows[1]?.getAttribute('data-state')).toBe('active');
 
@@ -396,10 +417,7 @@ describe('AvailableTasksPage', () => {
 
       render(<AvailableTasksPage />);
 
-      const table = screen.getByRole('table');
-      table.focus();
-
-      await user.keyboard('{ArrowDown}');
+      // Auto-focus already on row 0
       const rows = screen.getAllByRole('row');
       expect(rows[1]?.getAttribute('data-state')).toBe('active');
 

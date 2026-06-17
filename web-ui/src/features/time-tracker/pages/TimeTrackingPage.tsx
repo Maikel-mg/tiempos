@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useRef } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { Database, Table, LayoutGrid } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -138,12 +138,27 @@ export function TimeTrackingPage() {
     return todayDay >= startDay && todayDay <= endDay;
   }, [period, customRange]);
 
-  const { getRowProps } = useTableKeyboardNavigation({
+  const { getRowProps, focusFirst } = useTableKeyboardNavigation({
     containerRef: tableRef,
     items: filteredByPeriod,
     getRowId: (entry) => entry.id,
     isEnabled: activeTab === 'table',
   });
+
+  // Auto-focus first table row on mount (table view only)
+  useEffect(() => {
+    if (activeTab !== 'table') return;
+    if (filteredByPeriod.length === 0) return;
+    if (document.activeElement && (
+      document.activeElement.tagName === 'INPUT' ||
+      document.activeElement.tagName === 'TEXTAREA' ||
+      document.activeElement.tagName === 'SELECT' ||
+      document.activeElement.getAttribute('contenteditable') === 'true'
+    )) return;
+    if (document.querySelector('[role="dialog"][data-state="open"]')) return;
+    if (document.querySelector('[cmdk-dialog]')) return;
+    focusFirst();
+  }, [activeTab, filteredByPeriod.length, focusFirst]);
 
   const virtualTimerEntry = useMemo(() => {
     console.log(`TCL ~ TimeTrackingPage ~ timerHook:`, timerHook)
