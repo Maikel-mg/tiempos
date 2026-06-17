@@ -1,25 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCommandPalette } from '@/components/CommandPaletteContext';
-
-/**
- * Check if the active element is an editable element (input, textarea, etc.)
- */
-function isEditableElement(element: Element | null): boolean {
-  if (!element) return false;
-  
-  const tagName = element.tagName.toLowerCase();
-  
-  if (tagName === 'input' || tagName === 'textarea' || tagName === 'select') {
-    return true;
-  }
-  
-  if (element.getAttribute('contenteditable') === 'true') {
-    return true;
-  }
-  
-  return false;
-}
+import { isEditableElement } from '@/lib/keyboard-utils';
 
 /**
  * Global keyboard shortcuts hook.
