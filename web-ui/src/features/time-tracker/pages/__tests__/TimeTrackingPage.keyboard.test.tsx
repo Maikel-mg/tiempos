@@ -180,6 +180,24 @@ describe('TimeTrackingPage keyboard navigation', () => {
     expect(activeRows).toHaveLength(0);
   });
 
+  it('Enter on active row is handled without crash', async () => {
+    const user = userEvent.setup();
+    const entries = [makeEntry('1'), makeEntry('2')];
+    setupMocks(entries);
+
+    renderWithProviders(<TimeTrackingPage />);
+
+    // Auto-focus already on row 0
+    const rows = screen.getAllByRole('row');
+    expect(rows[1]?.getAttribute('data-state')).toBe('active');
+
+    // Press Enter — should not throw
+    await user.keyboard('{Enter}');
+
+    // Row should still be active (onActivate is a no-op in table view)
+    expect(rows[1]?.getAttribute('data-state')).toBe('active');
+  });
+
   it('Arrow keys are ignored when grouped view is active', async () => {
     const user = userEvent.setup();
     const entries = [makeEntry('1'), makeEntry('2')];

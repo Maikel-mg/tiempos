@@ -1,19 +1,29 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useNavigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ProjectsPage } from '../ProjectsPage';
 import { useProjects } from '@/features/projects/hooks/use-projects';
 import type { Project } from '@/features/projects/types';
 
 vi.mock('@/features/projects/hooks/use-projects');
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: vi.fn(),
+  };
+});
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false } },
 });
 
+const mockNavigate = vi.fn();
+
 function renderWithProviders(ui: React.ReactElement) {
+  vi.mocked(useNavigate).mockReturnValue(mockNavigate);
   return render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter>{ui}</MemoryRouter>
@@ -99,6 +109,29 @@ describe('ProjectsPage auto-focus on mount', () => {
 describe('ProjectsPage keyboard navigation', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it('Enter on active row triggers navigation', async () => {
+    const user = userEvent.setup();
+    mockNavigate.mockClear();
+    vi.mocked(useProjects).mockReturnValue({
+      data: mockProjects,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    } as any);
+
+    renderWithProviders(<ProjectsPage />);
+
+    // Auto-focus already on row 0
+    const rows = screen.getAllByRole('row');
+    expect(rows[1]?.getAttribute('data-state')).toBe('active');
+
+    // Press Enter — should trigger navigation
+    await user.keyboard('{Enter}');
+
+    // Verify navigate was called with the correct path
+    expect(mockNavigate).toHaveBeenCalledWith('/projects/1/P1');
   });
 
   it('ArrowDown moves highlight across visible rows', async () => {

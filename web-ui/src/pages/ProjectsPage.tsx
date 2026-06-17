@@ -1,4 +1,5 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ProjectsTable } from '@/features/projects/components/ProjectsTable';
 import { useProjects } from '@/features/projects/hooks/use-projects';
 import { useTableKeyboardNavigation } from '@/hooks/useTableKeyboardNavigation';
@@ -6,6 +7,7 @@ import type { Project } from '@/features/projects/types';
 
 export function ProjectsPage() {
   const { data, isLoading, error, refetch } = useProjects();
+  const navigate = useNavigate();
   const tableRef = useRef<HTMLTableElement>(null);
 
   const projects: Project[] = data ?? [];
@@ -14,6 +16,9 @@ export function ProjectsPage() {
     containerRef: tableRef,
     items: projects,
     getRowId: (project: Project) => `${project.CodCli}-${project.Proyecto}`,
+    onActivate: (project) => {
+      navigate(`/projects/${project.CodCli}/${project.Proyecto}`);
+    },
   });
 
   // Auto-focus first table row on mount
