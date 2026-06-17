@@ -7,6 +7,7 @@ import { DataTable, ColumnDef } from '@/components/ui/data-table';
 import { SQLPreviewModal } from '@/components/SQLPreviewModal';
 import { useCreateProcess } from '@/features/process-management/mutations/useCreateProcess';
 import { useProcessCache } from '../hooks/useProcessCache';
+import { useCommandActions } from '@/components/CommandActionsContext';
 import { wizardConfig } from '@/config/stores';
 import type { Proceso } from '../types';
 
@@ -87,6 +88,19 @@ export function AvailableTasksPage() {
     columnDefinitions.map((c) => ({ ...c, visible: columnVisibility[c.id] ?? true })),
     [columnVisibility]
   );
+
+  // Register command palette actions for this page
+  const commandActions = useMemo(() => [
+    {
+      id: 'create-task',
+      label: 'Crear tarea',
+      icon: <Plus className="h-4 w-4" />,
+      action: () => setIsCreateOpen(true),
+      group: 'MisTareas',
+    },
+  ], []);
+
+  useCommandActions('my-tasks', commandActions);
 
   return (
     <main className="w-full px-4 sm:px-6 lg:px-8 py-5">

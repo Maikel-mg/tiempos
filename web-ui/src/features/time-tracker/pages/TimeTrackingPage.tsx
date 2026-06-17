@@ -11,6 +11,7 @@ import { SyncPanel } from '../components/SyncPanel';
 import { PeriodProgressPanel } from '../components/PeriodProgressPanel';
 import { useTimeEntries } from '../hooks/useTimeEntries';
 import { useTimer } from '../hooks/useTimer';
+import { useCommandActions } from '@/components/CommandActionsContext';
 import { createVirtualTimerEntry } from '../lib/timerVirtualEntry';
 import { computePeriodTotal } from '../lib/computePeriodTotal';
 import { syncTimeEntries } from '../services/timeEntrySyncService';
@@ -270,6 +271,84 @@ export function TimeTrackingPage() {
     pendingDescription.current = entry.description;
     await timerHook.start(entry.taskId, entry.taskName, entry.description);
   }, [timerHook, createEntry]);
+
+  // Register command palette actions for this page
+  const commandActions = useMemo(() => [
+    {
+      id: 'start-timer',
+      label: 'Iniciar timer',
+      icon: <span className="flex items-center"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><polygon points="6 3 20 12 6 21 6 3"/></svg></span>,
+      action: () => {
+        // Start timer with the first pending entry or show a message
+        if (pendingEntries.length > 0) {
+          const entry = pendingEntries[0];
+          handlePlayEntry(entry);
+        } else {
+          toast.info('No hay entradas para iniciar');
+        }
+      },
+      when: () => !timerHook.isRunning,
+      group: 'TimeTracker',
+    },
+    {
+      id: 'stop-timer',
+      label: 'Detener timer',
+      icon: <span className="flex items-center"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><rect x="6" y="6" width="12" height="12" rx="2"/></svg></span>,
+      action: () => {
+        timerHook.stop({ persist: true }).then((result) => {
+          if (result && 'start' in result) {
+            createEntry({
+              taskId: result.taskId,
+              taskName: result.taskName,
+              date: result.end.toLocaleDateString('sv-SE'),
+              startTime: result.start.toTimeString().slice(0, 5),
+              endTime: result.end.toTimeString().slice(0, 5),
+              description: pendingDescription.current,
+            });
+            toast.success('Timer detenido y guardado');
+          }
+        });
+      },
+      when: () => timerHook.isRunning,
+      group: 'TimeTracker',
+    },
+    {
+      id: 'sync-entries',
+      label: 'Sincronizar entradas con BD',
+      icon: <Database className="h-4 w-4" />,
+      action: () => setSyncPanelOpen(true),
+      group: 'TimeTracker',
+    },
+    {
+      id: 'manual-entry',
+      label: 'Crear entrada manual',
+      icon: <span className="flex items-center"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>,
+      action: () => {
+        // Focus on the TimeTrackerBar manual entry mode
+        setEditingEntry(null);
+        toast.info('Modo entrada manual activado');
+      },
+      group: 'TimeTracker',
+    },
+    {
+      id: 'switch-table',
+      label: 'Cambiar a vista tabla',
+      icon: <Table className="h-4 w-4" />,
+      action: () => setActiveTab('table'),
+      when: () => activeTab !== 'table',
+      group: 'TimeTracker',
+    },
+    {
+      id: 'switch-grouped',
+      label: 'Cambiar a vista agrupado',
+      icon: <LayoutGrid className="h-4 w-4" />,
+      action: () => setActiveTab('grouped'),
+      when: () => activeTab !== 'grouped',
+      group: 'TimeTracker',
+    },
+  ], [pendingEntries, handlePlayEntry, timerHook.isRunning, timerHook.stop, createEntry, activeTab]);
+
+  useCommandActions('time-tracker', commandActions);
 
   return (
     <main className="w-full">

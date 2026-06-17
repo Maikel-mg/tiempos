@@ -22,6 +22,10 @@ import {
 } from "lucide-react"
 import { ThemeToggle } from "@/components/ThemeToggle"
 import { uiConfig } from "@/config/stores"
+import { CommandPaletteProvider } from "@/components/CommandPaletteContext"
+import { CommandActionsProvider } from "@/components/CommandActionsContext"
+import { CommandPalette } from "@/components/CommandPalette"
+import { useGlobalShortcuts } from "@/hooks/useGlobalShortcuts"
 
 const mainNavItems = [
   {
@@ -64,6 +68,11 @@ const settingsNavItems = [
   },
 ]
 
+function GlobalShortcuts() {
+  useGlobalShortcuts();
+  return null;
+}
+
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(() => {
     const config = uiConfig.get();
@@ -75,89 +84,95 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   }, [open])
 
   return (
-    <SidebarProvider open={open} onOpenChange={setOpen}>
-      <div className="min-h-screen flex flex-grow">
-        <Sidebar collapsible="icon" className="border-r border-border/50">
-        <SidebarHeader>
-          {open ? (
-            <div className="flex items-center justify-between gap-2 p-2">
-              <div className="flex items-center gap-1">
-                <Timer className="w-5 h-5 text-primary" />
-                <div className="flex flex-col">
-                  <span className="font-bold text-sm">Chronos</span>
-                  <span className="text-xs text-muted-foreground">Time Tracker</span>
+    <CommandPaletteProvider>
+      <CommandActionsProvider>
+        <SidebarProvider open={open} onOpenChange={setOpen}>
+          <div className="min-h-screen flex flex-grow">
+            <Sidebar collapsible="icon" className="border-r border-border/50">
+            <SidebarHeader>
+              {open ? (
+                <div className="flex items-center justify-between gap-2 p-2">
+                  <div className="flex items-center gap-1">
+                    <Timer className="w-5 h-5 text-primary" />
+                    <div className="flex flex-col">
+                      <span className="font-bold text-sm">Chronos</span>
+                      <span className="text-xs text-muted-foreground">Time Tracker</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <SidebarTrigger className="h-5 w-5 p-1" />
+                    <ThemeToggle className="!h-7 !w-7" />
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-1">
-                <SidebarTrigger className="h-5 w-5 p-1" />
-                <ThemeToggle className="!h-7 !w-7" />
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center gap-1 p-1">
-              <Timer className="w-5 h-5 text-primary" />
-              <SidebarTrigger className="h-5 w-5 p-1" />
-              <ThemeToggle className="!h-7 !w-7" />
-            </div>
-          )}
-        </SidebarHeader>
-          <SidebarContent>
-            <SidebarGroup>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {mainNavItems.map((item) => (
-                    <SidebarMenuItem key={item.url}>
-                      <NavLink
-                        to={item.url}
-                        className="w-full"
-                        end={item.url === "/"}
-                      >
-                        {({ isActive }) => (
-                          <SidebarMenuButton
-                            isActive={isActive}
-                            tooltip={item.title}
+              ) : (
+                <div className="flex flex-col items-center gap-1 p-1">
+                  <Timer className="w-5 h-5 text-primary" />
+                  <SidebarTrigger className="h-5 w-5 p-1" />
+                  <ThemeToggle className="!h-7 !w-7" />
+                </div>
+              )}
+            </SidebarHeader>
+              <SidebarContent>
+                <SidebarGroup>
+                  <SidebarGroupContent>
+                    <SidebarMenu>
+                      {mainNavItems.map((item) => (
+                        <SidebarMenuItem key={item.url}>
+                          <NavLink
+                            to={item.url}
+                            className="w-full"
+                            end={item.url === "/"}
                           >
-                            <item.icon />
-                            <span>{item.title}</span>
-                          </SidebarMenuButton>
-                        )}
-                      </NavLink>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-            <SidebarGroup className="mt-auto">
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {settingsNavItems.map((item) => (
-                    <SidebarMenuItem key={item.url}>
-                      <NavLink
-                        to={item.url}
-                        className="w-full"
-                        end={item.url === "/settings"}
-                      >
-                        {({ isActive }) => (
-                          <SidebarMenuButton
-                            isActive={isActive}
-                            tooltip={item.title}
+                            {({ isActive }) => (
+                              <SidebarMenuButton
+                                isActive={isActive}
+                                tooltip={item.title}
+                              >
+                                <item.icon />
+                                <span>{item.title}</span>
+                              </SidebarMenuButton>
+                            )}
+                          </NavLink>
+                        </SidebarMenuItem>
+                      ))}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                </SidebarGroup>
+                <SidebarGroup className="mt-auto">
+                  <SidebarGroupContent>
+                    <SidebarMenu>
+                      {settingsNavItems.map((item) => (
+                        <SidebarMenuItem key={item.url}>
+                          <NavLink
+                            to={item.url}
+                            className="w-full"
+                            end={item.url === "/settings"}
                           >
-                            <item.icon />
-                            <span>{item.title}</span>
-                          </SidebarMenuButton>
-                        )}
-                      </NavLink>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          </SidebarContent>
-        </Sidebar>
-        <main className="flex-1 min-w-0 bg-background font-sans">
-          {children}
-        </main>
-      </div>
-    </SidebarProvider>
+                            {({ isActive }) => (
+                              <SidebarMenuButton
+                                isActive={isActive}
+                                tooltip={item.title}
+                              >
+                                <item.icon />
+                                <span>{item.title}</span>
+                              </SidebarMenuButton>
+                            )}
+                          </NavLink>
+                        </SidebarMenuItem>
+                      ))}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                </SidebarGroup>
+              </SidebarContent>
+            </Sidebar>
+            <main className="flex-1 min-w-0 bg-background font-sans">
+              {children}
+            </main>
+          </div>
+        </SidebarProvider>
+        <CommandPalette />
+        <GlobalShortcuts />
+      </CommandActionsProvider>
+    </CommandPaletteProvider>
   )
 }
