@@ -161,7 +161,6 @@ export function TimeTrackingPage() {
   }, [activeTab, filteredByPeriod.length, focusFirst]);
 
   const virtualTimerEntry = useMemo(() => {
-    console.log(`TCL ~ TimeTrackingPage ~ timerHook:`, timerHook)
     if (!timerHook.isRunning || !timerHook.timerState) return null;
     if (!todayInRange) return null;
     return createVirtualTimerEntry(timerHook.timerState, new Date());
