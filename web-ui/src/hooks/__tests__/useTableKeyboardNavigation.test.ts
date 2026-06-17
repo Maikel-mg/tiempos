@@ -482,4 +482,114 @@ describe('useTableKeyboardNavigation', () => {
     });
     expect(result.current.activeIndex).toBe(-1);
   });
+
+  it('ArrowRight calls onExpand with current index', () => {
+    container = createMockContainer(3);
+    const containerRef = { current: container } as RefObject<HTMLElement>;
+    const onExpand = vi.fn();
+
+    const { result } = renderHook(() =>
+      useTableKeyboardNavigation({
+        containerRef,
+        items: defaultItems,
+        getRowId,
+        onExpand,
+      })
+    );
+
+    // Move to second row
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+    });
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+    });
+    expect(result.current.activeIndex).toBe(1);
+
+    // ArrowRight
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }));
+    });
+    expect(onExpand).toHaveBeenCalledWith(1);
+  });
+
+  it('ArrowLeft calls onCollapse with current index', () => {
+    container = createMockContainer(3);
+    const containerRef = { current: container } as RefObject<HTMLElement>;
+    const onCollapse = vi.fn();
+
+    const { result } = renderHook(() =>
+      useTableKeyboardNavigation({
+        containerRef,
+        items: defaultItems,
+        getRowId,
+        onCollapse,
+      })
+    );
+
+    // Move to second row
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+    });
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+    });
+    expect(result.current.activeIndex).toBe(1);
+
+    // ArrowLeft
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft' }));
+    });
+    expect(onCollapse).toHaveBeenCalledWith(1);
+  });
+
+  it('ArrowRight is a no-op when no onExpand callback provided', () => {
+    container = createMockContainer(3);
+    const containerRef = { current: container } as RefObject<HTMLElement>;
+
+    const { result } = renderHook(() =>
+      useTableKeyboardNavigation({
+        containerRef,
+        items: defaultItems,
+        getRowId,
+      })
+    );
+
+    // Move to first row
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+    });
+    expect(result.current.activeIndex).toBe(0);
+
+    // ArrowRight — should not move or crash
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }));
+    });
+    expect(result.current.activeIndex).toBe(0);
+  });
+
+  it('ArrowLeft is a no-op when no onCollapse callback provided', () => {
+    container = createMockContainer(3);
+    const containerRef = { current: container } as RefObject<HTMLElement>;
+
+    const { result } = renderHook(() =>
+      useTableKeyboardNavigation({
+        containerRef,
+        items: defaultItems,
+        getRowId,
+      })
+    );
+
+    // Move to first row
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+    });
+    expect(result.current.activeIndex).toBe(0);
+
+    // ArrowLeft — should not move or crash
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft' }));
+    });
+    expect(result.current.activeIndex).toBe(0);
+  });
 });

@@ -23,6 +23,10 @@ export interface UseTableKeyboardNavigationOptions<TData> {
   onPageUp?: () => void;
   /** Callback when PageDown is pressed. */
   onPageDown?: () => void;
+  /** Callback when ArrowRight is pressed (expand/collapse). */
+  onExpand?: (index: number) => void;
+  /** Callback when ArrowLeft is pressed (expand/collapse). */
+  onCollapse?: (index: number) => void;
 }
 
 /**
@@ -101,6 +105,8 @@ export function useTableKeyboardNavigation<TData>({
   pageSize = 10,
   onPageUp,
   onPageDown,
+  onExpand,
+  onCollapse,
 }: UseTableKeyboardNavigationOptions<TData>): UseTableKeyboardNavigationReturn {
   const [activeIndex, setActiveIndex] = useState<number>(-1);
   const activeIndexRef = useRef(activeIndex);
@@ -120,6 +126,12 @@ export function useTableKeyboardNavigation<TData>({
 
   const onPageDownRef = useRef(onPageDown);
   onPageDownRef.current = onPageDown;
+
+  const onExpandRef = useRef(onExpand);
+  onExpandRef.current = onExpand;
+
+  const onCollapseRef = useRef(onCollapse);
+  onCollapseRef.current = onCollapse;
 
   const pageSizeRef = useRef(pageSize);
   pageSizeRef.current = pageSize;
@@ -279,6 +291,22 @@ export function useTableKeyboardNavigation<TData>({
         case 'PageDown': {
           e.preventDefault();
           onPageDownRef.current?.();
+          break;
+        }
+
+        case 'ArrowRight': {
+          if (current >= 0 && current < total) {
+            e.preventDefault();
+            onExpandRef.current?.(current);
+          }
+          break;
+        }
+
+        case 'ArrowLeft': {
+          if (current >= 0 && current < total) {
+            e.preventDefault();
+            onCollapseRef.current?.(current);
+          }
           break;
         }
 
