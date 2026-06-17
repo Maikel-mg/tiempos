@@ -427,5 +427,26 @@ describe('AvailableTasksPage', () => {
       const activeRows = rows.filter(r => r.getAttribute('data-state') === 'active');
       expect(activeRows).toHaveLength(0);
     });
+
+    it('PageDown and PageUp are handled without crash', async () => {
+      const user = userEvent.setup();
+      vi.mocked(useProcessCache).mockReturnValue({
+        processes: mockProcesses,
+        loading: false,
+        error: null,
+        refresh: vi.fn(),
+      });
+
+      render(<AvailableTasksPage />);
+
+      // Auto-focus already on row 0
+      const rows = screen.getAllByRole('row');
+      expect(rows[1]?.getAttribute('data-state')).toBe('active');
+
+      // PageDown should not crash
+      await user.keyboard('{PageDown}');
+      // PageUp should not crash
+      await user.keyboard('{PageUp}');
+    });
   });
 });

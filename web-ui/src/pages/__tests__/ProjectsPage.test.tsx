@@ -224,4 +224,25 @@ describe('ProjectsPage keyboard navigation', () => {
     await user.keyboard('{ArrowDown}');
     expect(rows[1]?.getAttribute('data-state')).toBe('active');
   });
+
+  it('PageDown and PageUp are handled without crash', async () => {
+    const user = userEvent.setup();
+    vi.mocked(useProjects).mockReturnValue({
+      data: mockProjects,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    } as any);
+
+    renderWithProviders(<ProjectsPage />);
+
+    // Auto-focus already on row 0
+    const rows = screen.getAllByRole('row');
+    expect(rows[1]?.getAttribute('data-state')).toBe('active');
+
+    // PageDown should not crash
+    await user.keyboard('{PageDown}');
+    // PageUp should not crash
+    await user.keyboard('{PageUp}');
+  });
 });
