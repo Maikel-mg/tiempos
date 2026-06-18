@@ -8,7 +8,7 @@ honor its STOP conditions, and update your row when done.
 
 | Plan | Title | Priority | Effort | Depends on | Status |
 |------|-------|----------|--------|------------|--------|
-| 001  | Propuestas de Tarea en el time-tracker desde Procesos Genéricos | P1 | M | — | TODO |
+| 001  | Propuestas de Tarea en el time-tracker desde Procesos Genéricos | P1 | M | — | DONE |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale — finding fixed independently or approach abandoned)
 
