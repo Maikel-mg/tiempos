@@ -32,11 +32,13 @@ export interface UseTableKeyboardNavigationOptions<TData> {
 /**
  * Return value of the `useTableKeyboardNavigation` hook.
  */
-export interface UseTableKeyboardNavigationReturn {
+export interface UseTableKeyboardNavigationReturn<TData> {
   /** Index of the currently active row, or -1 if none. */
   activeIndex: number;
   /** Stable ID of the currently active row, or null. */
   activeRowId: string | null;
+  /** The data item of the currently active row, or null if none. */
+  activeItem: TData | null;
   /** Spread these props onto each `<tr>` element. */
   getRowProps: (index: number) => {
     'data-row-index': number;
@@ -107,7 +109,7 @@ export function useTableKeyboardNavigation<TData>({
   onPageDown,
   onExpand,
   onCollapse,
-}: UseTableKeyboardNavigationOptions<TData>): UseTableKeyboardNavigationReturn {
+}: UseTableKeyboardNavigationOptions<TData>): UseTableKeyboardNavigationReturn<TData> {
   const [activeIndex, setActiveIndex] = useState<number>(-1);
   const activeIndexRef = useRef(activeIndex);
   activeIndexRef.current = activeIndex;
@@ -324,6 +326,11 @@ export function useTableKeyboardNavigation<TData>({
       ? getRowId(items[activeIndex], activeIndex)
       : null;
 
+  const activeItem =
+    activeIndex >= 0 && activeIndex < items.length
+      ? items[activeIndex]
+      : null;
+
   const focusFirst = useCallback(() => {
     const first = findNextEnabled(-1, 1);
     if (first !== -1) {
@@ -354,6 +361,7 @@ export function useTableKeyboardNavigation<TData>({
   return {
     activeIndex,
     activeRowId,
+    activeItem,
     getRowProps,
     focusFirst,
     clearActive,

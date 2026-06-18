@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Clock, List, Pencil, ShieldCheck, ShieldOff } from 'lucide-react';
@@ -8,6 +8,12 @@ import { detectCrossing } from '../lib/timerCrossingDetector';
 import type { SplitProposal } from '../lib/timerCrossingDetector';
 import type { StopTimerResult } from '../services/timeTrackingService';
 import type { TimeEntry, Proceso, TimerState } from '../types';
+
+export interface TimeTrackerBarHandle {
+  focusDescription: () => void;
+  reset: () => void;
+  isEditingStartTime: boolean;
+}
 
 interface TimeTrackerBarProps {
   onSubmit: (data: {
@@ -48,7 +54,33 @@ function computeDurationSeconds(startTime: string, endTime: string): number {
   return ((eh * 60 + em) - (sh * 60 + sm)) * 60;
 }
 
-export function TimeTrackerBar({ onSubmit, initialData, disabled, defaultMode = 'timer', timer }: TimeTrackerBarProps) {
+export const TimeTrackerBar = forwardRef<TimeTrackerBarHandle, TimeTrackerBarProps>(function TimeTrackerBar(
+  { onSubmit, initialData, disabled, defaultMode = 'timer', timer },
+  ref
+) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useImperativeHandle(ref, () => ({
+    focusDescription: () => {
+      setMode('manual');
+      requestAnimationFrame(() => {
+        inputRef.current?.focus();
+      });
+    },
+    reset: () => {
+      setTask(null);
+      setDescription('');
+      setDate(new Date().toISOString().split('T')[0]);
+      setStartTime('09:00');
+      setEndTime('');
+      setRecoverable(false);
+      setMode('timer');
+    },
+    get isEditingStartTime() {
+      return editingStartTime;
+    },
+  }));
+
   const today = new Date().toISOString().split('T')[0];
 
   const [mode, setMode] = useState<'timer' | 'manual'>(defaultMode);
@@ -84,6 +116,7 @@ export function TimeTrackerBar({ onSubmit, initialData, disabled, defaultMode = 
   }, [timer.timerState]);
 
   // Sync form state when initialData changes (edit mode)
+  const prevInitialDataRef = useRef(initialData);
   useEffect(() => {
     if (initialData) {
       setTask(
@@ -97,7 +130,15 @@ export function TimeTrackerBar({ onSubmit, initialData, disabled, defaultMode = 
       setEndTime(initialData.endTime || '');
       setRecoverable(initialData.recoverable ?? false);
       setMode('manual');
+
+      // Focus description input only when initialData actually changes (not on mount)
+      if (prevInitialDataRef.current !== initialData) {
+        requestAnimationFrame(() => {
+          inputRef.current?.focus();
+        });
+      }
     }
+    prevInitialDataRef.current = initialData;
   }, [initialData]);
 
   const durationSeconds = useMemo(
@@ -225,6 +266,7 @@ export function TimeTrackerBar({ onSubmit, initialData, disabled, defaultMode = 
       <div className="flex items-center gap-2.5 w-full flex-wrap p-3 rounded-lg bg-card border border-border">
         {/* Description — shared across modes */}
         <Input
+          ref={inputRef}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="¿En qué estás trabajando?"
@@ -301,9 +343,11 @@ export function TimeTrackerBar({ onSubmit, initialData, disabled, defaultMode = 
                     }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
+                        e.stopPropagation();
                         handleSave((e.target as HTMLInputElement).value);
                         setEditingStartTime(false);
                       } else if (e.key === 'Escape') {
+                        e.stopPropagation();
                         setEditingStartTime(false);
                       }
                     }}
@@ -454,4 +498,4 @@ export function TimeTrackerBar({ onSubmit, initialData, disabled, defaultMode = 
       />
     </>
   );
-}
+});

@@ -11,6 +11,8 @@ import {
   Plus,
   Table,
   LayoutGrid,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import {
   CommandDialog,
@@ -24,6 +26,7 @@ import {
 } from '@/components/ui/command';
 import { useCommandPalette } from '@/components/CommandPaletteContext';
 import { useAvailableActions } from '@/components/CommandActionsContext';
+import { useTheme } from '@/hooks/useTheme';
 
 const navigationActions = [
   { id: 'go-dashboard', label: 'Ir a Dashboard', icon: LayoutDashboard, url: '/dashboard', shortcut: 'Alt+D' },
@@ -37,6 +40,7 @@ export function CommandPalette() {
   const navigate = useNavigate();
   const { isOpen, close } = useCommandPalette();
   const contextActions = useAvailableActions();
+  const { theme, toggle: toggleTheme } = useTheme();
 
   const handleNavigation = (url: string) => {
     navigate(url);
@@ -85,6 +89,23 @@ export function CommandPalette() {
               <CommandShortcut>{action.shortcut}</CommandShortcut>
             </CommandItem>
           ))}
+        </CommandGroup>
+
+        <CommandSeparator />
+
+        {/* Utilities */}
+        <CommandGroup heading="Utilidades">
+          <CommandItem
+            onSelect={() => handleContextAction(toggleTheme)}
+          >
+            {theme === 'dark' ? (
+              <Sun className="mr-2 h-4 w-4" />
+            ) : (
+              <Moon className="mr-2 h-4 w-4" />
+            )}
+            <span>Cambiar tema</span>
+            <CommandShortcut>Ctrl+Shift+T</CommandShortcut>
+          </CommandItem>
         </CommandGroup>
       </CommandList>
     </CommandDialog>

@@ -1,10 +1,11 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
-import { Database, Table, LayoutGrid } from 'lucide-react';
+import { Database, Table, LayoutGrid, Pencil, Trash2, Copy, Play, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PeriodSelector } from '@/components/shared/PeriodSelector';
 import { TimeTrackerBar } from '../components/TimeTrackerBar';
+import type { TimeTrackerBarHandle } from '../components/TimeTrackerBar';
 import { TimeEntryViewSwitcher } from '../components/TimeEntryViewSwitcher';
 import { OverlapAlert } from '../components/OverlapAlert';
 import { SyncPanel } from '../components/SyncPanel';
@@ -13,6 +14,7 @@ import { useTimeEntries } from '../hooks/useTimeEntries';
 import { useTimer } from '../hooks/useTimer';
 import { useCommandActions } from '@/components/CommandActionsContext';
 import { useTableKeyboardNavigation } from '@/hooks/useTableKeyboardNavigation';
+import { useTableRowShortcuts } from '@/hooks/useTableRowShortcuts';
 import { createVirtualTimerEntry } from '../lib/timerVirtualEntry';
 import { computePeriodTotal } from '../lib/computePeriodTotal';
 import { syncTimeEntries } from '../services/timeEntrySyncService';
@@ -41,6 +43,7 @@ export function TimeTrackingPage() {
   const undoBuffer = useRef<Map<string, TimeEntry>>(new Map());
   const pendingDescription = useRef<string | undefined>(undefined);
   const tableRef = useRef<HTMLTableElement>(null);
+  const trackerBarRef = useRef<TimeTrackerBarHandle>(null);
 
   const pendingEntries = useMemo(
     () => entries.filter((e) => !e.synced),
@@ -138,63 +141,12 @@ export function TimeTrackingPage() {
     return todayDay >= startDay && todayDay <= endDay;
   }, [period, customRange]);
 
-  const { getRowProps, focusFirst } = useTableKeyboardNavigation({
+  const { getRowProps, focusFirst, activeItem } = useTableKeyboardNavigation({
     containerRef: tableRef,
     items: filteredByPeriod,
     getRowId: (entry) => entry.id,
-    isEnabled: activeTab === 'table',
+    isEnabled: activeTab === 'table' && !editingEntry,
   });
-
-  // Auto-focus first table row on mount (table view only)
-  useEffect(() => {
-    if (activeTab !== 'table') return;
-    if (filteredByPeriod.length === 0) return;
-    if (document.activeElement && (
-      document.activeElement.tagName === 'INPUT' ||
-      document.activeElement.tagName === 'TEXTAREA' ||
-      document.activeElement.tagName === 'SELECT' ||
-      document.activeElement.getAttribute('contenteditable') === 'true'
-    )) return;
-    if (document.querySelector('[role="dialog"][data-state="open"]')) return;
-    if (document.querySelector('[cmdk-dialog]')) return;
-    focusFirst();
-  }, [activeTab, filteredByPeriod.length, focusFirst]);
-
-  const virtualTimerEntry = useMemo(() => {
-    if (!timerHook.isRunning || !timerHook.timerState) return null;
-    if (!todayInRange) return null;
-    return createVirtualTimerEntry(timerHook.timerState, new Date());
-  }, [timerHook.isRunning, timerHook.timerState, timerHook.elapsed, todayInRange]);
-
-  const periodTotal = useMemo(() => {
-    return computePeriodTotal(filteredByPeriod, timerHook.elapsed, todayInRange);
-  }, [filteredByPeriod, timerHook.elapsed, todayInRange]);
-
-  const periodTotalDisplay = useMemo(() => formatDurationHMS(periodTotal), [periodTotal]);
-
-  const handlePeriodChange = (newPeriod: PeriodType, newCustomRange?: DateRange) => {
-    setPeriod(newPeriod);
-    if (newCustomRange) {
-      setCustomRange(newCustomRange);
-    }
-  };
-
-  const handleSubmit = useCallback(async (data: {
-    taskId: number;
-    taskName: string;
-    date: string;
-    startTime: string;
-    endTime: string;
-    description?: string;
-    recoverable: boolean;
-  }) => {
-    if (editingEntry) {
-      await updateEntry(editingEntry.id, data);
-      setEditingEntry(null);
-    } else {
-      await createEntry(data);
-    }
-  }, [editingEntry, updateEntry, createEntry]);
 
   const handleDeleteEntry = async (id: string) => {
     const entry = entries.find((e) => e.id === id);
@@ -239,6 +191,7 @@ export function TimeTrackingPage() {
 
   const handleEditCancel = useCallback(() => {
     setEditingEntry(null);
+    trackerBarRef.current?.reset();
   }, []);
 
   const handleSyncEntry = useCallback(async (entry: TimeEntry) => {
@@ -295,8 +248,125 @@ export function TimeTrackingPage() {
     await timerHook.start(entry.taskId, entry.taskName, entry.description);
   }, [timerHook, createEntry]);
 
+  useTableRowShortcuts({
+    activeItem,
+    onEdit: handleEditEntry,
+    onDuplicate: handleDuplicateEntry,
+    onPlay: handlePlayEntry,
+    onSync: handleSyncEntry,
+    onDelete: (entry) => {
+      if (window.confirm(`¿Eliminar "${entry.taskName}"?`)) {
+        handleDeleteEntry(entry.id);
+      }
+    },
+    isEnabled: () => activeTab === 'table' && !editingEntry && !trackerBarRef.current?.isEditingStartTime,
+  });
+
+  // Auto-focus first table row on mount (table view only)
+  useEffect(() => {
+    if (activeTab !== 'table') return;
+    if (filteredByPeriod.length === 0) return;
+    if (document.activeElement && (
+      document.activeElement.tagName === 'INPUT' ||
+      document.activeElement.tagName === 'TEXTAREA' ||
+      document.activeElement.tagName === 'SELECT' ||
+      document.activeElement.getAttribute('contenteditable') === 'true'
+    )) return;
+    if (document.querySelector('[role="dialog"][data-state="open"]')) return;
+    if (document.querySelector('[cmdk-dialog]')) return;
+    focusFirst();
+  }, [activeTab, filteredByPeriod.length, focusFirst]);
+
+  const virtualTimerEntry = useMemo(() => {
+    if (!timerHook.isRunning || !timerHook.timerState) return null;
+    if (!todayInRange) return null;
+    return createVirtualTimerEntry(timerHook.timerState, new Date());
+  }, [timerHook.isRunning, timerHook.timerState, timerHook.elapsed, todayInRange]);
+
+  const periodTotal = useMemo(() => {
+    return computePeriodTotal(filteredByPeriod, timerHook.elapsed, todayInRange);
+  }, [filteredByPeriod, timerHook.elapsed, todayInRange]);
+
+  const periodTotalDisplay = useMemo(() => formatDurationHMS(periodTotal), [periodTotal]);
+
+  const handlePeriodChange = (newPeriod: PeriodType, newCustomRange?: DateRange) => {
+    setPeriod(newPeriod);
+    if (newCustomRange) {
+      setCustomRange(newCustomRange);
+    }
+  };
+
+  const handleSubmit = useCallback(async (data: {
+    taskId: number;
+    taskName: string;
+    date: string;
+    startTime: string;
+    endTime: string;
+    description?: string;
+    recoverable: boolean;
+  }) => {
+    if (editingEntry) {
+      await updateEntry(editingEntry.id, data);
+      setEditingEntry(null);
+    } else {
+      await createEntry(data);
+    }
+  }, [editingEntry, updateEntry, createEntry]);
+
+  useEffect(() => {
+    if (!editingEntry) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleEditCancel();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [editingEntry, handleEditCancel]);
+
   // Register command palette actions for this page
   const commandActions = useMemo(() => [
+    // ── Row-level actions (active row) ────────────────────────────
+    {
+      id: 'row-edit',
+      label: `Editar${activeItem ? `: ${activeItem.taskName}` : ''}`,
+      icon: <Pencil className="h-4 w-4" />,
+      action: () => activeItem && handleEditEntry(activeItem),
+      when: () => !!activeItem,
+      group: 'Registro activo',
+    },
+    {
+      id: 'row-delete',
+      label: `Eliminar${activeItem ? `: ${activeItem.taskName}` : ''}`,
+      icon: <Trash2 className="h-4 w-4" />,
+      action: () => activeItem && handleDeleteEntry(activeItem.id),
+      when: () => !!activeItem,
+      group: 'Registro activo',
+    },
+    {
+      id: 'row-duplicate',
+      label: `Duplicar${activeItem ? `: ${activeItem.taskName}` : ''}`,
+      icon: <Copy className="h-4 w-4" />,
+      action: () => activeItem && handleDuplicateEntry(activeItem),
+      when: () => !!activeItem,
+      group: 'Registro activo',
+    },
+    {
+      id: 'row-play',
+      label: `Reproducir${activeItem ? `: ${activeItem.taskName}` : ''}`,
+      icon: <Play className="h-4 w-4" />,
+      action: () => activeItem && handlePlayEntry(activeItem),
+      when: () => !!activeItem && !timerHook.isRunning,
+      group: 'Registro activo',
+    },
+    {
+      id: 'row-sync',
+      label: `Sincronizar${activeItem ? `: ${activeItem.taskName}` : ''}`,
+      icon: <RefreshCw className="h-4 w-4" />,
+      action: () => activeItem && handleSyncEntry(activeItem),
+      when: () => !!activeItem && !activeItem.synced,
+      group: 'Registro activo',
+    },
     {
       id: 'start-timer',
       label: 'Iniciar timer',
@@ -347,9 +417,8 @@ export function TimeTrackingPage() {
       label: 'Crear entrada manual',
       icon: <span className="flex items-center"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>,
       action: () => {
-        // Focus on the TimeTrackerBar manual entry mode
         setEditingEntry(null);
-        toast.info('Modo entrada manual activado');
+        trackerBarRef.current?.focusDescription();
       },
       group: 'TimeTracker',
     },
@@ -369,7 +438,7 @@ export function TimeTrackingPage() {
       when: () => activeTab !== 'grouped',
       group: 'TimeTracker',
     },
-  ], [pendingEntries, handlePlayEntry, timerHook.isRunning, timerHook.stop, createEntry, activeTab]);
+  ], [pendingEntries, handlePlayEntry, timerHook.isRunning, timerHook.stop, createEntry, activeTab, activeItem, handleEditEntry, handleDeleteEntry, handleDuplicateEntry, handleSyncEntry, trackerBarRef]);
 
   useCommandActions('time-tracker', commandActions);
 
@@ -379,6 +448,7 @@ export function TimeTrackingPage() {
       <div className="sticky top-0 z-40 bg-background border-b border-border/50 backdrop-blur-sm">
         <div className="px-4 sm:px-6 py-3">
           <TimeTrackerBar
+            ref={trackerBarRef}
             onSubmit={handleSubmit}
             initialData={editingEntry ?? undefined}
             defaultMode={editingEntry ? 'manual' : 'timer'}
