@@ -30,6 +30,9 @@ vi.mock('@/config/stores', () => ({
   wizardConfig: {
     get: () => ({ usuario: 'MG01', fase: '1', tipoHora: '11' }),
   },
+  proposalConfig: {
+    get: () => ({ thresholdHours: 8 }),
+  },
 }));
 
 vi.mock('@/lib/task-mapping-storage', () => ({

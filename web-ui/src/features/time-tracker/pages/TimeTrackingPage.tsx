@@ -18,7 +18,11 @@ import { useTableRowShortcuts } from '@/hooks/useTableRowShortcuts';
 import { createVirtualTimerEntry } from '../lib/timerVirtualEntry';
 import { computePeriodTotal } from '../lib/computePeriodTotal';
 import { syncTimeEntries } from '../services/timeEntrySyncService';
-import { wizardConfig, dbConfig } from '@/config/stores';
+import { wizardConfig, dbConfig, proposalConfig } from '@/config/stores';
+import { TaskProposalCard } from '@/features/proposal-ui/components/TaskProposalCard';
+import { TaskProposalModal } from '@/features/proposal-ui/components/TaskProposalModal';
+import { extractProposalsFromLocal } from '@/domain/proposals/extract-local-proposals';
+import type { TaskProposal } from '@/domain/proposals/extract-proposals';
 import type { TimeEntry } from '../types';
 import type { PeriodType, DateRange } from '@/components/shared/PeriodSelector';
 
@@ -36,6 +40,7 @@ export function TimeTrackingPage() {
   const [period, setPeriod] = useState<PeriodType>('week');
   const [customRange, setCustomRange] = useState<DateRange | undefined>(undefined);
   const [activeTab, setActiveTab] = useState('table');
+  const [proposalModalOpen, setProposalModalOpen] = useState(false);
 
   const { entries, createEntry, updateEntry, deleteEntry, markSynced } = useTimeEntries();
   const timerHook = useTimer();
@@ -99,6 +104,24 @@ export function TimeTrackingPage() {
       return entryDay >= startDay && entryDay <= endDay;
     });
   }, [entries, period, customRange]);
+
+  const proposals = useMemo(() => {
+    // Solo entradas del mes actual (consistente con LiveTimeEntriesPage)
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const startDay = start.getFullYear() * 10000 + (start.getMonth() + 1) * 100 + start.getDate();
+    const endDay = end.getFullYear() * 10000 + (end.getMonth() + 1) * 100 + end.getDate();
+
+    const monthEntries = entries.filter(e => {
+      const d = new Date(e.date + 'T12:00:00');
+      const entryDay = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+      return entryDay >= startDay && entryDay <= endDay;
+    });
+
+    const threshold = proposalConfig.get()?.thresholdHours ?? 8;
+    return extractProposalsFromLocal(monthEntries, threshold);
+  }, [entries]);
 
   const todayInRange = useMemo(() => {
     const now = new Date();
@@ -313,6 +336,42 @@ export function TimeTrackingPage() {
     }
   }, [editingEntry, updateEntry, createEntry]);
 
+  const handleAcceptProposal = useCallback(async (
+    proposal: TaskProposal,
+    _proposedName: string,
+    processId: string
+  ) => {
+    const newTaskId = Number(processId);
+    if (!Number.isFinite(newTaskId) || newTaskId <= 0) {
+      toast.error('ID de proceso inválido');
+      return;
+    }
+
+    // Reasignar solo entries no confirmadas en SQL Server (synced !== true)
+    // que pertenezcan a este grupo (mismo genericTask + descripción normalizada)
+    const toReassign = entries.filter(e =>
+      proposal.entryIds.includes(e.id) && !e.synced
+    );
+
+    if (toReassign.length === 0) {
+      toast.info('No hay entradas pendientes para reasignar');
+      return;
+    }
+
+    try {
+      for (const entry of toReassign) {
+        await updateEntry(entry.id, {
+          taskId: newTaskId,
+          taskName: proposal.proposedName,
+          proceso: { ...entry.proceso, proceso: newTaskId, nombre: proposal.proposedName },
+        });
+      }
+      toast.success(`${toReassign.length} entrada(s) reasignada(s) a "${proposal.proposedName}"`);
+    } catch (error) {
+      toast.error('Error al reasignar entradas: ' + (error as Error).message);
+    }
+  }, [entries, updateEntry]);
+
   useEffect(() => {
     if (!editingEntry) return;
     const onKeyDown = (e: KeyboardEvent) => {
@@ -470,6 +529,26 @@ export function TimeTrackingPage() {
       <div className="px-4 sm:px-6 py-5 space-y-5">
          {/* Period progress panel */}
         <PeriodProgressPanel entries={entries} period={period} />
+
+        {proposals.length > 0 && (
+          <TaskProposalCard
+            proposals={proposals}
+            onOpenModal={() => setProposalModalOpen(true)}
+          />
+        )}
+
+        <TaskProposalModal
+          open={proposalModalOpen}
+          onOpenChange={setProposalModalOpen}
+          proposals={proposals}
+          onAccept={handleAcceptProposal}
+          config={{
+            usuario: wizardConfig.get()?.usuario ?? '',
+            fase: wizardConfig.get()?.fase ?? '',
+            tipoHora: wizardConfig.get()?.tipoHora ?? '11',
+          }}
+        />
+
         {/* Period selector + View tabs row */}
         <div className="flex items-center justify-between flex-col sm:flex-row gap-4">
           <PeriodSelector
