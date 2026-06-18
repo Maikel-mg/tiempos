@@ -51,3 +51,11 @@ _Avoid_: Validator, Checker
 **ClockifyApp**:
 Capa de aplicación que envuelve `ClockifyApiClient` con operaciones de nivel de negocio (obtener workspaces, entradas, reportes, crear tareas, etc.).
 _Avoid_: ClockifyService
+
+**Proceso Genérico**:
+Tarea de propósito amplio (General, Errores) contra la que se trackea tiempo cuando no hay una Tarea específica creada. Se crea uno nuevo por mes con nombre `IPKWEB AAAA-MM. General` o `IPKWEB AAAA-MM. Errores`. El tiempo acumulado contra un proceso genérico con una misma descripción repetida es candidato a generar una Propuesta de Tarea.
+_Avoid_: Default task, Catch-all task, Tarea por defecto
+
+**Propuesta de Tarea**:
+Sugerencia de crear una Tarea dedicada a partir de tiempo acumulado contra un Proceso Genérico, agrupando entradas locales por descripción repetida. Cuando el total supera un umbral de horas, el sistema propone un nombre y permite crear la Tarea.
+_Avoid_: Task suggestion, Auto-create task, Sugerencia automática
