@@ -2,6 +2,7 @@
  * CSV Parser adapted for browser FileReader API
  * Based on csv-utils.js logic but adapted for browser use
  */
+import { normalizeForMatch } from '@/lib/normalize';
 
 export interface CSVIndices {
   tarea: number;
@@ -204,9 +205,7 @@ export function extractUniqueTasks(rows: string[][], indices: CSVIndices): Uniqu
  * @returns Nombre normalizado
  */
 export function normalizarHeader(header: string): string {
-    return header.trim().toLowerCase()
-        .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // quitar acentos
-        .replace(/\s+/g, ' '); // normalizar espacios
+    return normalizeForMatch(header);
 }
 
 /**
