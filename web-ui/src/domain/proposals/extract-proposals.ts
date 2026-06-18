@@ -1,4 +1,5 @@
 import type { TimeEntry } from '../../lib/types';
+import { GENERIC_TASK_PATTERN, isGenericTask, parseGenericTask } from './generic-task';
 
 export interface TaskProposal {
   description: string;
@@ -15,20 +16,7 @@ export interface TaskProposal {
   clockifyProjectId: string;
 }
 
-const GENERIC_TASK_PATTERN = /^(?:(\w+)\s+)?(\d{4}-\d{2})\.\s*(General|Errores)$/;
-
-function isGenericTask(taskName: string): boolean {
-  return GENERIC_TASK_PATTERN.test(taskName);
-}
-
-function parseGenericTask(taskName: string): { projectCode: string; period: string } {
-  const match = taskName.match(GENERIC_TASK_PATTERN);
-  if (!match) return { projectCode: '', period: '' };
-  return {
-    projectCode: match[1] ?? '',
-    period: match[2] ?? '',
-  };
-}
+export { GENERIC_TASK_PATTERN, isGenericTask, parseGenericTask };
 
 function extractProjectCode(entry: TimeEntry): string {
   const projectName = entry.project?.name ?? '';
