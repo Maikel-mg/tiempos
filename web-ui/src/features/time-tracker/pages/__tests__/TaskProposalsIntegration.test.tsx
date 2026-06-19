@@ -129,8 +129,8 @@ beforeEach(() => {
 });
 
 describe('TaskProposals acceptance integration', () => {
-  describe('card visibility based on threshold', () => {
-    it('shows TaskProposalCard when entries exceed 8h threshold', () => {
+  describe('proposal indicator visibility based on threshold', () => {
+    it('shows proposal indicator when entries exceed 8h threshold', () => {
       // 3 entries × 3h each = 9h > 8h → proposal should appear
       const entries = [
         makeGenericEntry('e1', 3 * 3600, { day: 5 }),
@@ -141,10 +141,10 @@ describe('TaskProposals acceptance integration', () => {
 
       renderWithProviders(<TimeTrackingPage />);
 
-      expect(screen.getByText('Propuestas de Tareas')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /propuesta/ })).toBeInTheDocument();
     });
 
-    it('hides TaskProposalCard when entries sum below threshold', () => {
+    it('hides proposal indicator when entries sum below threshold', () => {
       // 3 entries × 2h each = 6h < 8h → no proposal
       const entries = [
         makeGenericEntry('e1', 2 * 3600, { day: 5 }),
@@ -155,12 +155,12 @@ describe('TaskProposals acceptance integration', () => {
 
       renderWithProviders(<TimeTrackingPage />);
 
-      expect(screen.queryByText('Propuestas de Tareas')).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /propuesta/ })).not.toBeInTheDocument();
     });
   });
 
-  describe('modal opens on card click', () => {
-    it('opens TaskProposalModal when proposal card is clicked', async () => {
+  describe('modal opens on indicator click', () => {
+    it('opens TaskProposalModal when proposal indicator is clicked', async () => {
       const user = userEvent.setup();
       const entries = [
         makeGenericEntry('e1', 3 * 3600, { day: 5 }),
@@ -171,12 +171,12 @@ describe('TaskProposals acceptance integration', () => {
 
       renderWithProviders(<TimeTrackingPage />);
 
-      // Card should be visible
-      const card = screen.getByText('Propuestas de Tareas');
-      expect(card).toBeInTheDocument();
+      // Proposal indicator should be visible
+      const indicator = screen.getByRole('button', { name: /propuesta/ });
+      expect(indicator).toBeInTheDocument();
 
-      // Click the card to open modal
-      await user.click(card);
+      // Click the indicator to open modal
+      await user.click(indicator);
 
       // Modal should open with the title "Seleccionar ID de Tarea"
       await waitFor(() => {
@@ -200,8 +200,8 @@ describe('TaskProposals acceptance integration', () => {
       renderWithProviders(<TimeTrackingPage />);
 
       // Open the modal
-      const card = screen.getByText('Propuestas de Tareas');
-      await user.click(card);
+      const indicator = screen.getByRole('button', { name: /propuesta/ });
+      await user.click(indicator);
 
       await waitFor(() => {
         expect(screen.getByText('Seleccionar ID de Tarea')).toBeInTheDocument();
@@ -259,8 +259,8 @@ describe('TaskProposals acceptance integration', () => {
       renderWithProviders(<TimeTrackingPage />);
 
       // Open modal
-      const card = screen.getByText('Propuestas de Tareas');
-      await user.click(card);
+      const indicator = screen.getByRole('button', { name: /propuesta/ });
+      await user.click(indicator);
 
       await waitFor(() => {
         expect(screen.getByText('Seleccionar ID de Tarea')).toBeInTheDocument();
@@ -294,10 +294,10 @@ describe('TaskProposals acceptance integration', () => {
       renderWithProviders(<TimeTrackingPage />);
 
       // Card should still appear (extractor doesn't check synced status)
-      const card = screen.getByText('Propuestas de Tareas');
-      expect(card).toBeInTheDocument();
+      const indicator = screen.getByRole('button', { name: /propuesta/ });
+      expect(indicator).toBeInTheDocument();
 
-      await user.click(card);
+      await user.click(indicator);
 
       await waitFor(() => {
         expect(screen.getByText('Seleccionar ID de Tarea')).toBeInTheDocument();

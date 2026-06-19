@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
-import { Database, Table, LayoutGrid, Pencil, Trash2, Copy, Play, RefreshCw } from 'lucide-react';
+import { Database, Table, LayoutGrid, Pencil, Trash2, Copy, Play, RefreshCw, Lightbulb } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -19,7 +19,6 @@ import { createVirtualTimerEntry } from '../lib/timerVirtualEntry';
 import { computePeriodTotal } from '../lib/computePeriodTotal';
 import { syncTimeEntries } from '../services/timeEntrySyncService';
 import { wizardConfig, dbConfig, proposalConfig } from '@/config/stores';
-import { TaskProposalCard } from '@/features/proposal-ui/components/TaskProposalCard';
 import { TaskProposalModal } from '@/features/proposal-ui/components/TaskProposalModal';
 import { extractProposalsFromLocal } from '@/domain/proposals/extract-local-proposals';
 import type { TaskProposal } from '@/domain/proposals/extract-proposals';
@@ -530,13 +529,6 @@ export function TimeTrackingPage() {
          {/* Period progress panel */}
         <PeriodProgressPanel entries={entries} period={period} />
 
-        {proposals.length > 0 && (
-          <TaskProposalCard
-            proposals={proposals}
-            onOpenModal={() => setProposalModalOpen(true)}
-          />
-        )}
-
         <TaskProposalModal
           open={proposalModalOpen}
           onOpenChange={setProposalModalOpen}
@@ -588,6 +580,20 @@ export function TimeTrackingPage() {
               Total del período:{' '}
               <strong className="text-foreground font-medium">{periodTotalDisplay}</strong>
             </span>
+            {proposals.length > 0 && (
+              <button
+                onClick={() => setProposalModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors"
+                title={`${proposals.length} propuesta(s) de tarea pendiente(s)`}
+              >
+                <Lightbulb className="w-3.5 h-3.5" />
+                <span>{proposals.length} propuesta{proposals.length !== 1 ? 's' : ''}</span>
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-500"></span>
+                </span>
+              </button>
+            )}
             {pendingEntries.length > 0 && (
               <Button
                 variant="outline"
