@@ -61,9 +61,20 @@ export function DataTable<TData, TValue>({
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
+  const [internalColumnVisibility, setInternalColumnVisibility] = React.useState<VisibilityState>({})
   const [rowSelection, setRowSelection] = React.useState<Record<string, boolean>>({})
   const [searchValue, setSearchValue] = React.useState("")
+
+  // When columnToggle is provided, derive VisibilityState from the parent's state
+  // so toggling actually controls the table. Otherwise fall back to internal state.
+  const columnToggleVisibility = React.useMemo<VisibilityState>(() => {
+    if (!columnToggle) return {};
+    return Object.fromEntries(
+      columnToggle.columns.map((col) => [col.id, col.visible])
+    );
+  }, [columnToggle]);
+
+  const columnVisibility = columnToggle ? columnToggleVisibility : internalColumnVisibility;
 
   // Extract accessor keys from column definitions for pre-table filtering
   const searchableKeys = React.useMemo(() => {
@@ -105,7 +116,18 @@ export function DataTable<TData, TValue>({
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    onColumnVisibilityChange: setColumnVisibility,
+    onColumnVisibilityChange: columnToggle
+      ? (updater) => {
+          // When columnToggle is provided, route visibility changes to the parent
+          const oldVal = columnToggleVisibility;
+          const newVal = typeof updater === 'function' ? updater(oldVal) : updater;
+          Object.entries(newVal).forEach(([colId, visible]) => {
+            if (oldVal[colId] !== visible) {
+              columnToggle.onToggle(colId, visible);
+            }
+          });
+        }
+      : setInternalColumnVisibility,
     onRowSelectionChange: setRowSelection,
     state: {
       sorting,
