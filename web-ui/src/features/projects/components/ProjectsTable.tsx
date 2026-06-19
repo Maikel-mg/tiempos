@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { DataTable, ColumnDef } from '@/components/ui/data-table';
-import { Loader2, RefreshCw, AlertCircle } from 'lucide-react';
+import { Loader2, RefreshCw, AlertCircle, Inbox } from 'lucide-react';
 import type { Project } from '../types';
 import type { RefObject } from 'react';
 
@@ -34,7 +34,7 @@ export function ProjectsTable({
   };
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center p-8">
+      <div className="flex items-center justify-center p-8 text-muted-foreground">
         <Loader2 className="w-6 h-6 animate-spin mr-2" />
         <span>Cargando proyectos...</span>
       </div>
@@ -44,26 +44,35 @@ export function ProjectsTable({
   if (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     return (
-      <div className="flex flex-col items-center justify-center p-8 space-y-4">
-        <Alert variant="destructive" className="max-w-md">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Error al cargar los proyectos</AlertTitle>
-          <AlertDescription>{errorMessage}</AlertDescription>
-        </Alert>
-        {onRetry && (
-          <Button onClick={onRetry}>
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Reintentar
-          </Button>
-        )}
+      <div className="border border-border/50 rounded-lg p-8">
+        <div className="flex flex-col items-center justify-center space-y-4">
+          <Alert variant="destructive" className="max-w-md">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Error al cargar los proyectos</AlertTitle>
+            <AlertDescription>{errorMessage}</AlertDescription>
+          </Alert>
+          {onRetry && (
+            <Button variant="outline" size="sm" onClick={onRetry}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Reintentar
+            </Button>
+          )}
+        </div>
       </div>
     );
   }
 
   if (projects.length === 0) {
     return (
-      <div className="text-center p-8 text-muted-foreground">
-        {emptyMessage || 'No se encontraron proyectos'}
+      <div className="border border-border/50 rounded-lg p-8">
+        <div className="flex flex-col items-center justify-center text-center space-y-3">
+          <div className="p-3 bg-muted/50 rounded-full">
+            <Inbox className="w-8 h-8 text-muted-foreground/70" />
+          </div>
+          <div>
+            <p className="text-sm font-medium">{emptyMessage || 'No se encontraron proyectos'}</p>
+          </div>
+        </div>
       </div>
     );
   }

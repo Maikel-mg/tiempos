@@ -1,5 +1,6 @@
 import { useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { FolderKanban } from 'lucide-react';
 import { ProjectsTable } from '@/features/projects/components/ProjectsTable';
 import { useProjects } from '@/features/projects/hooks/use-projects';
 import { useTableKeyboardNavigation } from '@/hooks/useTableKeyboardNavigation';
@@ -36,7 +37,19 @@ export function ProjectsPage() {
   }, [projects.length, focusFirst]);
 
   return (
-    <div className="container mx-auto px-4 py-4">
+    <main className="w-full px-4 sm:px-6 lg:px-8 py-5">
+      <div className="flex items-center gap-3 mb-5">
+        <div className="p-2 bg-primary/10 rounded-lg text-primary">
+          <FolderKanban className="w-5 h-5" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Proyectos</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Explorá y gestioná los proyectos del sistema
+          </p>
+        </div>
+      </div>
+
       <ProjectsTable 
         projects={projects}
         isLoading={isLoading}
@@ -46,6 +59,6 @@ export function ProjectsPage() {
         getRowProps={getRowProps}
         tableRef={tableRef}
       />
-    </div>
+    </main>
   );
 }
