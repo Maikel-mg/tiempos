@@ -305,6 +305,32 @@ export function TimeTrackingPage() {
     return createVirtualTimerEntry(timerHook.timerState, new Date());
   }, [timerHook.isRunning, timerHook.timerState, timerHook.elapsed, todayInRange]);
 
+  // Throttled elapsed for stats cards — updates every 5s to avoid re-rendering 4 cards every second
+  const [throttledElapsed, setThrottledElapsed] = useState(0);
+  const throttleRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (timerHook.isRunning) {
+      // Sync immediately, then every 5 seconds
+      setThrottledElapsed(timerHook.elapsed);
+      throttleRef.current = setInterval(() => {
+        setThrottledElapsed(timerHook.elapsed);
+      }, 5000);
+    } else {
+      if (throttleRef.current) {
+        clearInterval(throttleRef.current);
+        throttleRef.current = null;
+      }
+      setThrottledElapsed(0);
+    }
+    return () => {
+      if (throttleRef.current) {
+        clearInterval(throttleRef.current);
+        throttleRef.current = null;
+      }
+    };
+  }, [timerHook.isRunning, timerHook.elapsed]);
+
   const periodTotal = useMemo(() => {
     return computePeriodTotal(filteredByPeriod, timerHook.elapsed, todayInRange);
   }, [filteredByPeriod, timerHook.elapsed, todayInRange]);
@@ -527,7 +553,12 @@ export function TimeTrackingPage() {
 
       <div className="px-4 sm:px-6 py-5 space-y-5">
          {/* Period progress panel */}
-        <PeriodProgressPanel entries={entries} period={period} />
+        <PeriodProgressPanel
+          entries={entries}
+          period={period}
+          timerElapsed={timerHook.isRunning ? throttledElapsed : 0}
+          todayInRange={todayInRange}
+        />
 
         <TaskProposalModal
           open={proposalModalOpen}

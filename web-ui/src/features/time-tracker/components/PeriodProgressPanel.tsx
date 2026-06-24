@@ -9,6 +9,10 @@ import type { PeriodType } from '@/components/shared/PeriodSelector';
 export interface PeriodProgressPanelProps {
   entries: TimeEntry[];
   period: PeriodType;
+  /** Elapsed seconds from a running timer (throttled). Added to today/week/month worked. */
+  timerElapsed?: number;
+  /** Whether today falls within the selected period range. */
+  todayInRange?: boolean;
 }
 
 function getTodayStr(): string {
@@ -101,10 +105,18 @@ function ProgressCard({ card }: { card: CardData }) {
   );
 }
 
-export function PeriodProgressPanel({ entries, period: _period }: PeriodProgressPanelProps) {
+export function PeriodProgressPanel({
+  entries,
+  period: _period,
+  timerElapsed = 0,
+  todayInRange = false,
+}: PeriodProgressPanelProps) {
   const todayStr = getTodayStr();
   const weekStartStr = getWeekStartStr();
   const monthStartStr = getMonthStartStr();
+
+  // Timer elapsed only counts when today is in the selected period range
+  const elapsed = todayInRange ? timerElapsed : 0;
 
   const todayTargetHours = getDailyTarget(todayStr);
   const todayTargetSec = todayTargetHours * 3600;
@@ -113,7 +125,7 @@ export function PeriodProgressPanel({ entries, period: _period }: PeriodProgress
     () => computeDailyBalance(entries, todayStr),
     [entries, todayStr],
   );
-  const workedToday = todayTargetSec + dailyBalance;
+  const workedToday = todayTargetSec + dailyBalance + elapsed;
   const dailyRemaining = todayTargetSec - workedToday;
 
   const weekTargetSec = useMemo(() => {
@@ -132,7 +144,7 @@ export function PeriodProgressPanel({ entries, period: _period }: PeriodProgress
     () => computeWeeklyBalance(entries, weekStartStr),
     [entries, weekStartStr],
   );
-  const workedWeek = weekTargetSec + weeklyBalance;
+  const workedWeek = weekTargetSec + weeklyBalance + elapsed;
   const weeklyRemaining = weekTargetSec - workedWeek;
 
   const monthTargetSec = useMemo(() => {
@@ -157,7 +169,7 @@ export function PeriodProgressPanel({ entries, period: _period }: PeriodProgress
     return total;
   }, [entries]);
 
-  const workedMonth = monthTargetSec + monthlyBalance;
+  const workedMonth = monthTargetSec + monthlyBalance + elapsed;
   const monthlyRemaining = monthTargetSec - workedMonth;
 
   const banco = useMemo(() => computeBanco(entries), [entries]);
