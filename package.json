@@ -4,6 +4,7 @@
   "description": "Importador de tiempos desde CSV a SQL Server (Web UI)",
   "main": "server.js",
   "scripts": {
+    "dev": "pwsh -File scripts/dev.ps1",
     "web": "cd web-ui && npm run dev",
     "start": "node --env-file=.env dist/server.js",
     "dev-backend": "tsx watch --env-file .env server.ts",

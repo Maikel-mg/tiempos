@@ -3,8 +3,11 @@ import { ChevronDown, Search, RefreshCw } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import { useProcessCache } from '../hooks/useProcessCache';
 import type { Proceso } from '../types';
+
+const MY_DEPARTMENT_ID = 5;
 
 interface ProcessSelectorButtonProps {
   value: Proceso | null;
@@ -29,18 +32,25 @@ export function ProcessSelectorButton({
   const [open, setOpen] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showAllDepartments, setShowAllDepartments] = useState(false);
 
-  // Filter processes based on search text
+  // Filter processes: department first, then search text
   const filteredProcesses = useMemo(() => {
-    if (!searchText) return processes;
-    const lower = searchText.toLowerCase();
-    return processes.filter(p =>
-      p.nombre.toLowerCase().includes(lower) ||
-      (p.faseNombre ?? '').toLowerCase().includes(lower) ||
-      (p.proyectoNombre ?? '').toLowerCase().includes(lower) ||
-      (p.clienteNombre ?? '').toLowerCase().includes(lower)
-    );
-  }, [processes, searchText]);
+    let result = processes;
+    if (!showAllDepartments) {
+      result = result.filter((p) => p.departamentoId === MY_DEPARTMENT_ID);
+    }
+    if (searchText) {
+      const lower = searchText.toLowerCase();
+      result = result.filter(p =>
+        p.nombre.toLowerCase().includes(lower) ||
+        (p.faseNombre ?? '').toLowerCase().includes(lower) ||
+        (p.proyectoNombre ?? '').toLowerCase().includes(lower) ||
+        (p.clienteNombre ?? '').toLowerCase().includes(lower)
+      );
+    }
+    return result;
+  }, [processes, searchText, showAllDepartments]);
 
   // Handle process selection
   const handleSelect = useCallback((process: Proceso) => {
@@ -85,9 +95,19 @@ export function ProcessSelectorButton({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[360px] p-0" align="start">
-        {/* Header with refresh */}
+        {/* Header with department filter and refresh */}
         <div className="flex items-center justify-between p-2 border-b">
-          <span className="text-sm font-medium text-muted-foreground px-2">Procesos</span>
+          <div className="flex items-center gap-2 px-2">
+            <Switch
+              id="dept-filter-popover"
+              checked={showAllDepartments}
+              onCheckedChange={setShowAllDepartments}
+              className="scale-75 origin-left"
+            />
+            <label htmlFor="dept-filter-popover" className="text-xs text-muted-foreground cursor-pointer whitespace-nowrap">
+              {showAllDepartments ? 'Todos' : 'Mi dpto'}
+            </label>
+          </div>
           <Button
             variant="ghost"
             size="icon"
