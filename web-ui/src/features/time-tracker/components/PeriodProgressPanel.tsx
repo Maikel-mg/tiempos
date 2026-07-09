@@ -1,5 +1,8 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Clock, Calendar, Landmark, CalendarDays } from 'lucide-react';
 import { computeDailyBalance, computeWeeklyBalance, computeBanco } from '../lib/balance';
 import { getDailyTarget } from '../lib/schedule';
@@ -55,6 +58,17 @@ function percentWidth(worked: number, target: number): number {
   return Math.min(100, Math.round((worked / target) * 10000) / 100);
 }
 
+const SPANISH_DAYS_SHORT = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+const SPANISH_MONTHS_SHORT = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+
+function formatBreakdownDate(dateString: string): string {
+  const [year, month, day] = dateString.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  const dayName = SPANISH_DAYS_SHORT[date.getDay()];
+  const monthName = SPANISH_MONTHS_SHORT[date.getMonth()];
+  return `${dayName} ${date.getDate()} ${monthName}`;
+}
+
 interface CardData {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
@@ -64,16 +78,21 @@ interface CardData {
   subtext: string;
   accentClass: string;
   percent: number;
+  onClick?: () => void;
 }
 
-function ProgressCard({ card }: { card: CardData }) {
+function ProgressCard({ card, onClick }: { card: CardData; onClick?: () => void }) {
   const color = card.accentClass || 'text-amber-600 dark:text-amber-400';
   const barColor = card.accentClass ? 'bg-emerald-500' : 'bg-amber-500';
   const barBg = card.accentClass ? 'bg-emerald-500/15' : 'bg-amber-500/15';
   const Icon = card.icon;
 
   return (
-    <Card className="flex-1" data-testid={card.segmentTestId}>
+    <Card
+      className={`flex-1${onClick ? ' cursor-pointer hover:bg-accent/50 transition-colors' : ''}`}
+      onClick={onClick}
+      data-testid={card.segmentTestId}
+    >
       <CardContent className="flex flex-col gap-2 p-3">
         <div className="flex items-center gap-2 text-muted-foreground">
           <Icon className="w-4 h-4" />
@@ -176,6 +195,38 @@ export function PeriodProgressPanel({
 
   const banco = useMemo(() => computeBanco(entries), [entries]);
 
+  const [balanceSheetOpen, setBalanceSheetOpen] = useState(false);
+  const [balanceFilter, setBalanceFilter] = useState<'all' | 'positive' | 'negative'>('all');
+
+  const breakdown = useMemo(() => {
+    // Group entries by date (exclude recoverable)
+    const dateMap = new Map<string, number>(); // date -> worked seconds
+    for (const entry of entries) {
+      if (entry.recoverable) continue;
+      const existing = dateMap.get(entry.date) || 0;
+      dateMap.set(entry.date, existing + entry.duration);
+    }
+    // Convert to array with target and delta
+    const items = Array.from(dateMap.entries()).map(([date, worked]) => {
+      const target = getDailyTarget(date) * 3600;
+      return {
+        date,
+        worked,
+        target,
+        delta: worked - target,
+      };
+    });
+    // Sort by date ascending
+    items.sort((a, b) => a.date.localeCompare(b.date));
+    return items;
+  }, [entries]);
+
+  const filteredBreakdown = useMemo(() => {
+    if (balanceFilter === 'positive') return breakdown.filter((item) => item.delta > 0);
+    if (balanceFilter === 'negative') return breakdown.filter((item) => item.delta < 0);
+    return breakdown;
+  }, [breakdown, balanceFilter]);
+
   const hoyPercent = percentWidth(workedToday, todayTargetSec);
   const semanaPercent = percentWidth(workedWeek, weekTargetSec);
   const mesPercent = percentWidth(workedMonth, monthTargetSec);
@@ -262,17 +313,97 @@ export function PeriodProgressPanel({
       subtext: banco >= 0 ? 'horas a favor' : 'horas en contra',
       accentClass: banco >= 0 ? 'text-emerald-600 dark:text-emerald-400' : '',
       percent: balancePercent,
+      onClick: () => setBalanceSheetOpen(true),
     },
   ];
 
   return (
-    <div
-      className="flex flex-col sm:flex-row gap-3"
-      data-testid="period-progress-panel"
-    >
-      {cards.map((card) => (
-        <ProgressCard key={card.label} card={card} />
-      ))}
-    </div>
+    <>
+      <div
+        className="flex flex-col sm:flex-row gap-3"
+        data-testid="period-progress-panel"
+      >
+        {cards.map((card) => (
+          <ProgressCard
+            key={card.label}
+            card={card}
+            onClick={card.onClick}
+          />
+        ))}
+      </div>
+
+      <Sheet open={balanceSheetOpen} onOpenChange={setBalanceSheetOpen}>
+        <SheetContent side="right" className="sm:max-w-md w-full">
+          <SheetHeader className="mb-4">
+            <SheetTitle className="flex items-center gap-2">
+              <Landmark className="w-4 h-4" />
+              Desglose del Balance
+            </SheetTitle>
+            <p className={`text-sm font-medium ${banco >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+              {banco >= 0 ? '+' : '-'}{formatHM(Math.abs(banco))} total
+            </p>
+          </SheetHeader>
+
+          <div className="flex items-center gap-1 mb-4">
+            {(['all', 'positive', 'negative'] as const).map((filter) => (
+              <Button
+                key={filter}
+                variant={balanceFilter === filter ? 'default' : 'outline'}
+                size="sm"
+                className="text-xs"
+                onClick={() => setBalanceFilter(filter)}
+              >
+                {filter === 'all' ? 'Todos' : filter === 'positive' ? 'Positivos' : 'Negativos'}
+              </Button>
+            ))}
+          </div>
+
+          <ScrollArea className="h-[calc(100vh-220px)]">
+            {filteredBreakdown.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">
+                {breakdown.length === 0
+                  ? 'No hay datos de balance disponibles.'
+                  : 'No hay entradas con este filtro.'}
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {filteredBreakdown.map((item) => {
+                  const deltaColor =
+                    item.delta > 0
+                      ? 'text-emerald-600 dark:text-emerald-400'
+                      : item.delta < 0
+                      ? 'text-amber-600 dark:text-amber-400'
+                      : 'text-muted-foreground';
+                  const deltaStr =
+                    item.delta === 0
+                      ? '0:00'
+                      : `${item.delta > 0 ? '+' : '-'}${formatHM(Math.abs(item.delta))}`;
+                  return (
+                    <div
+                      key={item.date}
+                      className="flex items-center justify-between text-sm p-2 rounded bg-muted/30"
+                    >
+                      <span className="text-muted-foreground">
+                        {formatBreakdownDate(item.date)}
+                      </span>
+                      <div className="flex items-center gap-3">
+                        <span className="tabular-nums">{formatHM(item.worked)}</span>
+                        <span className="text-muted-foreground">/</span>
+                        <span className="tabular-nums text-muted-foreground">
+                          {formatHM(item.target)}
+                        </span>
+                        <span className={`tabular-nums font-medium ${deltaColor}`}>
+                          {deltaStr}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </ScrollArea>
+        </SheetContent>
+      </Sheet>
+    </>
   );
 }
