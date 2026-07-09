@@ -1,7 +1,17 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { getDailyTarget } from '../schedule';
+import { scheduleConfig } from '@/config/stores';
 
 describe('getDailyTarget', () => {
+  beforeEach(() => {
+    // Set values on the actual scheduleConfig store (uses the same localStorage-backed
+    // singleton that schedule.ts reads from)
+    scheduleConfig.set({
+      defaultHours: { mon: 8.25, tue: 8.25, wed: 8.25, thu: 8.25, fri: 7, sat: 0, sun: 0 },
+      exceptions: [{ start: '2025-07-01', end: '2025-09-15', dailyHours: 7 }],
+    });
+  });
+
   it('returns 8.25 for a normal weekday (Mon-Thu)', () => {
     // 2025-06-09 is a Monday
     expect(getDailyTarget('2025-06-09')).toBe(8.25);
@@ -37,5 +47,16 @@ describe('getDailyTarget', () => {
     expect(getDailyTarget('2025-06-30')).toBe(8.25);
     // Day after exception end: 2025-09-16 is a Tuesday → 8.25
     expect(getDailyTarget('2025-09-16')).toBe(8.25);
+  });
+
+  it('falls back to schema defaults when config is empty', () => {
+    // Reset to schema defaults (empty exceptions)
+    scheduleConfig.set({
+      defaultHours: { mon: 8.25, tue: 8.25, wed: 8.25, thu: 8.25, fri: 7, sat: 0, sun: 0 },
+      exceptions: [],
+    });
+    expect(getDailyTarget('2025-06-09')).toBe(8.25); // Monday
+    expect(getDailyTarget('2025-06-13')).toBe(7);    // Friday
+    expect(getDailyTarget('2025-06-14')).toBe(0);    // Saturday
   });
 });

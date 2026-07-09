@@ -135,7 +135,8 @@ export function PeriodProgressPanel({
       const day = new Date(monday);
       day.setDate(monday.getDate() + i);
       const dateStr = day.toISOString().slice(0, 10);
-      total += getDailyTarget(dateStr) * 3600;
+      const target = getDailyTarget(dateStr);
+      if (target > 0) total += target * 3600;
     }
     return total;
   }, [weekStartStr]);
@@ -153,7 +154,8 @@ export function PeriodProgressPanel({
     const daysInMonth = getDaysInMonth(now);
     for (let i = 1; i <= daysInMonth; i++) {
       const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
-      total += getDailyTarget(dateStr) * 3600;
+      const target = getDailyTarget(dateStr);
+      if (target > 0) total += target * 3600;
     }
     return total;
   }, []);

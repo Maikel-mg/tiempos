@@ -22,6 +22,12 @@ vi.mock('@/components/SQLPreviewModal', () => ({
 }));
 vi.mock('@/config/stores', () => ({
   wizardConfig: { get: () => ({ usuario: 'test', fase: '1', tipoHora: '11' }) },
+  scheduleConfig: {
+    get: () => ({
+      defaultHours: { mon: 8.25, tue: 8.25, wed: 8.25, thu: 8.25, fri: 7, sat: 0, sun: 0 },
+      exceptions: [],
+    }),
+  },
 }));
 
 // ── Test data ────────────────────────────────────────────────────────────────

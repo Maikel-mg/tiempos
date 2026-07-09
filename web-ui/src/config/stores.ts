@@ -53,3 +53,18 @@ export const phaseByMonthConfig = defineConfig('phase-by-month', {
 export const proposalConfig = defineConfig('proposal', {
   thresholdHours: { type: 'number', default: 8 }
 });
+
+/**
+ * Schedule configuration store
+ * Stores work schedule: default daily hours per day and exception date ranges
+ */
+export const scheduleConfig = defineConfig('schedule', {
+  defaultHours: {
+    type: 'object',
+    default: { mon: 8.25, tue: 8.25, wed: 8.25, thu: 8.25, fri: 7, sat: 0, sun: 0 } as Record<string, number>
+  },
+  exceptions: {
+    type: 'object',
+    default: [] as Array<{ start: string; end: string; dailyHours: number }>
+  }
+});

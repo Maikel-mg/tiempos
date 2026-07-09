@@ -28,6 +28,12 @@ vi.mock('@/config/stores', () => ({
     dbConfig: {
         get: vi.fn(),
     },
+    scheduleConfig: {
+        get: () => ({
+            defaultHours: { mon: 8.25, tue: 8.25, wed: 8.25, thu: 8.25, fri: 7, sat: 0, sun: 0 },
+            exceptions: [],
+        }),
+    },
 }));
 
 // Helper to format date as used in component

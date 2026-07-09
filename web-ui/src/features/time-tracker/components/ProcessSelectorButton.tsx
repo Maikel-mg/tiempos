@@ -94,7 +94,7 @@ export function ProcessSelectorButton({
           <ChevronDown className="w-4 h-4 ml-2 flex-shrink-0" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[360px] p-0" align="start">
+      <PopoverContent className="w-[480px] p-0" align="start">
         {/* Header with department filter and refresh */}
         <div className="flex items-center justify-between p-2 border-b">
           <div className="flex items-center gap-2 px-2">

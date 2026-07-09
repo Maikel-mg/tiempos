@@ -21,6 +21,12 @@ vi.mock('@/config/stores', () => ({
       password: '',
     }),
   },
+  scheduleConfig: {
+    get: () => ({
+      defaultHours: { mon: 8.25, tue: 8.25, wed: 8.25, thu: 8.25, fri: 7, sat: 0, sun: 0 },
+      exceptions: [],
+    }),
+  },
 }));
 
 // Mock ProcessSelector to avoid full render complexity here

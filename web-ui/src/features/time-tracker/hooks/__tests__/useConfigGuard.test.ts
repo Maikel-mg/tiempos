@@ -8,6 +8,12 @@ vi.mock('@/config/stores', () => ({
     get: vi.fn(),
     subscribe: vi.fn(() => vi.fn()), // returns unsubscribe
   },
+  scheduleConfig: {
+    get: () => ({
+      defaultHours: { mon: 8.25, tue: 8.25, wed: 8.25, thu: 8.25, fri: 7, sat: 0, sun: 0 },
+      exceptions: [],
+    }),
+  },
 }));
 
 import { dbConfig } from '@/config/stores';

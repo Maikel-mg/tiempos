@@ -11,6 +11,9 @@ import {
   CheckCircle,
   XCircle,
   Lightbulb,
+  Clock,
+  Plus,
+  Trash2,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,7 +21,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { toast } from 'sonner';
-import { dbConfig, wizardConfig, proposalConfig } from '@/config/stores';
+import { dbConfig, wizardConfig, proposalConfig, scheduleConfig } from '@/config/stores';
 import { useTestDbConnection } from '@/features/live-entries/mutations/sql-mutations';
 
 interface DbConfig {
@@ -38,6 +41,17 @@ interface ProposalConfig {
   thresholdHours: number;
 }
 
+interface ScheduleException {
+  start: string;
+  end: string;
+  dailyHours: number;
+}
+
+interface ScheduleConfigState {
+  defaultHours: Record<string, number>;
+  exceptions: ScheduleException[];
+}
+
 export function SettingsPage() {
   const [config, setConfig] = useState<DbConfig>({
     server: '',
@@ -53,6 +67,10 @@ export function SettingsPage() {
   });
   const [proposalCfg, setProposalCfg] = useState<ProposalConfig>({
     thresholdHours: 8,
+  });
+  const [scheduleCfg, setScheduleCfg] = useState<ScheduleConfigState>({
+    defaultHours: { mon: 8.25, tue: 8.25, wed: 8.25, thu: 8.25, fri: 7, sat: 0, sun: 0 },
+    exceptions: [],
   });
 
   const testMutation = useTestDbConnection();
@@ -79,6 +97,14 @@ export function SettingsPage() {
     if (savedProposal) {
       setProposalCfg({
         thresholdHours: savedProposal.thresholdHours ?? 8,
+      });
+    }
+
+    const savedSchedule = scheduleConfig.get();
+    if (savedSchedule) {
+      setScheduleCfg({
+        defaultHours: savedSchedule.defaultHours ?? { mon: 8.25, tue: 8.25, wed: 8.25, thu: 8.25, fri: 7, sat: 0, sun: 0 },
+        exceptions: savedSchedule.exceptions ?? [],
       });
     }
   }, []);
@@ -147,6 +173,50 @@ export function SettingsPage() {
     toast.info('Restablecido', {
       description: 'Se ha restablecido el umbral de horas para propuestas.',
     });
+  };
+
+  const handleScheduleSave = () => {
+    scheduleConfig.set({
+      defaultHours: scheduleCfg.defaultHours,
+      exceptions: scheduleCfg.exceptions,
+    });
+    toast.success('Horario guardado', {
+      description: 'La configuración de horario laboral se ha guardado correctamente.',
+    });
+  };
+
+  const handleScheduleReset = () => {
+    const saved = scheduleConfig.get();
+    setScheduleCfg({
+      defaultHours: saved?.defaultHours ?? { mon: 8.25, tue: 8.25, wed: 8.25, thu: 8.25, fri: 7, sat: 0, sun: 0 },
+      exceptions: saved?.exceptions ?? [],
+    });
+    toast.info('Restablecido', {
+      description: 'Se ha restablecido el horario laboral.',
+    });
+  };
+
+  const addException = () => {
+    setScheduleCfg({
+      ...scheduleCfg,
+      exceptions: [
+        ...scheduleCfg.exceptions,
+        { start: '', end: '', dailyHours: 7 },
+      ],
+    });
+  };
+
+  const removeException = (index: number) => {
+    setScheduleCfg({
+      ...scheduleCfg,
+      exceptions: scheduleCfg.exceptions.filter((_, i) => i !== index),
+    });
+  };
+
+  const updateException = (index: number, field: keyof ScheduleException, value: string | number) => {
+    const updated = [...scheduleCfg.exceptions];
+    updated[index] = { ...updated[index], [field]: value };
+    setScheduleCfg({ ...scheduleCfg, exceptions: updated });
   };
 
   const handleTest = async () => {
@@ -391,6 +461,126 @@ export function SettingsPage() {
                 Guardar
               </Button>
               <Button variant="ghost" onClick={handleProposalReset}>
+                Restablecer
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="w-5 h-5" />
+              Horario Laboral
+            </CardTitle>
+            <CardDescription>
+              Configura las horas diarias por día y las excepciones de horario (jornada intensiva, vacaciones, etc.).
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div>
+              <h4 className="text-sm font-medium mb-3">Horas por día (default)</h4>
+              <div className="grid grid-cols-7 gap-2">
+                {[
+                  { key: 'mon', label: 'Lun' },
+                  { key: 'tue', label: 'Mar' },
+                  { key: 'wed', label: 'Mié' },
+                  { key: 'thu', label: 'Jue' },
+                  { key: 'fri', label: 'Vie' },
+                  { key: 'sat', label: 'Sáb' },
+                  { key: 'sun', label: 'Dom' },
+                ].map(({ key, label }) => (
+                  <div key={key} className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">{label}</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={24}
+                      step={0.25}
+                      value={scheduleCfg.defaultHours[key] ?? 0}
+                      onChange={(e) => {
+                        const value = parseFloat(e.target.value);
+                        if (!isNaN(value)) {
+                          setScheduleCfg({
+                            ...scheduleCfg,
+                            defaultHours: {
+                              ...scheduleCfg.defaultHours,
+                              [key]: Math.min(24, Math.max(0, value)),
+                            },
+                          });
+                        }
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-medium">Excepciones de horario</h4>
+                <Button variant="outline" size="sm" onClick={addException}>
+                  <Plus className="w-4 h-4 mr-1" />
+                  Agregar
+                </Button>
+              </div>
+              {scheduleCfg.exceptions.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No hay excepciones configuradas.</p>
+              ) : (
+                <div className="space-y-3">
+                  {scheduleCfg.exceptions.map((exception, index) => (
+                    <div key={index} className="flex items-end gap-2">
+                      <div className="space-y-1 flex-1">
+                        <Label className="text-xs text-muted-foreground">Desde</Label>
+                        <Input
+                          type="date"
+                          value={exception.start}
+                          onChange={(e) => updateException(index, 'start', e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-1 flex-1">
+                        <Label className="text-xs text-muted-foreground">Hasta</Label>
+                        <Input
+                          type="date"
+                          value={exception.end}
+                          onChange={(e) => updateException(index, 'end', e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-1 w-24">
+                        <Label className="text-xs text-muted-foreground">Horas/día</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          max={24}
+                          step={0.25}
+                          value={exception.dailyHours}
+                          onChange={(e) => {
+                            const value = parseFloat(e.target.value);
+                            if (!isNaN(value)) {
+                              updateException(index, 'dailyHours', Math.min(24, Math.max(0, value)));
+                            }
+                          }}
+                        />
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => removeException(index)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <Button variant="outline" onClick={handleScheduleSave}>
+                Guardar
+              </Button>
+              <Button variant="ghost" onClick={handleScheduleReset}>
                 Restablecer
               </Button>
             </div>

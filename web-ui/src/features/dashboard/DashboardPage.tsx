@@ -11,6 +11,7 @@ import { TaskBreakdownTable } from './components/TaskBreakdownTable';
 import { DayGroupedEntries } from './components/DayGroupedEntries';
 import { WeeklyHoursChart } from './components/WeeklyHoursChart';
 import { ProjectDistribution } from './components/ProjectDistribution';
+import { getDailyTarget } from '@/features/time-tracker/lib/schedule';
 import type { TimeEntry } from '@/lib/types';
 
 function parseISO8601Duration(durationString: string | number | undefined | null): number {
@@ -73,10 +74,11 @@ function isSameDay(a: Date, b: Date): boolean {
 }
 
 function getExpectedDailySeconds(date: Date): number {
-  const day = date.getDay();
-  const jsDay = day === 0 ? 6 : day - 1;
-  if (jsDay >= 5) return 0;
-  return jsDay < 4 ? 8.25 * 3600 : 7 * 3600;
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const dateStr = `${year}-${month}-${day}`;
+  return getDailyTarget(dateStr) * 3600;
 }
 
 function getWorkingDaysBetween(start: Date, end: Date): number {

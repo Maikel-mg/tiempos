@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import type { TimeEntry } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { getDailyTarget } from '@/features/time-tracker/lib/schedule';
 
 function parseISO8601Duration(durationString: string | number | undefined | null): number {
   if (!durationString) return 0;
@@ -72,8 +73,11 @@ export function WeeklyHoursChart({ entries, dateRange }: WeeklyHoursChartProps) 
     for (let i = 0; i < 7; i++) {
       const dayDate = new Date(monday);
       dayDate.setDate(monday.getDate() + i);
-      const isWeekend = i >= 5;
-      const expected = isWeekend ? 0 : i < 4 ? 8.25 : 7;
+      const year = dayDate.getFullYear();
+      const month = String(dayDate.getMonth() + 1).padStart(2, '0');
+      const day = String(dayDate.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
+      const expected = getDailyTarget(dateStr);
       data.push({
         day: dayLabels[i],
         label: dayLabels[i],
