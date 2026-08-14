@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
-import { apiClient } from '@/lib/api/client';
-import { wizardConfig, dbConfig } from '@/config/stores';
+import { wizardConfig } from '@/config/stores';
+import { processOfflineService } from '../services/ProcessOfflineService';
 import type { Proceso } from '../types';
 
 /**
- * Fetches processes for the current usuario from the SP endpoint.
+ * Fetches processes for the current usuario from the offline cache,
+ * falling back to the backend when the cache is empty or on explicit refresh.
  * Reads wizardConfig.usuario internally — no props needed.
  */
 export function useProcessCache() {
@@ -12,38 +13,38 @@ export function useProcessCache() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchProcesses = useCallback(async () => {
+  const fetchProcesses = useCallback(async (options: { refresh?: boolean } = {}) => {
     const usuario = wizardConfig.get()?.usuario ?? '';
 
     if (!usuario) {
       setProcesses([]);
       setLoading(false);
+      setError(null);
       return;
     }
 
-    try {
-      setLoading(true);
-      setError(null);
-
-      const dbConf = dbConfig.get();
-      const response = await apiClient.post<Proceso[]>(
-        '/processes',
-        {
-          usured: usuario,
-          server: dbConf?.server,
-          database: dbConf?.database,
-          username: dbConf?.username,
-          password: dbConf?.password,
+    // Cached data resolves without a loading state: no flash of empty/loading.
+    if (!options.refresh) {
+      try {
+        const lastUpdated = await processOfflineService.getLastUpdated(usuario);
+        if (lastUpdated !== null) {
+          const cached = await processOfflineService.getProcesses(usuario);
+          setProcesses(cached);
+          setError(null);
+          return;
         }
-      );
-
-      if (response.success) {
-        console.log(`TCL ~ useProcessCache ~ response:`, response)
-        setProcesses(response.data?.data || []);
-      } else {
-        setError(response.message || 'Error al cargar procesos');
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Error al cargar procesos');
         setProcesses([]);
+        return;
       }
+    }
+
+    try {
+      setError(null);
+      setLoading(true);
+      const data = await processOfflineService.getProcesses(usuario, { refresh: true });
+      setProcesses(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar procesos');
       setProcesses([]);
@@ -56,10 +57,12 @@ export function useProcessCache() {
     fetchProcesses();
   }, [fetchProcesses]);
 
+  const refresh = useCallback(() => fetchProcesses({ refresh: true }), [fetchProcesses]);
+
   return {
     processes,
     loading,
     error,
-    refresh: fetchProcesses,
+    refresh,
   };
 }
