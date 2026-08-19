@@ -6,17 +6,21 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ProcessSelector } from '@/features/process-management/components/ProcessSelector';
 import { updateMapping } from '@/lib/task-mapping-storage';
-import { Eye } from 'lucide-react';
+import { Plus, Eye } from 'lucide-react';
 import { SQLPreviewModal } from '@/components/SQLPreviewModal';
 import { useCreateProcess } from '@/features/process-management/mutations/useCreateProcess';
+import { PendingProcessFormModal } from '@/features/pending-process/components/PendingProcessFormModal';
 import type { TaskProposal } from '@/domain/proposals/extract-proposals';
 import type { ProcessConfig } from '@/features/process-management/types';
+import type { ProcesoPendiente } from '@/features/time-tracker/types';
 
 export interface TaskProposalModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   proposals: TaskProposal[];
   onAccept: (proposal: TaskProposal, proposedName: string, processId: string) => void;
+  /** Optional: hook when the user creates a pending process from a proposal. */
+  onCreatePending?: (proposal: TaskProposal, pendiente: ProcesoPendiente) => Promise<void> | void;
   config: ProcessConfig;
 }
 
@@ -34,12 +38,14 @@ export function TaskProposalModal({
   onOpenChange,
   proposals,
   onAccept,
+  onCreatePending,
   config,
 }: TaskProposalModalProps) {
   const [rowsState, setRowsState] = useState<Record<string, RowState>>({});
   const [selectorOpen, setSelectorOpen] = useState(false);
   const [activeRowKey, setActiveRowKey] = useState<string | null>(null);
   const [previewProposal, setPreviewProposal] = useState<TaskProposal | null>(null);
+  const [pendingCreateProposal, setPendingCreateProposal] = useState<TaskProposal | null>(null);
 
   const createProcess = useCreateProcess();
 
@@ -92,6 +98,14 @@ export function TaskProposalModal({
     setActiveRowKey(null);
   };
 
+  const handlePendingSaved = async (pendiente: ProcesoPendiente) => {
+    const proposal = pendingCreateProposal;
+    setPendingCreateProposal(null);
+    if (proposal) {
+      await onCreatePending?.(proposal, pendiente);
+    }
+  };
+
   return (
     <>
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -140,15 +154,26 @@ export function TaskProposalModal({
                             </div>
                           </TableCell>
                           <TableCell className="py-4">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-10 w-10 text-muted-foreground hover:text-primary"
-                              onClick={() => setPreviewProposal({ ...proposal, proposedName: rowState.proposedName })}
-                              title="Previsualizar SQL de Creación"
-                            >
-                              <Eye className="w-5 h-5" />
-                            </Button>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="default"
+                                onClick={() => setPendingCreateProposal(proposal)}
+                                title="Crear un proceso pendiente sin conexión"
+                              >
+                                <Plus className="w-4 h-4 mr-1" />
+                                Crear sin conexión
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-10 w-10 text-muted-foreground hover:text-primary"
+                                onClick={() => setPreviewProposal({ ...proposal, proposedName: rowState.proposedName })}
+                                title="Previsualizar SQL de Creación"
+                              >
+                                <Eye className="w-5 h-5" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       );
@@ -197,6 +222,16 @@ export function TaskProposalModal({
         success: false,
         message: (createProcess.error as Error).message,
       } : null}
+    />
+
+    <PendingProcessFormModal
+      open={pendingCreateProposal !== null}
+      onOpenChange={(open) => {
+        if (!open) setPendingCreateProposal(null);
+      }}
+      defaultNombre={pendingCreateProposal?.proposedName}
+      defaultMinutos={pendingCreateProposal ? Math.round(pendingCreateProposal.totalHours * 60) : undefined}
+      onSaved={handlePendingSaved}
     />
   </>
 );

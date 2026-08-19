@@ -1,16 +1,22 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { ListTodo, Loader2, RefreshCw, AlertCircle, Plus, Inbox } from 'lucide-react';
+import { ListTodo, Loader2, RefreshCw, AlertCircle, Plus, Inbox, Pencil, Trash2, Tag } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
 import { DataTable, ColumnDef } from '@/components/ui/data-table';
 import { SQLPreviewModal } from '@/components/SQLPreviewModal';
 import { useCreateProcess } from '@/features/process-management/mutations/useCreateProcess';
+import { usePendingProcesses } from '@/features/pending-process/hooks/usePendingProcesses';
+import { PendingProcessFormModal } from '@/features/pending-process/components/PendingProcessFormModal';
+import { PendingProcessReassignModal } from '@/features/pending-process/components/PendingProcessReassignModal';
 import { useProcessCache } from '../hooks/useProcessCache';
 import { useCommandActions } from '@/components/CommandActionsContext';
 import { useTableKeyboardNavigation } from '@/hooks/useTableKeyboardNavigation';
 import { wizardConfig } from '@/config/stores';
-import type { Proceso } from '../types';
+import { timeTrackingService } from '../services/timeTrackingService';
+import { findEntriesByPendingProcess, propagateRename } from '../lib/pending-process-links';
+import type { Proceso, ProcesoPendiente, TimeEntry } from '../types';
 
 const MY_DEPARTMENT_ID = 5;
 
@@ -64,13 +70,75 @@ const columns: ColumnDef<Proceso, any>[] = [
 
 export function AvailableTasksPage() {
   const { processes, loading, error, refresh } = useProcessCache();
+  const { pendingProcesses, reload: reloadPending, remove: removePending } = usePendingProcesses();
   const [showAll, setShowAll] = useState(false);
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(
     () => Object.fromEntries(columnDefinitions.map((c) => [c.id, c.visible]))
   );
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isPendingCreateOpen, setIsPendingCreateOpen] = useState(false);
+  const [editingPending, setEditingPending] = useState<ProcesoPendiente | null>(null);
+  const [deletingPending, setDeletingPending] = useState<ProcesoPendiente | null>(null);
+  const [localEntries, setLocalEntries] = useState<TimeEntry[]>([]);
   const createProcess = useCreateProcess();
   const tableRef = useRef<HTMLTableElement>(null);
+
+  // Load local time entries once so we can detect linked entries and propagate
+  // renames when managing Procesos Pendientes on this page.
+  useEffect(() => {
+    let cancelled = false;
+    void timeTrackingService.getEntries().then((all) => {
+      if (!cancelled) setLocalEntries(all);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handlePendingSaved = useCallback(async (pendiente: ProcesoPendiente) => {
+    // Rename propagation: if the name changed, update the taskName of linked
+    // entries so the displayed name stays coherent (AC: renombrar propaga).
+    if (editingPending && editingPending.nombre !== pendiente.nombre) {
+      const affected = propagateRename(localEntries, pendiente.id, pendiente.nombre);
+      for (const entry of affected) {
+        await timeTrackingService.updateEntry(entry.id, { taskName: pendiente.nombre });
+      }
+    }
+    setEditingPending(null);
+    setLocalEntries((prev) => propagateRename(prev, pendiente.id, pendiente.nombre));
+    void reloadPending();
+    toast.success('Proceso pendiente actualizado');
+  }, [editingPending, localEntries, reloadPending]);
+
+  const handlePendingDelete = useCallback(async (pendiente: ProcesoPendiente) => {
+    const linked = findEntriesByPendingProcess(localEntries, pendiente.id).filter((e) => !e.synced);
+    if (linked.length === 0) {
+      await removePending(pendiente.id);
+      toast.success('Proceso pendiente eliminado');
+      return;
+    }
+    setDeletingPending(pendiente);
+  }, [localEntries, removePending]);
+
+  const handleReassignConfirm = useCallback(async (assignments: { entryId: string; proceso: Proceso }[]) => {
+    if (!deletingPending) return;
+    for (const { entryId, proceso } of assignments) {
+      await timeTrackingService.updateEntry(entryId, {
+        taskId: proceso.proceso,
+        taskName: proceso.nombre,
+        proceso: { ...proceso, esPendiente: false },
+      });
+    }
+    setLocalEntries((prev) =>
+      prev.map((e) => {
+        const assignment = assignments.find((a) => a.entryId === e.id);
+        return assignment ? { ...e, taskId: assignment.proceso.proceso, taskName: assignment.proceso.nombre, proceso: { ...assignment.proceso, esPendiente: false } } : e;
+      })
+    );
+    await removePending(deletingPending.id);
+    setDeletingPending(null);
+    toast.success('Entradas reasignadas y proceso pendiente eliminado');
+  }, [deletingPending, removePending]);
 
   const filteredProcesses = useMemo(() => {
     if (showAll) return processes;
@@ -136,14 +204,23 @@ export function AvailableTasksPage() {
             Gestioná las tareas disponibles para registrar tiempo
           </p>
         </div>
-        <Button
-          size="sm"
-          className="ml-auto"
-          onClick={() => setIsCreateOpen(true)}
-        >
-          <Plus className="w-4 h-4 mr-1" />
-          Crear tarea
-        </Button>
+        <div className="flex items-center gap-2 ml-auto">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setIsPendingCreateOpen(true)}
+          >
+            <Plus className="w-4 h-4 mr-1" />
+            Crear sin conexión
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => setIsCreateOpen(true)}
+          >
+            <Plus className="w-4 h-4 mr-1" />
+            Crear tarea
+          </Button>
+        </div>
       </div>
 
       {loading ? (
@@ -206,6 +283,51 @@ export function AvailableTasksPage() {
         </div>
       )}
 
+      {pendingProcesses.length > 0 && (
+        <section className="mt-6 space-y-3" aria-label="Procesos pendientes">
+          <div className="flex items-center gap-2">
+            <Tag className="w-4 h-4 text-amber-500" />
+            <h2 className="text-sm font-semibold tracking-tight">Tus Procesos Pendientes</h2>
+            <span className="text-xs text-muted-foreground">
+              {pendingProcesses.length} sin sincronizar
+            </span>
+          </div>
+          <div className="rounded-lg border divide-y">
+            {pendingProcesses.map((p) => (
+              <div key={p.id} className="flex items-center gap-3 px-3 py-2">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{p.nombre}</p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    ID provisional {p.id}
+                    {p.proyectoNombre ? ` · ${p.proyectoNombre}` : ''}
+                    {p.faseNombre ? ` · ${p.faseNombre}` : ''}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setEditingPending(p)}
+                    title="Editar proceso pendiente"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => void handlePendingDelete(p)}
+                    title="Eliminar proceso pendiente"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       <SQLPreviewModal
         open={isCreateOpen}
         onOpenChange={setIsCreateOpen}
@@ -225,6 +347,37 @@ export function AvailableTasksPage() {
           success: false,
           message: (createProcess.error as Error).message,
         } : null}
+      />
+
+      <PendingProcessFormModal
+        open={isPendingCreateOpen}
+        onOpenChange={setIsPendingCreateOpen}
+        onSaved={() => {
+          setIsPendingCreateOpen(false);
+          void reloadPending();
+          toast.success('Proceso pendiente creado');
+        }}
+      />
+
+      <PendingProcessFormModal
+        open={editingPending !== null}
+        onOpenChange={(open) => {
+          if (!open) setEditingPending(null);
+        }}
+        initialData={editingPending}
+        onSaved={handlePendingSaved}
+      />
+
+      <PendingProcessReassignModal
+        open={deletingPending !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeletingPending(null);
+        }}
+        entries={deletingPending ? findEntriesByPendingProcess(localEntries, deletingPending.id).filter((e) => !e.synced) : []}
+        processes={processes}
+        pendingNombre={deletingPending?.nombre ?? ''}
+        pendingId={deletingPending?.id ?? 0}
+        onConfirm={handleReassignConfirm}
       />
     </main>
   );

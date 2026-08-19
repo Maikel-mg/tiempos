@@ -1,5 +1,5 @@
 import type { ProcessOfflineStorage } from '../ProcessOfflineStorage';
-import type { Proceso } from '../../../features/time-tracker/types';
+import type { Proceso, ProcesoPendiente, OfflineProjectSelection } from '../../../features/time-tracker/types';
 import type { Project, ProjectTreeResponse } from '../../../features/projects/types';
 
 /**
@@ -11,6 +11,8 @@ export class InMemoryProcessOfflineStorage implements ProcessOfflineStorage {
   private processesByUser = new Map<string, Proceso[]>();
   private projectsByUser = new Map<string, Project[]>();
   private treesByUser = new Map<string, ProjectTreeResponse>();
+  private offlineSelections = new Map<string, OfflineProjectSelection>();
+  private pendingProcesses = new Map<string, ProcesoPendiente>();
   private lastUpdatedByUser = new Map<string, number>();
 
   async getProcesses(usured: string): Promise<Proceso[]> {
@@ -37,6 +39,42 @@ export class InMemoryProcessOfflineStorage implements ProcessOfflineStorage {
     this.treesByUser.set(this.treeKey(usured, codCli, proyecto), tree);
   }
 
+  async removeProjectTree(usured: string, codCli: string, proyecto: string): Promise<void> {
+    this.treesByUser.delete(this.treeKey(usured, codCli, proyecto));
+  }
+
+  // Offline projects
+  async getOfflineProjectSelections(usured: string): Promise<OfflineProjectSelection[]> {
+    const prefix = this.userPrefix(usured);
+    return [...this.offlineSelections.entries()]
+      .filter(([key]) => key.startsWith(prefix))
+      .map(([, selection]) => selection);
+  }
+
+  async setOfflineProjectSelection(usured: string, selection: OfflineProjectSelection): Promise<void> {
+    this.offlineSelections.set(this.selectionKey(usured, selection.codCli, selection.proyecto), selection);
+  }
+
+  async removeOfflineProjectSelection(usured: string, codCli: string, proyecto: string): Promise<void> {
+    this.offlineSelections.delete(this.selectionKey(usured, codCli, proyecto));
+  }
+
+  // Pending processes
+  async getPendingProcesses(usured: string): Promise<ProcesoPendiente[]> {
+    const prefix = this.userPrefix(usured);
+    return [...this.pendingProcesses.entries()]
+      .filter(([key]) => key.startsWith(prefix))
+      .map(([, pendiente]) => pendiente);
+  }
+
+  async putPendingProcess(usured: string, pendiente: ProcesoPendiente): Promise<void> {
+    this.pendingProcesses.set(this.pendingKey(usured, pendiente.id), pendiente);
+  }
+
+  async removePendingProcess(usured: string, id: number): Promise<void> {
+    this.pendingProcesses.delete(this.pendingKey(usured, id));
+  }
+
   async getLastUpdated(usured: string): Promise<number | null> {
     return this.lastUpdatedByUser.get(usured) ?? null;
   }
@@ -45,7 +83,19 @@ export class InMemoryProcessOfflineStorage implements ProcessOfflineStorage {
     this.lastUpdatedByUser.set(usured, timestamp);
   }
 
+  private userPrefix(usured: string): string {
+    return `${usured}::`;
+  }
+
   private treeKey(usured: string, codCli: string, proyecto: string): string {
     return `${usured}::${codCli}::${proyecto}`;
+  }
+
+  private selectionKey(usured: string, codCli: string, proyecto: string): string {
+    return `${usured}::${codCli}::${proyecto}`;
+  }
+
+  private pendingKey(usured: string, id: number): string {
+    return `${usured}::${id}`;
   }
 }

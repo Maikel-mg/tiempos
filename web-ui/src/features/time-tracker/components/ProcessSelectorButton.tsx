@@ -1,10 +1,13 @@
 import { useState, useMemo, useCallback } from 'react';
-import { ChevronDown, Search, RefreshCw } from 'lucide-react';
+import { ChevronDown, Search, RefreshCw, Plus } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
 import { useProcessCache } from '../hooks/useProcessCache';
+import { usePendingProcesses } from '@/features/pending-process/hooks/usePendingProcesses';
+import { PendingProcessFormModal } from '@/features/pending-process/components/PendingProcessFormModal';
 import type { Proceso } from '../types';
 
 const MY_DEPARTMENT_ID = 5;
@@ -16,11 +19,21 @@ interface ProcessSelectorButtonProps {
   disabled?: boolean;
 }
 
+function matchesSearch(p: Proceso, lower: string): boolean {
+  return (
+    p.nombre.toLowerCase().includes(lower) ||
+    (p.faseNombre ?? '').toLowerCase().includes(lower) ||
+    (p.proyectoNombre ?? '').toLowerCase().includes(lower) ||
+    (p.clienteNombre ?? '').toLowerCase().includes(lower)
+  );
+}
+
 /**
  * Selector de procesos con popover que muestra:
  * - Búsqueda por nombre, fase, proyecto o cliente
- * - Lista completa de procesos desde el hook useProcessCache
- * - Botón de refresh
+ * - Procesos pendientes (ID provisional negativo) SIEMPRE visibles, marcados
+ *   con un badge "Pendiente", y procesos del sistema (filtro departamento)
+ * - Botón de refresh y de creación de un Proceso Pendiente sin conexión
  */
 export function ProcessSelectorButton({
   value,
@@ -29,12 +42,15 @@ export function ProcessSelectorButton({
   disabled,
 }: ProcessSelectorButtonProps) {
   const { processes, loading, error, refresh } = useProcessCache();
+  const { pendingProcesos, reload: reloadPending } = usePendingProcesses();
   const [open, setOpen] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showAllDepartments, setShowAllDepartments] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
 
-  // Filter processes: department first, then search text
+  // Filter system processes: department first, then search text.
+  // Pending processes have no department, so they are always visible.
   const filteredProcesses = useMemo(() => {
     let result = processes;
     if (!showAllDepartments) {
@@ -42,15 +58,16 @@ export function ProcessSelectorButton({
     }
     if (searchText) {
       const lower = searchText.toLowerCase();
-      result = result.filter(p =>
-        p.nombre.toLowerCase().includes(lower) ||
-        (p.faseNombre ?? '').toLowerCase().includes(lower) ||
-        (p.proyectoNombre ?? '').toLowerCase().includes(lower) ||
-        (p.clienteNombre ?? '').toLowerCase().includes(lower)
-      );
+      result = result.filter((p) => matchesSearch(p, lower));
     }
     return result;
   }, [processes, searchText, showAllDepartments]);
+
+  const visiblePending = useMemo(() => {
+    if (!searchText) return pendingProcesos;
+    const lower = searchText.toLowerCase();
+    return pendingProcesos.filter((p) => matchesSearch(p, lower));
+  }, [pendingProcesos, searchText]);
 
   // Handle process selection
   const handleSelect = useCallback((process: Proceso) => {
@@ -79,6 +96,7 @@ export function ProcessSelectorButton({
   }, [disabled]);
 
   return (
+    <>
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button
@@ -139,29 +157,77 @@ export function ProcessSelectorButton({
             <p className="p-4 text-sm text-muted-foreground text-center">Cargando...</p>
           ) : error ? (
             <p className="p-4 text-sm text-destructive text-center">{error}</p>
-          ) : filteredProcesses.length === 0 ? (
+          ) : visiblePending.length === 0 && filteredProcesses.length === 0 ? (
             <p className="p-4 text-sm text-muted-foreground text-center">
               {searchText ? 'No se encontraron procesos' : 'No hay procesos disponibles'}
             </p>
           ) : (
-            filteredProcesses.map((process) => (
-              <button
-                key={process.proceso}
-                className="w-full px-3 py-2 text-left hover:bg-muted transition-colors flex flex-col gap-0.5"
-                onClick={() => handleSelect(process)}
-              >
-                <span className="font-medium truncate">{process.nombre}</span>
-                <span className="text-xs text-muted-foreground">
-                  ID: {process.proceso}
-                  {process.faseNombre && ` · ${process.faseNombre}`}
-                  {process.proyectoNombre && ` · ${process.proyectoNombre}`}
-                  {process.clienteNombre && ` · ${process.clienteNombre}`}
-                </span>
-              </button>
-            ))
+            <>
+              {visiblePending.map((process) => (
+                <button
+                  key={process.proceso}
+                  className="w-full px-3 py-2 text-left hover:bg-muted transition-colors flex flex-col gap-0.5"
+                  onClick={() => handleSelect(process)}
+                >
+                  <span className="flex items-center gap-2">
+                    <span className="font-medium truncate">{process.nombre}</span>
+                    <Badge variant="warning" className="shrink-0">Pendiente</Badge>
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    ID provisional: {process.proceso}
+                    {process.faseNombre && ` · ${process.faseNombre}`}
+                    {process.proyectoNombre && ` · ${process.proyectoNombre}`}
+                    {process.clienteNombre && ` · ${process.clienteNombre}`}
+                  </span>
+                </button>
+              ))}
+              {visiblePending.length > 0 && filteredProcesses.length > 0 && (
+                <div className="px-3 pt-2 pb-1 text-[11px] uppercase tracking-wide text-muted-foreground">
+                  Procesos del sistema
+                </div>
+              )}
+              {filteredProcesses.map((process) => (
+                <button
+                  key={process.proceso}
+                  className="w-full px-3 py-2 text-left hover:bg-muted transition-colors flex flex-col gap-0.5"
+                  onClick={() => handleSelect(process)}
+                >
+                  <span className="font-medium truncate">{process.nombre}</span>
+                  <span className="text-xs text-muted-foreground">
+                    ID: {process.proceso}
+                    {process.faseNombre && ` · ${process.faseNombre}`}
+                    {process.proyectoNombre && ` · ${process.proyectoNombre}`}
+                    {process.clienteNombre && ` · ${process.clienteNombre}`}
+                  </span>
+                </button>
+              ))}
+            </>
           )}
+        </div>
+
+        {/* Footer: create pending process */}
+        <div className="p-2 border-t">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start text-primary"
+            onClick={() => setCreateOpen(true)}
+          >
+            <Plus className="w-4 h-4 mr-1" />
+            Crear proceso sin conexión
+          </Button>
         </div>
       </PopoverContent>
     </Popover>
+
+    <PendingProcessFormModal
+      open={createOpen}
+      onOpenChange={setCreateOpen}
+      onSaved={() => {
+        setCreateOpen(false);
+        void reloadPending();
+      }}
+    />
+    </>
   );
 }

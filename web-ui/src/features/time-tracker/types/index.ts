@@ -5,8 +5,8 @@ export interface Proceso {
   faseId?: number;
   /** Nombre de la fase a la que pertenece el proceso */
   faseNombre?: string;
-  /** ID del proyecto al que pertenece el proceso */
-  proyectoId?: number;
+  /** ID del proyecto al que pertenece el proceso (número real, o CodCli string para procesos pendientes) */
+  proyectoId?: number | string;
   /** Nombre del proyecto al que pertenece el proceso */
   proyectoNombre?: string;
   /** ID del cliente al que pertenece el proyecto */
@@ -19,6 +19,58 @@ export interface Proceso {
   departamentoNombre?: string;
   /** ID de la disciplina */
   disciplinaId?: number;
+  /** true si es un Proceso Pendiente (ID provisional local) */
+  esPendiente?: boolean;
+  /** true si pertenece a un Proyecto Offline marcado */
+  esProyectoOffline?: boolean;
+  /** ID provisional del registro de Proceso Pendiente (cuando esPendiente) */
+  procesoPendienteId?: number;
+}
+
+/**
+ * Proceso Pendiente: proceso creado offline con un ID provisional local
+ * (entero negativo, p.ej. -1, -2...) que el backend asignará al sincronizar.
+ */
+export interface ProcesoPendiente {
+  /** ID provisional local (entero negativo, p.ej. -1, -2...) */
+  id: number;
+  nombre: string;
+  faseId?: number;
+  faseNombre?: string;
+  /** CodCli del proyecto */
+  proyectoId?: string;
+  proyectoNombre?: string;
+  clienteId?: string;
+  clienteNombre?: string;
+  minutos: number;
+  /** YYYY-MM-DD */
+  fechaInicio?: string;
+  /** YYYY-MM-DD */
+  fechaFin?: string;
+  /** YYYY-MM-DD */
+  fechaEstimacion?: string;
+  /** ms */
+  createdAt: number;
+  /** ms */
+  updatedAt: number;
+}
+
+/** Estado de sincronización de un Proyecto Offline marcado. */
+export type OfflineProjectStatus = 'sincronizado' | 'pendiente';
+
+/**
+ * Registro de qué proyectos marcó el usuario como offline y su estado.
+ * La caché del árbol del proyecto vive en offlineTree; esto SOLO registra
+ * el marcado (y si el proyecto está sincronizado o pendiente de refrescar).
+ */
+export interface OfflineProjectSelection {
+  codCli: string;
+  proyecto: string;
+  nomProy: string;
+  nomCliente: string;
+  status: OfflineProjectStatus;
+  /** ms */
+  markedAt: number;
 }
 
 export interface TimeEntry {

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MemoryRouter, useNavigate } from 'react-router-dom';
@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ProjectsPage } from '../ProjectsPage';
 import { useProjects } from '@/features/projects/hooks/use-projects';
 import type { Project } from '@/features/projects/types';
+import type { OfflineProjectSelection } from '@/features/time-tracker/types';
 
 vi.mock('@/features/projects/hooks/use-projects');
 vi.mock('react-router-dom', async () => {
@@ -15,6 +16,31 @@ vi.mock('react-router-dom', async () => {
     useNavigate: vi.fn(),
   };
 });
+
+const mockWizardGet = vi.fn();
+const mockGetOfflineProjectSelections = vi.fn();
+const mockMarkProjectOffline = vi.fn();
+const mockRemoveProjectOffline = vi.fn();
+const mockSetOfflineProjectStatus = vi.fn();
+const mockGetProjectTree = vi.fn();
+
+vi.mock('@/features/time-tracker/services/ProcessOfflineService', () => ({
+  processOfflineService: {
+    getOfflineProjectSelections: (...args: unknown[]) => mockGetOfflineProjectSelections(...args),
+    markProjectOffline: (...args: unknown[]) => mockMarkProjectOffline(...args),
+    removeProjectOffline: (...args: unknown[]) => mockRemoveProjectOffline(...args),
+    setOfflineProjectStatus: (...args: unknown[]) => mockSetOfflineProjectStatus(...args),
+    getProjectTree: (...args: unknown[]) => mockGetProjectTree(...args),
+  },
+}));
+
+vi.mock('@/config/stores', () => ({
+  wizardConfig: {
+    get: () => mockWizardGet(),
+    subscribe: () => () => undefined,
+  },
+  dbConfig: { get: () => null },
+}));
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false } },
@@ -244,5 +270,152 @@ describe('ProjectsPage keyboard navigation', () => {
     await user.keyboard('{PageDown}');
     // PageUp should not crash
     await user.keyboard('{PageUp}');
+  });
+});
+
+describe('ProjectsPage offline toggles', () => {
+  const selectionPendiente: OfflineProjectSelection = {
+    codCli: '1',
+    proyecto: 'P1',
+    nomProy: 'Project One',
+    nomCliente: 'Client One',
+    status: 'pendiente',
+    markedAt: 1000,
+  };
+
+  const selectionSincronizado: OfflineProjectSelection = {
+    ...selectionPendiente,
+    status: 'sincronizado',
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockWizardGet.mockReturnValue({ usuario: 'MG01' });
+    mockGetOfflineProjectSelections.mockResolvedValue([]);
+    mockMarkProjectOffline.mockImplementation((_usured: string, input: { codCli: string; proyecto: string }) =>
+      Promise.resolve({
+        codCli: input.codCli,
+        proyecto: input.proyecto,
+        nomProy: 'Project One',
+        nomCliente: 'Client One',
+        status: 'pendiente' as const,
+        markedAt: Date.now(),
+      })
+    );
+    mockRemoveProjectOffline.mockResolvedValue(undefined);
+    mockSetOfflineProjectStatus.mockResolvedValue(undefined);
+  });
+
+  function mockProjectsQuery() {
+    vi.mocked(useProjects).mockReturnValue({
+      data: mockProjects,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    } as any);
+  }
+
+  it('renders a "Disponible offline" toggle for each project row', async () => {
+    mockProjectsQuery();
+
+    renderWithProviders(<ProjectsPage />);
+
+    expect(await screen.findAllByRole('switch')).toHaveLength(2);
+  });
+
+  it('marks a project and shows "Sincronizado" when the tree refresh succeeds', async () => {
+    mockProjectsQuery();
+    mockGetProjectTree.mockResolvedValue({
+      cliente: { codCli: 1, cliente: 'C1', nomCliente: 'Client One' },
+      proyecto: { codCli: 1, proyecto: 1, nomProy: 'Project One', cerrado: false, cmmi: false, esCM: false, esPET: false },
+      disciplinas: [],
+    });
+    mockGetOfflineProjectSelections
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([selectionSincronizado]);
+
+    renderWithProviders(<ProjectsPage />);
+
+    await screen.findAllByRole('switch');
+    // Let the mount load resolve so the switch nodes are stable before clicking.
+    await act(async () => {});
+
+    await userEvent.setup().click(screen.getAllByRole('switch')[0]);
+
+    expect(await screen.findByText('Sincronizado')).toBeInTheDocument();
+    expect(mockMarkProjectOffline).toHaveBeenCalledWith('MG01', {
+      codCli: '1',
+      proyecto: 'P1',
+      nomProy: 'Project One',
+      nomCliente: 'Client One',
+    });
+    expect(mockGetProjectTree).toHaveBeenCalledWith('MG01', '1', 'P1', { refresh: true });
+    expect(mockSetOfflineProjectStatus).toHaveBeenCalledWith('MG01', '1', 'P1', 'sincronizado');
+  });
+
+  it('marks a project and keeps "Pendiente de sincronizar" when the tree refresh fails (offline)', async () => {
+    mockProjectsQuery();
+    mockGetProjectTree.mockRejectedValue(new Error('Network failure'));
+    mockGetOfflineProjectSelections
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([selectionPendiente]);
+
+    renderWithProviders(<ProjectsPage />);
+
+    await screen.findAllByRole('switch');
+    await act(async () => {});
+
+    await userEvent.setup().click(screen.getAllByRole('switch')[0]);
+
+    expect(await screen.findByText('Pendiente de sincronizar')).toBeInTheDocument();
+    expect(mockSetOfflineProjectStatus).not.toHaveBeenCalled();
+  });
+
+  it('unmarks a project calling removeProjectOffline and reflects the state', async () => {
+    mockProjectsQuery();
+    mockGetOfflineProjectSelections
+      .mockResolvedValueOnce([selectionPendiente])
+      .mockResolvedValueOnce([]);
+
+    renderWithProviders(<ProjectsPage />);
+
+    await screen.findAllByRole('switch');
+    await act(async () => {});
+    const firstToggle = screen.getAllByRole('switch')[0];
+    expect(firstToggle).toBeChecked();
+
+    await userEvent.setup().click(firstToggle);
+
+    expect(mockRemoveProjectOffline).toHaveBeenCalledWith('MG01', '1', 'P1');
+    await waitFor(() => {
+      expect(screen.getAllByRole('switch')[0]).not.toBeChecked();
+    });
+    expect(screen.queryByText('Pendiente de sincronizar')).toBeNull();
+  });
+
+  it('persists the offline state across page reloads (selections loaded from storage)', async () => {
+    mockProjectsQuery();
+    mockGetOfflineProjectSelections.mockResolvedValue([selectionSincronizado]);
+
+    renderWithProviders(<ProjectsPage />);
+
+    await screen.findAllByRole('switch');
+    await waitFor(() => {
+      expect(screen.getAllByRole('switch')[0]).toBeChecked();
+    });
+    expect(screen.getByText('Sincronizado')).toBeInTheDocument();
+  });
+
+  it('disables the toggles when no usuario is configured', async () => {
+    mockWizardGet.mockReturnValue({ usuario: '' });
+    mockProjectsQuery();
+
+    renderWithProviders(<ProjectsPage />);
+
+    const switches = await screen.findAllByRole('switch');
+    expect(switches).toHaveLength(2);
+    for (const toggle of switches) {
+      expect(toggle).toBeDisabled();
+    }
   });
 });

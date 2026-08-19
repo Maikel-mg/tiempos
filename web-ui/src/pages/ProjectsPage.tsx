@@ -3,11 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { FolderKanban } from 'lucide-react';
 import { ProjectsTable } from '@/features/projects/components/ProjectsTable';
 import { useProjects } from '@/features/projects/hooks/use-projects';
+import { useOfflineProjects } from '@/features/projects/hooks/use-offline-projects';
 import { useTableKeyboardNavigation } from '@/hooks/useTableKeyboardNavigation';
 import type { Project } from '@/features/projects/types';
 
 export function ProjectsPage() {
   const { data, isLoading, error, refetch } = useProjects();
+  const offline = useOfflineProjects();
   const navigate = useNavigate();
   const tableRef = useRef<HTMLTableElement>(null);
 
@@ -58,6 +60,12 @@ export function ProjectsPage() {
         activeIndex={activeIndex}
         getRowProps={getRowProps}
         tableRef={tableRef}
+        offlineSelections={offline.selections}
+        offlineMarking={offline.marking}
+        offlineDisabled={!offline.usuarioConfigured}
+        onOfflineToggle={(project, mark) =>
+          mark ? offline.markProject(project) : offline.removeProject(project)
+        }
       />
     </main>
   );

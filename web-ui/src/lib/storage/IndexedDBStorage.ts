@@ -1,6 +1,6 @@
 import Dexie, { type Table, type Transaction } from 'dexie';
 import type { StorageStrategy } from './StorageStrategy';
-import type { TimeEntry, TimerState, Proceso } from '../../features/time-tracker/types';
+import type { TimeEntry, TimerState, Proceso, OfflineProjectSelection, ProcesoPendiente } from '../../features/time-tracker/types';
 import type { Project, ProjectTreeResponse } from '../../features/projects/types';
 
 /**
@@ -41,6 +41,26 @@ export interface OfflineTreeRow {
 export interface OfflineMetaRow {
   usured: string;
   lastUpdated: number;
+}
+
+/**
+ * Fila de la tabla offlineProjectSelections: registro de qué proyectos marcó el
+ * usuario como offline y su estado. La primary key es `${usured}::${codCli}::${proyecto}`.
+ */
+export interface OfflineProjectSelectionRow {
+  key: string;
+  usured: string;
+  selection: OfflineProjectSelection;
+}
+
+/**
+ * Fila de la tabla pendingProcesses: un Proceso Pendiente por usuario.
+ * La primary key es `${usured}::${id}` (id provisional local negativo).
+ */
+export interface PendingProcessRow {
+  key: string;
+  usured: string;
+  pendiente: ProcesoPendiente;
 }
 
 /**
@@ -93,6 +113,18 @@ export async function migrateToV4(tx: Transaction): Promise<{ created: boolean }
 }
 
 /**
+ * Migración v4→v5: crea las tablas de Proyectos Offline marcados
+ * (offlineProjectSelections) y Procesos Pendientes (pendingProcesses). Es un
+ * cambio de solo esquema: las tablas nuevas se crean automáticamente al
+ * declarar la versión 5. La función existe para registrar el resultado en
+ * migrationMeta, consistente con las migraciones v2/v3/v4.
+ */
+export async function migrateToV5(tx: Transaction): Promise<{ created: boolean }> {
+  await tx.table('migrationMeta').get('v5_migration');
+  return { created: true };
+}
+
+/**
  * Migración v2→v3: agrega campo recoverable a entradas existentes.
  * Entradas sin el campo quedan con recoverable: false.
  */
@@ -124,6 +156,8 @@ class TimeTrackerDB extends Dexie {
   offlineProjects!: Table<OfflineProjectRow, string>;
   offlineTree!: Table<OfflineTreeRow, string>;
   offlineMeta!: Table<OfflineMetaRow, string>;
+  offlineProjectSelections!: Table<OfflineProjectSelectionRow, string>;
+  pendingProcesses!: Table<PendingProcessRow, string>;
 
   constructor() {
     super('TimeTrackerDB');
@@ -170,6 +204,24 @@ class TimeTrackerDB extends Dexie {
     }).upgrade(async (tx) => {
       const result = await migrateToV4(tx);
       await tx.table('migrationMeta').put({ key: 'v4_migration', value: result });
+      return result;
+    });
+
+    this.version(5).stores({
+      timeEntries: 'id, taskId, date, startTime, endTime, synced, createdAt, serverId, recoverable',
+      timerState: 'id',
+      processes: 'proceso, nombre, faseNombre, proyectoNombre, clienteNombre',
+      processRecents: 'proceso, lastUsedAt',
+      migrationMeta: 'key',
+      offlineProcesses: 'key, usured, proceso',
+      offlineProjects: 'key, usured',
+      offlineTree: 'key, usured, codCli, proyecto',
+      offlineMeta: 'usured',
+      offlineProjectSelections: 'key, usured',
+      pendingProcesses: 'key, usured',
+    }).upgrade(async (tx) => {
+      const result = await migrateToV5(tx);
+      await tx.table('migrationMeta').put({ key: 'v5_migration', value: result });
       return result;
     });
   }

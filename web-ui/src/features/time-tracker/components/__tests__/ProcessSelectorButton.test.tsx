@@ -9,18 +9,40 @@ import type { Proceso } from '../../types';
 
 const mockRefresh = vi.fn();
 const mockUseProcessCache = vi.fn();
+const mockUsePendingProcesses = vi.fn();
 
 vi.mock('../../hooks/useProcessCache', () => ({
   useProcessCache: () => mockUseProcessCache(),
 }));
 
+vi.mock('@/features/pending-process/hooks/usePendingProcesses', () => ({
+  usePendingProcesses: () => mockUsePendingProcesses(),
+}));
+
+vi.mock('@/features/pending-process/components/PendingProcessFormModal', () => ({
+  PendingProcessFormModal: ({ open, onOpenChange }: any) =>
+    open ? <div data-testid="pending-form-modal"><button onClick={() => onOpenChange(false)}>Close</button></div> : null,
+}));
+
 // ── Test data ────────────────────────────────────────────────────────────────
 
 const SEED_PROCESSES: Proceso[] = [
-  { proceso: 101, nombre: 'Desarrollo Frontend', faseNombre: 'Fase Construcción', proyectoNombre: 'Proyecto Alpha', clienteNombre: 'Acme Corp' },
-  { proceso: 102, nombre: 'Desarrollo Backend', faseNombre: 'Fase Construcción', proyectoNombre: 'Proyecto Alpha', clienteNombre: 'Acme Corp' },
-  { proceso: 201, nombre: 'Testing Unitario', faseNombre: 'Fase Testing', proyectoNombre: 'Proyecto Alpha', clienteNombre: 'Acme Corp' },
-  { proceso: 301, nombre: 'Diseño UX', faseNombre: 'Fase Diseño', proyectoNombre: 'Proyecto Beta', clienteNombre: 'Beta Inc' },
+  { proceso: 101, nombre: 'Desarrollo Frontend', faseNombre: 'Fase Construcción', proyectoNombre: 'Proyecto Alpha', clienteNombre: 'Acme Corp', departamentoId: 5 },
+  { proceso: 102, nombre: 'Desarrollo Backend', faseNombre: 'Fase Construcción', proyectoNombre: 'Proyecto Alpha', clienteNombre: 'Acme Corp', departamentoId: 5 },
+  { proceso: 201, nombre: 'Testing Unitario', faseNombre: 'Fase Testing', proyectoNombre: 'Proyecto Alpha', clienteNombre: 'Acme Corp', departamentoId: 5 },
+  { proceso: 301, nombre: 'Diseño UX', faseNombre: 'Fase Diseño', proyectoNombre: 'Proyecto Beta', clienteNombre: 'Beta Inc', departamentoId: 5 },
+];
+
+const SEED_PENDING: Proceso[] = [
+  {
+    proceso: -1,
+    nombre: 'Pendiente Alpha',
+    faseNombre: 'Fase Construcción',
+    proyectoNombre: 'Proyecto Alpha',
+    clienteNombre: 'Acme Corp',
+    esPendiente: true,
+    procesoPendienteId: -1,
+  },
 ];
 
 function setupMockProcesses(processes: Proceso[] = SEED_PROCESSES, loading = false, error: string | null = null) {
@@ -29,6 +51,16 @@ function setupMockProcesses(processes: Proceso[] = SEED_PROCESSES, loading = fal
     loading,
     error,
     refresh: mockRefresh,
+  });
+  mockUsePendingProcesses.mockReturnValue({
+    pendingProcesos: [],
+    pendingProcesses: [],
+    loading: false,
+    error: null,
+    reload: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    remove: vi.fn(),
   });
 }
 
@@ -396,5 +428,126 @@ describe('ProcessSelectorButton', () => {
 
     const button = screen.getByRole('button', { name: /seleccionar proceso/i });
     expect(button.className).toContain('w-full');
+  });
+
+  describe('procesos pendientes', () => {
+    it('shows pending processes alongside system processes with a Pendiente badge', async () => {
+      const user = userEvent.setup();
+      setupMockProcesses();
+      mockUsePendingProcesses.mockReturnValue({
+        pendingProcesos: SEED_PENDING,
+        pendingProcesses: [],
+        loading: false,
+        error: null,
+        reload: vi.fn(),
+        create: vi.fn(),
+        update: vi.fn(),
+        remove: vi.fn(),
+      });
+
+      render(
+        <ProcessSelectorButton
+          value={null}
+          onChange={vi.fn()}
+        />
+      );
+
+      await user.click(screen.getByRole('button', { name: /seleccionar proceso/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText('Pendiente Alpha')).toBeInTheDocument();
+      });
+
+      expect(screen.getByText('Desarrollo Frontend')).toBeInTheDocument();
+      expect(screen.getAllByText('Pendiente').length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('keeps pending processes visible even when the department filter is on', async () => {
+      const user = userEvent.setup();
+      setupMockProcesses();
+      mockUsePendingProcesses.mockReturnValue({
+        pendingProcesos: SEED_PENDING,
+        pendingProcesses: [],
+        loading: false,
+        error: null,
+        reload: vi.fn(),
+        create: vi.fn(),
+        update: vi.fn(),
+        remove: vi.fn(),
+      });
+
+      render(
+        <ProcessSelectorButton
+          value={null}
+          onChange={vi.fn()}
+        />
+      );
+
+      await user.click(screen.getByRole('button', { name: /seleccionar proceso/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText('Pendiente Alpha')).toBeInTheDocument();
+      });
+
+      expect(screen.getByText('Desarrollo Frontend')).toBeInTheDocument();
+    });
+
+    it('selecting a pending process calls onChange with a negative proceso id', async () => {
+      const user = userEvent.setup();
+      setupMockProcesses();
+      mockUsePendingProcesses.mockReturnValue({
+        pendingProcesos: SEED_PENDING,
+        pendingProcesses: [],
+        loading: false,
+        error: null,
+        reload: vi.fn(),
+        create: vi.fn(),
+        update: vi.fn(),
+        remove: vi.fn(),
+      });
+      const onChange = vi.fn();
+
+      render(
+        <ProcessSelectorButton
+          value={null}
+          onChange={onChange}
+        />
+      );
+
+      await user.click(screen.getByRole('button', { name: /seleccionar proceso/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText('Pendiente Alpha')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByText('Pendiente Alpha'));
+
+      expect(onChange).toHaveBeenCalledWith(
+        expect.objectContaining({ proceso: -1, esPendiente: true, procesoPendienteId: -1 })
+      );
+    });
+
+    it('opens the pending process form modal from the create button', async () => {
+      const user = userEvent.setup();
+      setupMockProcesses();
+
+      render(
+        <ProcessSelectorButton
+          value={null}
+          onChange={vi.fn()}
+        />
+      );
+
+      await user.click(screen.getByRole('button', { name: /seleccionar proceso/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText('Desarrollo Frontend')).toBeInTheDocument();
+      });
+
+      const createButton = screen.getByRole('button', { name: /crear proceso sin conexión/i });
+      await user.click(createButton);
+
+      expect(screen.getByTestId('pending-form-modal')).toBeInTheDocument();
+    });
   });
 });

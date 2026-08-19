@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import '@testing-library/jest-dom';
@@ -46,6 +46,32 @@ vi.mock('@/features/process-management/mutations/useCreateProcess', () => ({
     data: null,
     error: null,
   })),
+}));
+
+vi.mock('@/features/pending-process/components/PendingProcessFormModal', () => ({
+  PendingProcessFormModal: ({ open, onOpenChange, defaultNombre, defaultMinutos, onSaved }: any) => {
+    if (!open) return null;
+    return (
+      <div data-testid="pending-form-modal">
+        <span data-testid="pp-default-nombre">{defaultNombre}</span>
+        <span data-testid="pp-default-minutos">{String(defaultMinutos)}</span>
+        <button onClick={() => onOpenChange(false)}>Close</button>
+        <button
+          onClick={() =>
+            onSaved?.({
+              id: -1,
+              nombre: defaultNombre,
+              minutos: defaultMinutos,
+              createdAt: 1000,
+              updatedAt: 1000,
+            })
+          }
+        >
+          Save pending
+        </button>
+      </div>
+    );
+  },
 }));
 
 describe('TaskProposalModal', () => {
@@ -386,5 +412,97 @@ describe('TaskProposalModal', () => {
       />
     );
     expect(screen.queryByText('Seleccionar ID de Tarea')).not.toBeInTheDocument();
+  });
+
+  describe('Crear proceso sin conexión', () => {
+    const mockOnCreatePending = vi.fn();
+
+    beforeEach(() => {
+      mockOnCreatePending.mockReset();
+    });
+
+    it('renders a "Crear sin conexión" button for each proposal row', () => {
+      render(
+        <TaskProposalModal
+          open={true}
+          onOpenChange={() => {}}
+          proposals={mockProposals}
+          onAccept={mockOnAccept}
+          onCreatePending={mockOnCreatePending}
+          config={mockConfig}
+        />
+      );
+
+      const buttons = screen.getAllByRole('button', { name: /crear sin conexión/i });
+      expect(buttons).toHaveLength(mockProposals.length);
+    });
+
+    it('opens the pending form modal prefilled with the suggested name and minutes', async () => {
+      const user = userEvent.setup();
+      render(
+        <TaskProposalModal
+          open={true}
+          onOpenChange={() => {}}
+          proposals={mockProposals}
+          onAccept={mockOnAccept}
+          onCreatePending={mockOnCreatePending}
+          config={mockConfig}
+        />
+      );
+
+      const createButtons = screen.getAllByRole('button', { name: /crear sin conexión/i });
+      await user.click(createButtons[0]);
+
+      expect(screen.getByTestId('pending-form-modal')).toBeInTheDocument();
+      // Proposal 0: totalHours=12 → minutos = round(12*60) = 720
+      expect(screen.getByTestId('pp-default-nombre')).toHaveTextContent(mockProposals[0].proposedName);
+      expect(screen.getByTestId('pp-default-minutos')).toHaveTextContent('720');
+    });
+
+    it('calls onCreatePending with the proposal and the created pending process on save', async () => {
+      const user = userEvent.setup();
+      render(
+        <TaskProposalModal
+          open={true}
+          onOpenChange={() => {}}
+          proposals={mockProposals}
+          onAccept={mockOnAccept}
+          onCreatePending={mockOnCreatePending}
+          config={mockConfig}
+        />
+      );
+
+      const createButtons = screen.getAllByRole('button', { name: /crear sin conexión/i });
+      await user.click(createButtons[0]);
+      fireEvent.click(screen.getByRole('button', { name: /save pending/i, hidden: true }));
+
+      expect(mockOnCreatePending).toHaveBeenCalledWith(
+        mockProposals[0],
+        expect.objectContaining({
+          id: -1,
+          nombre: mockProposals[0].proposedName,
+          minutos: 720,
+        })
+      );
+    });
+
+    it('does not call onCreatePending when the callback is not provided', async () => {
+      const user = userEvent.setup();
+      render(
+        <TaskProposalModal
+          open={true}
+          onOpenChange={() => {}}
+          proposals={mockProposals}
+          onAccept={mockOnAccept}
+          config={mockConfig}
+        />
+      );
+
+      const createButtons = screen.getAllByRole('button', { name: /crear sin conexión/i });
+      await user.click(createButtons[0]);
+      fireEvent.click(screen.getByRole('button', { name: /save pending/i, hidden: true }));
+
+      expect(mockOnCreatePending).not.toHaveBeenCalled();
+    });
   });
 });

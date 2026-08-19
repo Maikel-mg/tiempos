@@ -45,3 +45,11 @@ declare module '@/components/ui/sheet' {
   export const SheetTitle: React.ComponentType<any>
   export const SheetDescription: React.ComponentType<any>
 }
+
+declare module '@/components/ui/tooltip' {
+  import * as React from 'react'
+  export const Tooltip: React.ComponentType<any>
+  export const TooltipProvider: React.ComponentType<any>
+  export const TooltipTrigger: React.ComponentType<any>
+  export const TooltipContent: React.ComponentType<any>
+}

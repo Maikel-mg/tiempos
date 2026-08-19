@@ -1,6 +1,6 @@
 import { db } from './IndexedDBStorage';
 import type { ProcessOfflineStorage } from './ProcessOfflineStorage';
-import type { Proceso } from '../../features/time-tracker/types';
+import type { OfflineProjectSelection, Proceso, ProcesoPendiente } from '../../features/time-tracker/types';
 import type { Project, ProjectTreeResponse } from '../../features/projects/types';
 
 function processKey(usured: string, proceso: number): string {
@@ -13,6 +13,14 @@ function projectKey(usured: string, proyecto: Project): string {
 
 function treeKey(usured: string, codCli: string, proyecto: string): string {
   return `${usured}::${codCli}::${proyecto}`;
+}
+
+function selectionKey(usured: string, codCli: string, proyecto: string): string {
+  return `${usured}::${codCli}::${proyecto}`;
+}
+
+function pendingKey(usured: string, id: number): string {
+  return `${usured}::${id}`;
 }
 
 /**
@@ -84,6 +92,46 @@ export class IndexedDBProcessOfflineStorage implements ProcessOfflineStorage {
       proyecto,
       tree,
     });
+  }
+
+  async removeProjectTree(usured: string, codCli: string, proyecto: string): Promise<void> {
+    await db.offlineTree.delete(treeKey(usured, codCli, proyecto));
+  }
+
+  // Offline projects (marcado por el usuario)
+  async getOfflineProjectSelections(usured: string): Promise<OfflineProjectSelection[]> {
+    const rows = await db.offlineProjectSelections.where('usured').equals(usured).toArray();
+    return rows.map((row) => row.selection);
+  }
+
+  async setOfflineProjectSelection(usured: string, selection: OfflineProjectSelection): Promise<void> {
+    await db.offlineProjectSelections.put({
+      key: selectionKey(usured, selection.codCli, selection.proyecto),
+      usured,
+      selection,
+    });
+  }
+
+  async removeOfflineProjectSelection(usured: string, codCli: string, proyecto: string): Promise<void> {
+    await db.offlineProjectSelections.delete(selectionKey(usured, codCli, proyecto));
+  }
+
+  // Pending processes
+  async getPendingProcesses(usured: string): Promise<ProcesoPendiente[]> {
+    const rows = await db.pendingProcesses.where('usured').equals(usured).toArray();
+    return rows.map((row) => row.pendiente);
+  }
+
+  async putPendingProcess(usured: string, pendiente: ProcesoPendiente): Promise<void> {
+    await db.pendingProcesses.put({
+      key: pendingKey(usured, pendiente.id),
+      usured,
+      pendiente,
+    });
+  }
+
+  async removePendingProcess(usured: string, id: number): Promise<void> {
+    await db.pendingProcesses.delete(pendingKey(usured, id));
   }
 
   // Metadata

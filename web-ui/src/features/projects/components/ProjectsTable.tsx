@@ -3,7 +3,9 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { DataTable, ColumnDef } from '@/components/ui/data-table';
 import { Loader2, RefreshCw, AlertCircle, Inbox } from 'lucide-react';
+import { OfflineProjectToggle } from './OfflineProjectToggle';
 import type { Project } from '../types';
+import type { OfflineProjectSelection } from '@/features/time-tracker/types';
 import type { RefObject } from 'react';
 
 export interface ProjectsTableProps {
@@ -15,6 +17,10 @@ export interface ProjectsTableProps {
   activeIndex?: number;
   getRowProps?: (index: number) => Record<string, unknown>;
   tableRef?: RefObject<HTMLTableElement>;
+  offlineSelections?: OfflineProjectSelection[];
+  offlineMarking?: Record<string, boolean>;
+  offlineDisabled?: boolean;
+  onOfflineToggle?: (project: Project, mark: boolean) => void;
 }
 
 export function ProjectsTable({
@@ -26,6 +32,10 @@ export function ProjectsTable({
   activeIndex,
   getRowProps,
   tableRef,
+  offlineSelections = [],
+  offlineMarking = {},
+  offlineDisabled = false,
+  onOfflineToggle,
 }: ProjectsTableProps) {
   const navigate = useNavigate();
 
@@ -111,6 +121,25 @@ export function ProjectsTable({
       accessorKey: 'UsuredRespRev',
       header: 'Responsable',
       cell: ({ row }) => <span>{row.getValue('UsuredRespRev')}</span>
+    },
+    {
+      id: 'offline',
+      header: 'Disponible offline',
+      cell: ({ row }) => {
+        const project = row.original;
+        const selection = offlineSelections.find(
+          (s) => s.codCli === project.CodCli && s.proyecto === project.Proyecto
+        );
+        return (
+          <OfflineProjectToggle
+            project={project}
+            selection={selection}
+            marking={offlineMarking[`${project.CodCli}-${project.Proyecto}`]}
+            disabled={offlineDisabled}
+            onToggle={(mark) => onOfflineToggle?.(project, mark)}
+          />
+        );
+      }
     }
   ];
 

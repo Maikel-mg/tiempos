@@ -1,11 +1,84 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AvailableTasksPage } from '../AvailableTasksPage';
 import { useProcessCache } from '../../hooks/useProcessCache';
-import type { Proceso } from '../../types';
+import type { Proceso, ProcesoPendiente } from '../../types';
 
 // ── Mocks ────────────────────────────────────────────────────────────────────
+
+const {
+  mockCreatePendingProcess,
+  mockReloadPending,
+  mockUsePendingProcesses,
+  mockToast,
+} = vi.hoisted(() => ({
+  mockCreatePendingProcess: vi.fn(),
+  mockReloadPending: vi.fn(),
+  mockUsePendingProcesses: vi.fn(),
+  mockToast: {
+    success: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+    warning: vi.fn(),
+  },
+}));
+
+vi.mock('@/features/time-tracker/services/ProcessOfflineService', () => ({
+  processOfflineService: {
+    createPendingProcess: (...args: unknown[]) => mockCreatePendingProcess(...args),
+    getPendingProcesses: vi.fn().mockResolvedValue([]),
+    getPendingProcessesAsProcesos: vi.fn().mockResolvedValue([]),
+  },
+}));
+
+vi.mock('@/features/pending-process/hooks/usePendingProcesses', () => ({
+  usePendingProcesses: () => mockUsePendingProcesses(),
+}));
+
+vi.mock('@/features/pending-process/components/PendingProcessFormModal', () => ({
+  PendingProcessFormModal: ({ open, onSaved, initialData }: any) => {
+    if (!open) return null;
+    return (
+      <div data-testid="pending-form-modal">
+        <span data-testid="pending-form-initial-id">{initialData?.id ?? ''}</span>
+        <button
+          onClick={() => {
+            void mockCreatePendingProcess('test', { nombre: 'Pendiente Nuevo', minutos: 60 }).then((created: unknown) =>
+              onSaved?.(created)
+            );
+          }}
+        >
+          Guardar pendiente
+        </button>
+      </div>
+    );
+  },
+}));
+
+vi.mock('@/features/pending-process/components/PendingProcessReassignModal', () => ({
+  PendingProcessReassignModal: ({ open, onConfirm, entries }: any) => {
+    if (!open) return null;
+    return (
+      <div data-testid="reassign-modal">
+        <span data-testid="reassign-entry-count">{entries.length}</span>
+        <button onClick={() => onConfirm([])}>Confirmar</button>
+      </div>
+    );
+  },
+}));
+
+vi.mock('../../services/timeTrackingService', () => ({
+  timeTrackingService: {
+    getEntries: vi.fn().mockResolvedValue([]),
+    updateEntry: vi.fn().mockResolvedValue(null),
+  },
+}));
+
+vi.mock('sonner', () => ({
+  toast: Object.assign(vi.fn(), mockToast),
+  Toaster: () => null,
+}));
 
 vi.mock('../../hooks/useProcessCache');
 vi.mock('@/features/process-management/mutations/useCreateProcess', () => ({
@@ -70,6 +143,16 @@ const mockProcesses: Proceso[] = [
 describe('AvailableTasksPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUsePendingProcesses.mockReturnValue({
+      pendingProcesos: [],
+      pendingProcesses: [],
+      loading: false,
+      error: null,
+      reload: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      remove: vi.fn(),
+    });
   });
 
   it('renders loading state', () => {
@@ -453,6 +536,167 @@ describe('AvailableTasksPage', () => {
       await user.keyboard('{PageDown}');
       // PageUp should not crash
       await user.keyboard('{PageUp}');
+    });
+  });
+
+  describe('Crear proceso pendiente', () => {
+    beforeEach(() => {
+      vi.mocked(useProcessCache).mockReturnValue({
+        processes: mockProcesses,
+        loading: false,
+        error: null,
+        refresh: vi.fn(),
+      });
+      mockUsePendingProcesses.mockReturnValue({
+        pendingProcesos: [],
+        pendingProcesses: [],
+        loading: false,
+        error: null,
+        reload: mockReloadPending,
+        create: vi.fn(),
+        update: vi.fn(),
+        remove: vi.fn(),
+      });
+      mockCreatePendingProcess.mockResolvedValue({
+        id: -1,
+        nombre: 'Pendiente Nuevo',
+        minutos: 60,
+        createdAt: 1000,
+        updatedAt: 1000,
+      });
+    });
+
+    it('renders a "Crear sin conexión" button', () => {
+      render(<AvailableTasksPage />);
+      expect(screen.getByRole('button', { name: /crear sin conexión/i })).toBeDefined();
+    });
+
+    it('opens the pending process form modal when clicked', async () => {
+      const user = userEvent.setup();
+      render(<AvailableTasksPage />);
+
+      expect(screen.queryByTestId('pending-form-modal')).toBeNull();
+      await user.click(screen.getByRole('button', { name: /crear sin conexión/i }));
+      expect(screen.getByTestId('pending-form-modal')).toBeDefined();
+    });
+
+    it('creates a pending process via the service, reloads the list and toasts on save', async () => {
+      const user = userEvent.setup();
+      render(<AvailableTasksPage />);
+
+      await user.click(screen.getByRole('button', { name: /crear sin conexión/i }));
+      await user.click(screen.getByRole('button', { name: /guardar pendiente/i }));
+
+      await waitFor(() => {
+        expect(mockCreatePendingProcess).toHaveBeenCalledWith('test', expect.objectContaining({ nombre: 'Pendiente Nuevo' }));
+      });
+      expect(mockReloadPending).toHaveBeenCalledTimes(1);
+      expect(mockToast.success).toHaveBeenCalledWith('Proceso pendiente creado');
+      expect(screen.queryByTestId('pending-form-modal')).toBeNull();
+    });
+  });
+
+  describe('Gestión de Procesos Pendientes', () => {
+    const mockUpdatePending = vi.fn();
+    const mockRemovePending = vi.fn();
+
+    const pendingFixture: ProcesoPendiente[] = [
+      {
+        id: -1,
+        nombre: 'Pendiente A',
+        proyectoNombre: 'Proyecto Alpha',
+        faseNombre: 'Fase Construccion',
+        minutos: 120,
+        createdAt: 1000,
+        updatedAt: 1000,
+      },
+      {
+        id: -2,
+        nombre: 'Pendiente B',
+        minutos: 60,
+        createdAt: 2000,
+        updatedAt: 2000,
+      },
+    ];
+
+    beforeEach(() => {
+      vi.mocked(useProcessCache).mockReturnValue({
+        processes: mockProcesses,
+        loading: false,
+        error: null,
+        refresh: vi.fn(),
+      });
+      mockUsePendingProcesses.mockReturnValue({
+        pendingProcesos: [],
+        pendingProcesses: pendingFixture,
+        loading: false,
+        error: null,
+        reload: mockReloadPending,
+        create: vi.fn(),
+        update: mockUpdatePending,
+        remove: mockRemovePending,
+      });
+      mockUpdatePending.mockReset();
+      mockRemovePending.mockReset();
+      mockUpdatePending.mockResolvedValue(null);
+      mockRemovePending.mockResolvedValue(undefined);
+    });
+
+    it('lists the pending processes with provisional ID and project/phase', () => {
+      render(<AvailableTasksPage />);
+      expect(screen.getByText('Tus Procesos Pendientes')).toBeDefined();
+      expect(screen.getByText('Pendiente A')).toBeDefined();
+      expect(screen.getByText('Pendiente B')).toBeDefined();
+      expect(screen.getByText(/ID provisional -1/)).toBeDefined();
+      const pendingSection = screen.getByRole('region') ?? document.body;
+      expect(pendingSection).toBeDefined();
+      // The pending row renders project + phase inside the subtitle line
+      expect(screen.getAllByText(/Proyecto Alpha/).length).toBeGreaterThan(0);
+    });
+
+    it('opens the edit form prefilled when the pencil button is clicked', async () => {
+      const user = userEvent.setup();
+      render(<AvailableTasksPage />);
+      const editButtons = screen.getAllByRole('button', { name: /editar proceso pendiente/i });
+      await user.click(editButtons[0]);
+      expect(screen.getByTestId('pending-form-modal')).toBeDefined();
+      expect(screen.getByTestId('pending-form-initial-id')).toHaveTextContent('-1');
+    });
+
+    it('deletes a pending without linked entries directly and reloads', async () => {
+      const user = userEvent.setup();
+      render(<AvailableTasksPage />);
+      const deleteButtons = screen.getAllByRole('button', { name: /eliminar proceso pendiente/i });
+      await user.click(deleteButtons[0]);
+      await waitFor(() => {
+        expect(mockRemovePending).toHaveBeenCalledWith(-1);
+      });
+      expect(mockToast.success).toHaveBeenCalledWith('Proceso pendiente eliminado');
+    });
+
+    it('opens the reassign modal when the pending has linked unsynced entries', async () => {
+      const { timeTrackingService } = await import('../../services/timeTrackingService');
+      vi.mocked(timeTrackingService.getEntries).mockResolvedValue([
+        {
+          id: 'e1',
+          taskId: -1,
+          taskName: 'Pendiente A',
+          proceso: { proceso: -1, nombre: 'Pendiente A' },
+          date: '2026-08-01',
+          startTime: '09:00',
+          endTime: '10:00',
+          duration: 3600,
+          createdAt: 'x',
+          updatedAt: 'x',
+          synced: false,
+        },
+      ]);
+      const user = userEvent.setup();
+      render(<AvailableTasksPage />);
+      const deleteButtons = screen.getAllByRole('button', { name: /eliminar proceso pendiente/i });
+      await user.click(deleteButtons[0]);
+      expect(screen.getByTestId('reassign-modal')).toBeDefined();
+      expect(screen.getByTestId('reassign-entry-count')).toHaveTextContent('1');
     });
   });
 });

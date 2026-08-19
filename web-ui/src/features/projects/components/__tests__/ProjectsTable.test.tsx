@@ -1,8 +1,10 @@
 import { render, screen, fireEvent } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { ProjectsTable } from '../ProjectsTable';
 import { describe, it, expect, vi } from 'vitest';
 import type { Project } from '../../types';
+import type { OfflineProjectSelection } from '@/features/time-tracker/types';
 
 function renderWithRouter(ui: React.ReactElement) {
   return render(<MemoryRouter>{ui}</MemoryRouter>);
@@ -115,5 +117,82 @@ describe('ProjectsTable', () => {
     renderWithRouter(<ProjectsTable projects={[]} isLoading={true} error={mockError} />);
     
     expect(screen.queryByText('Error while loading')).toBeNull();
+  });
+});
+
+describe('ProjectsTable offline column', () => {
+  const mockProjects: Project[] = [
+    {
+      CodCli: '1',
+      Cliente: 'Client 1',
+      NomCliente: 'Client One',
+      NomProy: 'Project One',
+      Proyecto: 'P1',
+      Abierto: true,
+      IdDpto: 'D1',
+      NomDpto: 'Department 1',
+      IdAplicacion: 'App1',
+      UsuredRespRev: 'user1',
+    },
+    {
+      CodCli: '2',
+      Cliente: 'Client 2',
+      NomCliente: 'Client Two',
+      NomProy: 'Project Two',
+      Proyecto: 'P2',
+      Abierto: false,
+      IdDpto: 'D2',
+      NomDpto: 'Department 2',
+      IdAplicacion: 'App2',
+      UsuredRespRev: 'user2',
+    },
+  ];
+
+  const selection: OfflineProjectSelection = {
+    codCli: '1',
+    proyecto: 'P1',
+    nomProy: 'Project One',
+    nomCliente: 'Client One',
+    status: 'sincronizado',
+    markedAt: 1000,
+  };
+
+  it('renders a "Disponible offline" column header and a switch per row', () => {
+    renderWithRouter(<ProjectsTable projects={mockProjects} />);
+
+    expect(screen.getByText('Disponible offline')).toBeDefined();
+    expect(screen.getAllByRole('switch')).toHaveLength(2);
+  });
+
+  it('shows the "Sincronizado" badge for a synced selection', () => {
+    renderWithRouter(
+      <ProjectsTable
+        projects={mockProjects}
+        offlineSelections={[selection]}
+        onOfflineToggle={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('Sincronizado')).toBeInTheDocument();
+  });
+
+  it('calls onOfflineToggle with the project and mark=true when a switch is checked', async () => {
+    const user = userEvent.setup();
+    const onOfflineToggle = vi.fn();
+
+    renderWithRouter(
+      <ProjectsTable projects={mockProjects} onOfflineToggle={onOfflineToggle} />
+    );
+
+    await user.click(screen.getAllByRole('switch')[0]);
+    expect(onOfflineToggle).toHaveBeenCalledWith(mockProjects[0], true);
+  });
+
+  it('renders the toggles disabled when offlineDisabled is true', () => {
+    renderWithRouter(
+      <ProjectsTable projects={mockProjects} offlineDisabled onOfflineToggle={vi.fn()} />
+    );
+
+    expect(screen.getAllByRole('switch')[0]).toBeDisabled();
   });
 });

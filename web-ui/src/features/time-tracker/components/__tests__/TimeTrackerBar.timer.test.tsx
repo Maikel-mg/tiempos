@@ -8,9 +8,18 @@ import type { TimerState } from '../../types';
 
 const mockRefresh = vi.fn();
 const mockUseProcessCache = vi.fn();
+const mockUsePendingProcesses = vi.fn();
 
 vi.mock('../../hooks/useProcessCache', () => ({
   useProcessCache: () => mockUseProcessCache(),
+}));
+
+vi.mock('@/features/pending-process/hooks/usePendingProcesses', () => ({
+  usePendingProcesses: () => mockUsePendingProcesses(),
+}));
+
+vi.mock('@/features/pending-process/components/PendingProcessFormModal', () => ({
+  PendingProcessFormModal: () => null,
 }));
 
 // Timer mock — controllable state per test
@@ -40,6 +49,16 @@ function setupMockProcesses(processes: Proceso[] = SEED_PROCESSES) {
     loading: false,
     error: null,
     refresh: mockRefresh,
+  });
+  mockUsePendingProcesses.mockReturnValue({
+    pendingProcesos: [],
+    pendingProcesses: [],
+    loading: false,
+    error: null,
+    reload: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    remove: vi.fn(),
   });
 }
 

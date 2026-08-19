@@ -22,7 +22,7 @@ import { wizardConfig, dbConfig, proposalConfig } from '@/config/stores';
 import { TaskProposalModal } from '@/features/proposal-ui/components/TaskProposalModal';
 import { extractProposalsFromLocal } from '@/domain/proposals/extract-local-proposals';
 import type { TaskProposal } from '@/domain/proposals/extract-proposals';
-import type { TimeEntry } from '../types';
+import type { ProcesoPendiente, TimeEntry } from '../types';
 import type { PeriodType, DateRange } from '@/components/shared/PeriodSelector';
 
 function formatDurationHMS(totalSeconds: number): string {
@@ -397,6 +397,41 @@ export function TimeTrackingPage() {
     }
   }, [entries, updateEntry]);
 
+  const handleCreatePendingFromProposal = useCallback(async (
+    proposal: TaskProposal,
+    pendiente: ProcesoPendiente
+  ) => {
+    // Reasignar al Proceso Pendiente las entradas no sincronizadas del grupo.
+    // El pendiente ya fue creado en el storage por PendingProcessFormModal.
+    const toReassign = entries.filter(e =>
+      proposal.entryIds.includes(e.id) && !e.synced
+    );
+
+    if (toReassign.length === 0) {
+      toast.info('No hay entradas pendientes para reasignar');
+      return;
+    }
+
+    try {
+      for (const entry of toReassign) {
+        await updateEntry(entry.id, {
+          taskId: pendiente.id,
+          taskName: pendiente.nombre,
+          proceso: {
+            ...entry.proceso,
+            proceso: pendiente.id,
+            nombre: pendiente.nombre,
+            esPendiente: true,
+            procesoPendienteId: pendiente.id,
+          },
+        });
+      }
+      toast.success(`${toReassign.length} entrada(s) reasignada(s) a "${pendiente.nombre}" (pendiente)`);
+    } catch (error) {
+      toast.error('Error al reasignar entradas: ' + (error as Error).message);
+    }
+  }, [entries, updateEntry]);
+
   useEffect(() => {
     if (!editingEntry) return;
     const onKeyDown = (e: KeyboardEvent) => {
@@ -565,6 +600,7 @@ export function TimeTrackingPage() {
           onOpenChange={setProposalModalOpen}
           proposals={proposals}
           onAccept={handleAcceptProposal}
+          onCreatePending={handleCreatePendingFromProposal}
           config={{
             usuario: wizardConfig.get()?.usuario ?? '',
             fase: wizardConfig.get()?.fase ?? '',
