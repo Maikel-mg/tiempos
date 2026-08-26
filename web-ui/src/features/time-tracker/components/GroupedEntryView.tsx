@@ -14,6 +14,7 @@ import { groupEntriesByWeek, getWeekKey, getWeekStart, parseDateString, formatDa
 import { computeDailyBalance } from '../lib/balance';
 import { TimerRow } from './TimerRow';
 import type { TimeEntry, LocalWeekGroup, LocalWeekDay } from '../types';
+import { isTimeEntrySyncBlocked, PENDING_SYNC_BLOCK_MESSAGE } from '../lib/entrySyncBlock';
 
 interface TimerEntryData {
   taskName: string;
@@ -433,10 +434,17 @@ function DayRow({ day, isExpanded, onToggle, onDelete, onEdit, onPlay, onDuplica
                           Play
                         </DropdownMenuItem>
                         {!entry.synced && (
-                          <DropdownMenuItem onClick={() => onSync?.(entry)}>
-                            <Database className="h-4 w-4" />
-                            Sincronizar
-                          </DropdownMenuItem>
+                          isTimeEntrySyncBlocked(entry) ? (
+                            <DropdownMenuItem disabled title={PENDING_SYNC_BLOCK_MESSAGE}>
+                              <Database className="h-4 w-4" />
+                              Sincronizar — {PENDING_SYNC_BLOCK_MESSAGE}
+                            </DropdownMenuItem>
+                          ) : (
+                            <DropdownMenuItem onClick={() => onSync?.(entry)}>
+                              <Database className="h-4 w-4" />
+                              Sincronizar
+                            </DropdownMenuItem>
+                          )
                         )}
                         <DropdownMenuSeparator />
                         <DropdownMenuItem

@@ -20,6 +20,7 @@ export interface ProjectsTableProps {
   offlineSelections?: OfflineProjectSelection[];
   offlineMarking?: Record<string, boolean>;
   offlineDisabled?: boolean;
+  offlineRemovalBlocked?: Record<string, boolean>;
   onOfflineToggle?: (project: Project, mark: boolean) => void;
 }
 
@@ -35,6 +36,7 @@ export function ProjectsTable({
   offlineSelections = [],
   offlineMarking = {},
   offlineDisabled = false,
+  offlineRemovalBlocked = {},
   onOfflineToggle,
 }: ProjectsTableProps) {
   const navigate = useNavigate();
@@ -130,12 +132,14 @@ export function ProjectsTable({
         const selection = offlineSelections.find(
           (s) => s.codCli === project.CodCli && s.proyecto === project.Proyecto
         );
+        const key = `${project.CodCli}-${project.Proyecto}`;
         return (
           <OfflineProjectToggle
             project={project}
             selection={selection}
-            marking={offlineMarking[`${project.CodCli}-${project.Proyecto}`]}
+            marking={offlineMarking[key]}
             disabled={offlineDisabled}
+            removalBlocked={Boolean(offlineRemovalBlocked[key])}
             onToggle={(mark) => onOfflineToggle?.(project, mark)}
           />
         );

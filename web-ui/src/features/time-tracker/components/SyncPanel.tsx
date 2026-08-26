@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { TimeEntry } from '../types';
 import type { SyncResultEntry } from '../services/timeEntrySyncService';
 import { syncTimeEntries } from '../services/timeEntrySyncService';
+import { isTimeEntrySyncBlocked, PENDING_SYNC_BLOCK_MESSAGE } from '../lib/entrySyncBlock';
 import { wizardConfig, dbConfig } from '@/config/stores';
 import { useConfigGuard } from '../hooks/useConfigGuard';
 import { ConfigGuardPanel } from './ConfigGuardPanel';
@@ -39,9 +40,23 @@ export function SyncPanel({ selectedEntries, totalPendingCount, onSyncComplete }
     }
   }, []);
 
+  const blockedCount = useMemo(
+    () => selectedEntries.filter(isTimeEntrySyncBlocked).length,
+    [selectedEntries]
+  );
+  const syncableEntries = useMemo(
+    () => selectedEntries.filter((e) => !isTimeEntrySyncBlocked(e)),
+    [selectedEntries]
+  );
+
   const handleExecute = async () => {
     const dbConfigData = dbConfig.get();
     if (!dbConfigData || !dbConfigData.server || !dbConfigData.database) {
+      setSyncResults([]);
+      setOverallSuccess(false);
+      return;
+    }
+    if (syncableEntries.length === 0 && blockedCount > 0) {
       setSyncResults([]);
       setOverallSuccess(false);
       return;
@@ -52,7 +67,7 @@ export function SyncPanel({ selectedEntries, totalPendingCount, onSyncComplete }
     setOverallSuccess(null);
 
     try {
-      const outcome = await syncTimeEntries(selectedEntries, dbConfigData, config.usuario);
+      const outcome = await syncTimeEntries(syncableEntries, dbConfigData, config.usuario);
       setOverallSuccess(outcome.success);
       setSyncResults(outcome.results);
 
@@ -94,6 +109,11 @@ export function SyncPanel({ selectedEntries, totalPendingCount, onSyncComplete }
           </Label>
         </div>
 
+        {blockedCount > 0 && (
+          <div className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md p-2">
+            {blockedCount} entrada(s) con Proceso Pendiente no se sincronizarán — {PENDING_SYNC_BLOCK_MESSAGE}
+          </div>
+        )}
         {/* Config guard: replace execute button when config is incomplete */}
         {!isReady ? (
           <ConfigGuardPanel />
@@ -102,8 +122,9 @@ export function SyncPanel({ selectedEntries, totalPendingCount, onSyncComplete }
           <div className="flex gap-2">
             <Button
               onClick={handleExecute}
-              disabled={isExecuting || selectedEntries.length === 0}
+              disabled={isExecuting || syncableEntries.length === 0}
               size="sm"
+              title={blockedCount > 0 && syncableEntries.length === 0 ? PENDING_SYNC_BLOCK_MESSAGE : undefined}
             >
               {isExecuting ? (
                 <>

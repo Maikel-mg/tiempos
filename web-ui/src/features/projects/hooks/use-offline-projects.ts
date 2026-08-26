@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { wizardConfig } from '@/config/stores';
 import { processOfflineService } from '@/features/time-tracker/services/ProcessOfflineService';
+import { indexedDBStorage } from '@/lib/storage/IndexedDBStorage';
 import type { OfflineProjectSelection } from '@/features/time-tracker/types';
 import type { Project } from '../types';
 
@@ -27,6 +29,7 @@ export function useOfflineProjects() {
   const [selections, setSelections] = useState<OfflineProjectSelection[]>([]);
   const [loading, setLoading] = useState(false);
   const [markingKeys, setMarkingKeys] = useState<Record<string, boolean>>({});
+  const [removalBlockedKeys, setRemovalBlockedKeys] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const unsubscribe = wizardConfig.subscribe((config) => {
@@ -56,6 +59,43 @@ export function useOfflineProjects() {
   useEffect(() => {
     void loadSelections();
   }, [loadSelections]);
+
+  // Calcular qué proyectos tienen desmarcado bloqueado (tienen entradas pendientes)
+  useEffect(() => {
+    if (selections.length === 0) {
+      setRemovalBlockedKeys({});
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const usured = getUsured();
+        if (!usured) {
+          if (!cancelled) setRemovalBlockedKeys({});
+          return;
+        }
+        const entries = await indexedDBStorage.getAllEntries();
+        const blocked: Record<string, boolean> = {};
+        await Promise.all(
+          selections.map(async (sel) => {
+            const isBlocked = await processOfflineService.isProjectRemovalBlocked(
+              usured,
+              sel.codCli,
+              sel.proyecto,
+              entries
+            );
+            blocked[selectionKey(sel.codCli, sel.proyecto)] = isBlocked;
+          })
+        );
+        if (!cancelled) setRemovalBlockedKeys(blocked);
+      } catch {
+        if (!cancelled) setRemovalBlockedKeys({});
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selections]);
 
   const refresh = useCallback(() => loadSelections(), [loadSelections]);
 
@@ -106,11 +146,27 @@ export function useOfflineProjects() {
       const key = selectionKey(project.CodCli, project.Proyecto);
       setMarkingKeys((prev) => ({ ...prev, [key]: true }));
       try {
-        // Punto de extensión T5: bloquear aquí el desmarcado si el proyecto
-        // tiene entradas de tiempo pendientes de sincronizar. Por ahora se
-        // permite siempre.
-        await processOfflineService.removeProjectOffline(usured, project.CodCli, project.Proyecto);
+        const entries = await indexedDBStorage.getAllEntries();
+        const blocked = await processOfflineService.isProjectRemovalBlocked(
+          usured,
+          project.CodCli,
+          project.Proyecto,
+          entries
+        );
+        if (blocked) {
+          toast.error('No se puede desmarcar: tiene Entradas de Tiempo pendientes de sincronización');
+          return;
+        }
+        // Pasar entries para que el servicio también valide (defensa en profundidad)
+        await processOfflineService.removeProjectOffline(usured, project.CodCli, project.Proyecto, entries);
         await loadSelections();
+      } catch (error) {
+        // Si el servicio lanza por bloqueo, mostrar aviso y no propagar error
+        if (error instanceof Error && error.message.includes('No se puede desmarcar')) {
+          toast.error(error.message);
+          return;
+        }
+        throw error;
       } finally {
         setMarkingKeys((prev) => {
           const next = { ...prev };
@@ -133,6 +189,11 @@ export function useOfflineProjects() {
     [selections]
   );
 
+  const isRemovalBlocked = useCallback(
+    (codCli: string, proyecto: string) => Boolean(removalBlockedKeys[selectionKey(codCli, proyecto)]),
+    [removalBlockedKeys]
+  );
+
   return {
     selections,
     loading,
@@ -143,5 +204,7 @@ export function useOfflineProjects() {
     marking: markingKeys,
     isMarking,
     getSelection,
+    isRemovalBlocked,
+    removalBlockedKeys,
   };
 }

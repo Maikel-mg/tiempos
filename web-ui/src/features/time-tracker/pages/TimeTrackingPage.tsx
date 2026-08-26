@@ -18,6 +18,7 @@ import { useTableRowShortcuts } from '@/hooks/useTableRowShortcuts';
 import { createVirtualTimerEntry } from '../lib/timerVirtualEntry';
 import { computePeriodTotal } from '../lib/computePeriodTotal';
 import { syncTimeEntries } from '../services/timeEntrySyncService';
+import { isTimeEntrySyncBlocked, PENDING_SYNC_BLOCK_MESSAGE } from '../lib/entrySyncBlock';
 import { wizardConfig, dbConfig, proposalConfig } from '@/config/stores';
 import { TaskProposalModal } from '@/features/proposal-ui/components/TaskProposalModal';
 import { extractProposalsFromLocal } from '@/domain/proposals/extract-local-proposals';
@@ -217,6 +218,10 @@ export function TimeTrackingPage() {
   }, []);
 
   const handleSyncEntry = useCallback(async (entry: TimeEntry) => {
+    if (isTimeEntrySyncBlocked(entry)) {
+      toast.error(PENDING_SYNC_BLOCK_MESSAGE);
+      return;
+    }
     const dbConfigData = dbConfig.get();
     if (!dbConfigData || !dbConfigData.server || !dbConfigData.database) {
       toast.error('Falta configuración de base de datos');

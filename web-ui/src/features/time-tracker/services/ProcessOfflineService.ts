@@ -1,7 +1,8 @@
 import type { ApiResponse } from '@/lib/api/client';
 import type { ProcessOfflineStorage } from '@/lib/storage/ProcessOfflineStorage';
-import type { OfflineProjectSelection, OfflineProjectStatus, Proceso, ProcesoPendiente } from '../types';
+import type { OfflineProjectSelection, OfflineProjectStatus, Proceso, ProcesoPendiente, TimeEntry } from '../types';
 import type { Project, ProjectTreeResponse } from '../../projects/types';
+import { isTimeEntrySyncBlocked as isEntryBlocked } from '../lib/entrySyncBlock';
 
 export interface ProcessOfflineApiClient {
   post<T>(url: string, data?: unknown): Promise<ApiResponse<T>>;
@@ -147,6 +148,15 @@ export class ProcessOfflineService {
   }
 
   /**
+   * Determina si una Entrada de Tiempo no es sincronizable por referenciar un
+   * Proceso Pendiente (ID provisional negativo o flag esPendiente).
+   * Mensaje UI asociado: "Sincroniza primero los procesos pendientes".
+   */
+  isTimeEntrySyncBlocked(entry: TimeEntry): boolean {
+    return isEntryBlocked(entry);
+  }
+
+  /**
    * Marca un proyecto como offline con estado 'pendiente'.
    *
    * NOTA: el refresco de fases/tareas (cargar el tree del proyecto a caché) NO
@@ -172,12 +182,84 @@ export class ProcessOfflineService {
   }
 
   /**
+   * Determina si desmarcar un Proyecto Offline está bloqueado por tener
+   * Entradas de Tiempo pendientes de sincronización.
+   * Bloquea solo si hay entradas con synced=false que pertenecen a ese proyecto
+   * (por proyectoId o por Proceso Pendiente de ese proyecto).
+   */
+  async isProjectRemovalBlocked(
+    usured: string,
+    codCli: string,
+    proyecto: string,
+    pendingEntries: TimeEntry[]
+  ): Promise<boolean> {
+    const hasOffline = await this.isProjectOffline(usured, codCli, proyecto);
+    if (!hasOffline) return false;
+    const unsynced = pendingEntries.filter((e) => !e.synced);
+    if (unsynced.length === 0) return false;
+
+    const pendientes = await this.storage.getPendingProcesses(usured);
+    const pendienteById = new Map(pendientes.map((p) => [p.id, p]));
+
+    for (const entry of unsynced) {
+      const pending = pendienteById.get(entry.taskId);
+      if (pending) {
+        // Proceso Pendiente pertenece a este proyecto si su proyectoId coincide con codCli
+        if (String(pending.proyectoId) === String(codCli)) return true;
+        if (String(pending.proyectoId) === String(proyecto)) return true;
+        // También si la entrada expone proyectoId del pendiente
+        if (String(entry.proceso?.proyectoId) === String(codCli)) return true;
+        continue;
+      }
+      // Entrada normal: compara proyectoId del proceso con la clave del proyecto offline
+      if (String(entry.proceso?.proyectoId) === String(proyecto)) return true;
+      if (String(entry.proceso?.proyectoId) === String(codCli)) return true;
+    }
+    return false;
+  }
+
+  /**
    * Quita el marcado offline del proyecto y borra el tree cacheado del mismo.
    * Si no hay tree cacheado, no lanza.
+   * Si pendingEntries contiene Entradas pendientes de ese proyecto, lanza error
+   * (bloqueo de integridad T5).
    */
-  async removeProjectOffline(usured: string, codCli: string, proyecto: string): Promise<void> {
+  async removeProjectOffline(
+    usured: string,
+    codCli: string,
+    proyecto: string,
+    pendingEntries: TimeEntry[] = []
+  ): Promise<void> {
+    if (pendingEntries.length > 0) {
+      const blocked = await this.isProjectRemovalBlocked(usured, codCli, proyecto, pendingEntries);
+      if (blocked) {
+        throw new Error('No se puede desmarcar: tiene Entradas de Tiempo pendientes de sincronización');
+      }
+    }
     await this.storage.removeOfflineProjectSelection(usured, codCli, proyecto);
     await this.storage.removeProjectTree(usured, codCli, proyecto);
+  }
+
+  /**
+   * Sincroniza el caché offline de los Proyectos Offline con el sistema (espejo).
+   * Reemplaza cada árbol cacheado con lo que devuelve el backend para ese
+   * codCli/proyecto. Nombres actualizados y procesos eliminados se reflejan
+   * al reemplazar. Nunca borra ni reasigna Entradas de Tiempo (sagradas).
+   */
+  async syncOfflineCache(usured: string): Promise<{ succeeded: number; failed: number }> {
+    const selections = await this.storage.getOfflineProjectSelections(usured);
+    let succeeded = 0;
+    let failed = 0;
+    for (const sel of selections) {
+      try {
+        await this.fetchProjectTree(usured, sel.codCli, sel.proyecto);
+        await this.setOfflineProjectStatus(usured, sel.codCli, sel.proyecto, 'sincronizado');
+        succeeded++;
+      } catch {
+        failed++;
+      }
+    }
+    return { succeeded, failed };
   }
 
   /**

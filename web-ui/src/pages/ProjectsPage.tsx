@@ -63,6 +63,7 @@ export function ProjectsPage() {
         offlineSelections={offline.selections}
         offlineMarking={offline.marking}
         offlineDisabled={!offline.usuarioConfigured}
+        offlineRemovalBlocked={offline.removalBlockedKeys}
         onOfflineToggle={(project, mark) =>
           mark ? offline.markProject(project) : offline.removeProject(project)
         }

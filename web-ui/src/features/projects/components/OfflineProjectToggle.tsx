@@ -10,6 +10,7 @@ export interface OfflineProjectToggleProps {
   selection?: OfflineProjectSelection;
   marking?: boolean;
   disabled?: boolean;
+  removalBlocked?: boolean;
   onToggle: (mark: boolean) => void;
 }
 
@@ -23,9 +24,17 @@ export function OfflineProjectToggle({
   selection,
   marking = false,
   disabled = false,
+  removalBlocked = false,
   onToggle,
 }: OfflineProjectToggleProps) {
   const isOffline = Boolean(selection);
+  const isSwitchDisabled = disabled || (isOffline && removalBlocked);
+
+  const tooltipMessage = disabled
+    ? 'Configura un usuario en Ajustes'
+    : removalBlocked && isOffline
+      ? 'No se puede desmarcar: tiene Entradas de Tiempo pendientes de sincronización'
+      : null;
 
   const switchControl = marking ? (
     <Loader2
@@ -36,7 +45,7 @@ export function OfflineProjectToggle({
     <Switch
       aria-label={`Disponible offline: ${project.NomProy}`}
       checked={isOffline}
-      disabled={disabled}
+      disabled={isSwitchDisabled}
       onClick={(event) => event.stopPropagation()}
       onCheckedChange={(checked) => onToggle(checked)}
     />
@@ -53,10 +62,10 @@ export function OfflineProjectToggle({
   return (
     <TooltipProvider>
       <div className="flex items-center justify-center gap-2">
-        {disabled ? (
+        {tooltipMessage ? (
           <Tooltip delayDuration={0}>
             <TooltipTrigger asChild>{switchControl}</TooltipTrigger>
-            <TooltipContent>Configura un usuario en Ajustes</TooltipContent>
+            <TooltipContent>{tooltipMessage}</TooltipContent>
           </Tooltip>
         ) : (
           switchControl

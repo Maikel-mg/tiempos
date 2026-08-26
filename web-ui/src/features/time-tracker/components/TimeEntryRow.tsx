@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 import type { TimeEntry } from '../types';
+import { isTimeEntrySyncBlocked, PENDING_SYNC_BLOCK_MESSAGE } from '../lib/entrySyncBlock';
 
 interface TimeEntryRowProps {
   entry: TimeEntry;
@@ -53,6 +54,7 @@ function formatDate(dateStr: string): string {
  */
 export function TimeEntryRow({ entry, selected, onToggle, onDelete, onEdit, onPlay, onDuplicate, onSync, recoveryInfo, rowProps }: TimeEntryRowProps) {
   const SYNCED_TOOLTIP = 'Ya sincronizado con la BD — no se puede editar desde aquí';
+  const isSyncBlocked = isTimeEntrySyncBlocked(entry);
 
   return (
     <TooltipProvider>
@@ -182,15 +184,34 @@ export function TimeEntryRow({ entry, selected, onToggle, onDelete, onEdit, onPl
               <Play className="w-4 h-4" />
             </Button>
             {onSync && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={onSync}
-                className="min-w-[44px] min-h-[44px] text-blue-600 hover:text-blue-700"
-                title="Sincronizar registro"
-              >
-                <Database className="w-4 h-4" />
-              </Button>
+              isSyncBlocked ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        disabled
+                        className="min-w-[44px] min-h-[44px] text-muted-foreground"
+                        aria-label="Sincronizar bloqueado"
+                      >
+                        <Database className="w-4 h-4" />
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>{PENDING_SYNC_BLOCK_MESSAGE}</TooltipContent>
+                </Tooltip>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onSync}
+                  className="min-w-[44px] min-h-[44px] text-blue-600 hover:text-blue-700"
+                  title="Sincronizar registro"
+                >
+                  <Database className="w-4 h-4" />
+                </Button>
+              )
             )}
             {onEdit && (
               <Button
