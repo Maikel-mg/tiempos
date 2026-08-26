@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AvailableTasksPage } from '../AvailableTasksPage';
 import { useProcessCache } from '../../hooks/useProcessCache';
@@ -217,7 +218,7 @@ describe('AvailableTasksPage', () => {
     expect(screen.getByRole('button', { name: /reintentar/i })).toBeDefined();
   });
 
-  it('renders empty state when no processes', () => {
+  it('renders offline guidance with a link to Proyectos when no tasks are cached', () => {
     vi.mocked(useProcessCache).mockReturnValue({
       processes: [],
       loading: false,
@@ -225,8 +226,54 @@ describe('AvailableTasksPage', () => {
       refresh: vi.fn(),
     });
 
-    render(<AvailableTasksPage />);
-    expect(screen.getByText('No hay tareas disponibles')).toBeDefined();
+    render(
+      <MemoryRouter>
+        <AvailableTasksPage />
+      </MemoryRouter>
+    );
+    expect(screen.getByTestId('offline-tasks-empty-state')).toHaveTextContent(
+      'No hay tareas disponibles offline. Conecta y marca tus proyectos en Proyectos'
+    );
+    expect(screen.getByRole('link', { name: 'Proyectos' })).toHaveAttribute('href', '/projects');
+  });
+
+  it('shows Procesos Pendientes without the empty offline state', () => {
+    vi.mocked(useProcessCache).mockReturnValue({
+      processes: [],
+      loading: false,
+      error: null,
+      refresh: vi.fn(),
+    });
+    mockUsePendingProcesses.mockReturnValue({
+      pendingProcesos: [
+        { proceso: -1, nombre: 'Proceso Pendiente', esPendiente: true },
+      ],
+      pendingProcesses: [
+        {
+          id: -1,
+          nombre: 'Proceso Pendiente',
+          minutos: 60,
+          createdAt: 1,
+          updatedAt: 1,
+        },
+      ],
+      loading: false,
+      error: null,
+      reload: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      remove: vi.fn(),
+    });
+
+    render(
+      <MemoryRouter>
+        <AvailableTasksPage />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('Tus Procesos Pendientes')).toBeInTheDocument();
+    expect(screen.getByText('Proceso Pendiente')).toBeInTheDocument();
+    expect(screen.queryByTestId('offline-tasks-empty-state')).not.toBeInTheDocument();
   });
 
   it('calls refresh when retry button is clicked', async () => {
@@ -347,7 +394,11 @@ describe('AvailableTasksPage', () => {
         refresh: vi.fn(),
       });
 
-      render(<AvailableTasksPage />);
+      render(
+        <MemoryRouter>
+          <AvailableTasksPage />
+        </MemoryRouter>
+      );
 
       const rows = screen.getAllByRole('row');
       // rows[0] is header, rows[1] is first data row
@@ -362,7 +413,11 @@ describe('AvailableTasksPage', () => {
         refresh: vi.fn(),
       });
 
-      render(<AvailableTasksPage />);
+      render(
+        <MemoryRouter>
+          <AvailableTasksPage />
+        </MemoryRouter>
+      );
 
       // No table rendered — empty state shown
       const rows = screen.queryAllByRole('row');

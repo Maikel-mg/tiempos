@@ -7,11 +7,13 @@ import type { Proceso } from '../../types';
 
 const mockWizardGet = vi.fn();
 const mockGetProcesses = vi.fn();
+const mockGetOfflineProcesses = vi.fn();
 const mockGetLastUpdated = vi.fn();
 
 vi.mock('@/features/time-tracker/services/ProcessOfflineService', () => ({
   processOfflineService: {
     getProcesses: (...args: unknown[]) => mockGetProcesses(...args),
+    getOfflineProcesses: (...args: unknown[]) => mockGetOfflineProcesses(...args),
     getLastUpdated: (...args: unknown[]) => mockGetLastUpdated(...args),
   },
 }));
@@ -40,11 +42,12 @@ describe('useProcessCache', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetLastUpdated.mockResolvedValue(null);
+    mockGetOfflineProcesses.mockResolvedValue([]);
   });
 
-  it('fetches processes from the service when usuario is set and cache is empty', async () => {
+  it('loads offline processes when usuario is set', async () => {
     mockWizardGet.mockReturnValue({ usuario: 'MG01' });
-    mockGetProcesses.mockResolvedValue(PROCESOS);
+    mockGetOfflineProcesses.mockResolvedValue(PROCESOS);
 
     const { result } = renderHook(() => useProcessCache());
 
@@ -55,7 +58,21 @@ describe('useProcessCache', () => {
     expect(result.current.processes[0].nombre).toBe('Desarrollo Frontend');
     expect(result.current.loading).toBe(false);
     expect(result.current.error).toBeNull();
-    expect(mockGetProcesses).toHaveBeenCalledWith('MG01', { refresh: true });
+    expect(mockGetOfflineProcesses).toHaveBeenCalledWith('MG01');
+  });
+
+  it('reads processes from the selected offline project trees', async () => {
+    mockWizardGet.mockReturnValue({ usuario: 'MG01' });
+    mockGetOfflineProcesses.mockResolvedValue(PROCESOS);
+
+    const { result } = renderHook(() => useProcessCache());
+
+    await waitFor(() => {
+      expect(result.current.processes).toEqual(PROCESOS);
+    });
+
+    expect(mockGetOfflineProcesses).toHaveBeenCalledWith('MG01');
+    expect(mockGetProcesses).not.toHaveBeenCalled();
   });
 
   it('returns empty processes without calling the service when usuario is empty', async () => {
@@ -86,10 +103,9 @@ describe('useProcessCache', () => {
     expect(mockGetProcesses).not.toHaveBeenCalled();
   });
 
-  it('serves cached data without fetching from the backend (no refresh call)', async () => {
+  it('serves offline cached data without using the global process catalog', async () => {
     mockWizardGet.mockReturnValue({ usuario: 'MG01' });
-    mockGetLastUpdated.mockResolvedValue(1234);
-    mockGetProcesses.mockResolvedValue(PROCESOS);
+    mockGetOfflineProcesses.mockResolvedValue(PROCESOS);
 
     const { result } = renderHook(() => useProcessCache());
 
@@ -99,13 +115,13 @@ describe('useProcessCache', () => {
 
     expect(result.current.loading).toBe(false);
     expect(result.current.error).toBeNull();
-    expect(mockGetProcesses).toHaveBeenCalledWith('MG01');
-    expect(mockGetProcesses).not.toHaveBeenCalledWith('MG01', { refresh: true });
+    expect(mockGetOfflineProcesses).toHaveBeenCalledWith('MG01');
+    expect(mockGetProcesses).not.toHaveBeenCalled();
   });
 
   it('sets error when the service throws', async () => {
     mockWizardGet.mockReturnValue({ usuario: 'MG01' });
-    mockGetProcesses.mockRejectedValue(new Error('Network failure'));
+    mockGetOfflineProcesses.mockRejectedValue(new Error('Network failure'));
 
     const { result } = renderHook(() => useProcessCache());
 
@@ -119,7 +135,7 @@ describe('useProcessCache', () => {
 
   it('sets error message when the service returns a failed backend response', async () => {
     mockWizardGet.mockReturnValue({ usuario: 'MG01' });
-    mockGetProcesses.mockRejectedValue(new Error('Server error'));
+    mockGetOfflineProcesses.mockRejectedValue(new Error('Server error'));
 
     const { result } = renderHook(() => useProcessCache());
 
@@ -131,9 +147,9 @@ describe('useProcessCache', () => {
     expect(result.current.processes).toHaveLength(0);
   });
 
-  it('refresh re-fetches from the backend and updates processes', async () => {
+  it('refresh re-reads offline processes and updates the list', async () => {
     mockWizardGet.mockReturnValue({ usuario: 'MG01' });
-    mockGetProcesses.mockResolvedValue(PROCESOS);
+    mockGetOfflineProcesses.mockResolvedValue(PROCESOS);
 
     const { result } = renderHook(() => useProcessCache());
 
@@ -147,14 +163,14 @@ describe('useProcessCache', () => {
       ...PROCESOS,
       { proceso: 103, nombre: 'Code Review' },
     ];
-    mockGetProcesses.mockResolvedValue(moreProcesos);
+    mockGetOfflineProcesses.mockResolvedValue(moreProcesos);
 
     await act(async () => {
       await result.current.refresh();
     });
 
     expect(result.current.processes).toHaveLength(3);
-    expect(mockGetProcesses).toHaveBeenCalledWith('MG01', { refresh: true });
-    expect(mockGetProcesses).toHaveBeenCalledTimes(2);
+    expect(mockGetOfflineProcesses).toHaveBeenCalledWith('MG01');
+    expect(mockGetOfflineProcesses).toHaveBeenCalledTimes(2);
   });
 });

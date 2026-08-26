@@ -24,6 +24,7 @@ interface TimeTrackerBarProps {
     endTime: string;
     description?: string;
     recoverable: boolean;
+    proceso: Proceso;
   }) => Promise<void>;
   initialData?: Partial<TimeEntry>;
   disabled?: boolean;
@@ -85,9 +86,10 @@ export const TimeTrackerBar = forwardRef<TimeTrackerBarHandle, TimeTrackerBarPro
 
   const [mode, setMode] = useState<'timer' | 'manual'>(defaultMode);
   const [task, setTask] = useState<Proceso | null>(
-    initialData?.taskId != null
+    initialData?.proceso ?? (initialData?.taskId != null
       ? { proceso: initialData.taskId, nombre: initialData.taskName || '' }
       : null
+    )
   );
   const [description, setDescription] = useState(initialData?.description || '');
   const [date, setDate] = useState(initialData?.date || today);
@@ -120,9 +122,10 @@ export const TimeTrackerBar = forwardRef<TimeTrackerBarHandle, TimeTrackerBarPro
   useEffect(() => {
     if (initialData) {
       setTask(
-        initialData.taskId != null
+        initialData.proceso ?? (initialData.taskId != null
           ? { proceso: initialData.taskId, nombre: initialData.taskName || '' }
           : null
+        )
       );
       setDescription(initialData.description || '');
       setDate(initialData.date || today);
@@ -164,6 +167,7 @@ export const TimeTrackerBar = forwardRef<TimeTrackerBarHandle, TimeTrackerBarPro
         endTime,
         description: description || undefined,
         recoverable,
+        proceso: task,
       });
       setStartTime('09:00');
       setEndTime('');
@@ -198,6 +202,7 @@ export const TimeTrackerBar = forwardRef<TimeTrackerBarHandle, TimeTrackerBarPro
         endTime: result.end.toTimeString().slice(0, 5),
         description: description || undefined,
         recoverable,
+        proceso: { proceso: result.taskId, nombre: result.taskName },
       });
     }
   }, [timer, onSubmit, description, recoverable]);
@@ -217,6 +222,7 @@ export const TimeTrackerBar = forwardRef<TimeTrackerBarHandle, TimeTrackerBarPro
         endTime: split.endTime,
         description: description || undefined,
         recoverable,
+        proceso: { proceso: pendingStop.taskId, nombre: pendingStop.taskName },
       });
     }
     setSplitModalOpen(false);
@@ -234,6 +240,7 @@ export const TimeTrackerBar = forwardRef<TimeTrackerBarHandle, TimeTrackerBarPro
       endTime: pendingStop.end.toTimeString().slice(0, 5),
       description: description || undefined,
       recoverable,
+      proceso: { proceso: pendingStop.taskId, nombre: pendingStop.taskName },
     });
     setSplitModalOpen(false);
     setPendingStop(null);
@@ -279,6 +286,7 @@ export const TimeTrackerBar = forwardRef<TimeTrackerBarHandle, TimeTrackerBarPro
           value={task}
           onChange={setTask}
           disabled={disabled || isSubmitting || timer.isRunning}
+          entryPending={Boolean(initialData?.id && initialData.synced === false)}
           className="w-96"
         />
 

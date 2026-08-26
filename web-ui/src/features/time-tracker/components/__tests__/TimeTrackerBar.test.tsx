@@ -1,5 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TimeTrackerBar } from '../TimeTrackerBar';
 import type { Proceso } from '../../types';
 
@@ -37,8 +38,8 @@ vi.mock('../../hooks/useTimer', () => ({
 }));
 
 const SEED_PROCESSES: Proceso[] = [
-  { proceso: 101, nombre: 'Desarrollo Frontend', faseNombre: 'Fase Construcción' },
-  { proceso: 102, nombre: 'Desarrollo Backend', faseNombre: 'Fase Construcción' },
+  { proceso: 101, nombre: 'Desarrollo Frontend', faseNombre: 'Fase Construcción', departamentoId: 5 },
+  { proceso: 102, nombre: 'Desarrollo Backend', faseNombre: 'Fase Construcción', departamentoId: 5 },
 ];
 
 function setupMockProcesses(processes: Proceso[] = SEED_PROCESSES) {
@@ -205,6 +206,42 @@ describe('TimeTrackerBar', () => {
     expect(screen.getByDisplayValue('18:00')).toBeInTheDocument();
     expect(screen.getByText('08:00:00')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /desarrollo backend/i })).toBeInTheDocument();
+  });
+
+  it('allows an unsynchronized entry with a missing process to be reassigned', async () => {
+    const user = userEvent.setup();
+    const missingProcess: Proceso = { proceso: 999, nombre: 'Proceso desaparecido' };
+    render(
+      <TimeTrackerBar
+        onSubmit={mockOnSubmit}
+        timer={timerMock}
+        defaultMode="manual"
+        initialData={{
+          id: 'entry-1',
+          taskId: missingProcess.proceso,
+          taskName: missingProcess.nombre,
+          proceso: missingProcess,
+          synced: false,
+          date: '2026-06-01',
+          startTime: '09:00',
+          endTime: '17:00',
+        }}
+      />
+    );
+
+    await user.click(screen.getByRole('button', { name: /proceso desaparecido/i }));
+    expect(screen.getByRole('alert')).toHaveTextContent(/ya no está disponible offline/i);
+
+    await user.click(screen.getByText('Desarrollo Frontend'));
+    await user.click(screen.getByRole('button', { name: /añadir/i }));
+
+    expect(mockOnSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        taskId: 101,
+        taskName: 'Desarrollo Frontend',
+        proceso: expect.objectContaining({ proceso: 101, nombre: 'Desarrollo Frontend' }),
+      })
+    );
   });
 
   // ── Recoverable toggle ──────────────────────────────────────────────────

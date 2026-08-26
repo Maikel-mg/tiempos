@@ -24,6 +24,30 @@ const TREE: ProjectTreeResponse = {
   disciplinas: [],
 };
 
+const TREE_WITH_PROCESSES: ProjectTreeResponse = {
+  ...TREE,
+  disciplinas: [
+    {
+      idDisciplina: 7,
+      nombre: 'Desarrollo',
+      sinDisciplina: false,
+      orden: 1,
+      fases: [
+        {
+          fase: 10,
+          nombre: 'Construccion',
+          cerrado: false,
+          orden: 1,
+          procesos: [
+            { proceso: 101, nombre: 'Frontend' },
+            { proceso: 102, nombre: 'Backend' },
+          ],
+        },
+      ],
+    },
+  ],
+};
+
 function createMockApiClient(): ProcessOfflineApiClient {
   const post = vi.fn(async () => ({ success: true, data: { success: true, data: null } })) as unknown as ProcessOfflineApiClient['post'];
   return { post };
@@ -92,6 +116,46 @@ describe('ProcessOfflineService — Proyectos Offline', () => {
       expect(b).toHaveLength(1);
       expect(b[0].codCli).toBe('2');
       expect(b[0].proyecto).toBe('200');
+    });
+  });
+
+  describe('getOfflineProcesses', () => {
+    it('returns processes from the marked projects and their cached trees', async () => {
+      const { storage, service } = createService();
+      await service.markProjectOffline('USER_A', {
+        codCli: '1',
+        proyecto: '100',
+        nomProy: 'Proyecto Alpha',
+        nomCliente: 'Acme Corp',
+      });
+      await storage.saveProjectTree('USER_A', '1', '100', TREE_WITH_PROCESSES);
+
+      await expect(service.getOfflineProcesses('USER_A')).resolves.toEqual([
+        {
+          proceso: 101,
+          nombre: 'Frontend',
+          faseId: 10,
+          faseNombre: 'Construccion',
+          proyectoId: 100,
+          proyectoNombre: 'Proyecto Alpha',
+          clienteId: '1',
+          clienteNombre: 'Acme Corp',
+          disciplinaId: 7,
+          esProyectoOffline: true,
+        },
+        {
+          proceso: 102,
+          nombre: 'Backend',
+          faseId: 10,
+          faseNombre: 'Construccion',
+          proyectoId: 100,
+          proyectoNombre: 'Proyecto Alpha',
+          clienteId: '1',
+          clienteNombre: 'Acme Corp',
+          disciplinaId: 7,
+          esProyectoOffline: true,
+        },
+      ]);
     });
   });
 

@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { ListTodo, Loader2, RefreshCw, AlertCircle, Plus, Inbox, Pencil, Trash2, Tag } from 'lucide-react';
+import { ListTodo, Loader2, RefreshCw, AlertCircle, Plus, Pencil, Trash2, Tag } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -10,6 +10,7 @@ import { useCreateProcess } from '@/features/process-management/mutations/useCre
 import { usePendingProcesses } from '@/features/pending-process/hooks/usePendingProcesses';
 import { PendingProcessFormModal } from '@/features/pending-process/components/PendingProcessFormModal';
 import { PendingProcessReassignModal } from '@/features/pending-process/components/PendingProcessReassignModal';
+import { OfflineTasksEmptyState } from '../components/OfflineTasksEmptyState';
 import { useProcessCache } from '../hooks/useProcessCache';
 import { useCommandActions } from '@/components/CommandActionsContext';
 import { useTableKeyboardNavigation } from '@/hooks/useTableKeyboardNavigation';
@@ -142,8 +143,10 @@ export function AvailableTasksPage() {
 
   const filteredProcesses = useMemo(() => {
     if (showAll) return processes;
-    return processes.filter((p) => p.departamentoId === MY_DEPARTMENT_ID);
+    return processes.filter((p) => p.esProyectoOffline || p.departamentoId === MY_DEPARTMENT_ID);
   }, [processes, showAll]);
+
+  const hasOfflineTasks = filteredProcesses.length > 0 || pendingProcesses.length > 0;
 
   const getRowId = useMemo(
     () => (proceso: Proceso) => String(proceso.proceso),
@@ -242,44 +245,38 @@ export function AvailableTasksPage() {
             </Button>
           </div>
         </div>
-      ) : processes.length === 0 ? (
+      ) : !hasOfflineTasks ? (
         <div className="border border-border/50 rounded-lg p-8">
-          <div className="flex flex-col items-center justify-center text-center space-y-3">
-            <div className="p-3 bg-muted/50 rounded-full">
-              <Inbox className="w-8 h-8 text-muted-foreground/70" />
-            </div>
-            <div>
-              <p className="text-sm font-medium">No hay tareas disponibles</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Creá una tarea o ajustá los filtros para ver resultados
-              </p>
-            </div>
-          </div>
+          <OfflineTasksEmptyState />
         </div>
       ) : (
         <div className="space-y-3">
-          <div className="flex items-center gap-3">
-            <Switch
-              id="department-filter"
-              checked={showAll}
-              onCheckedChange={setShowAll}
-            />
-            <label htmlFor="department-filter" className="text-sm text-muted-foreground cursor-pointer">
-              {showAll ? 'Todos los departamentos' : 'Mi departamento'}
-            </label>
-          </div>
-            <DataTable
-              columns={columns}
-              data={filteredProcesses}
-              getRowId={getRowId}
-              columnToggle={{
-                columns: toggleColumns,
-                onToggle: handleColumnToggle,
-              }}
-              activeIndex={activeIndex}
-              getRowProps={getRowProps}
-              tableRef={tableRef}
-            />
+          {filteredProcesses.length > 0 && (
+            <>
+              <div className="flex items-center gap-3">
+                <Switch
+                  id="department-filter"
+                  checked={showAll}
+                  onCheckedChange={setShowAll}
+                />
+                <label htmlFor="department-filter" className="text-sm text-muted-foreground cursor-pointer">
+                  {showAll ? 'Todos los departamentos' : 'Mi departamento'}
+                </label>
+              </div>
+              <DataTable
+                columns={columns}
+                data={filteredProcesses}
+                getRowId={getRowId}
+                columnToggle={{
+                  columns: toggleColumns,
+                  onToggle: handleColumnToggle,
+                }}
+                activeIndex={activeIndex}
+                getRowProps={getRowProps}
+                tableRef={tableRef}
+              />
+            </>
+          )}
         </div>
       )}
 

@@ -81,6 +81,47 @@ export class ProcessOfflineService {
   }
 
   /**
+   * Devuelve los procesos de los Proyectos Offline del usuario a partir de
+   * sus árboles cacheados. Los proyectos marcados sin árbol disponible se
+   * omiten hasta que el próximo sync complete su caché.
+   */
+  async getOfflineProcesses(usured: string): Promise<Proceso[]> {
+    const selections = await this.storage.getOfflineProjectSelections(usured);
+    const trees = await Promise.all(
+      selections.map(async (selection) => ({
+        selection,
+        tree: await this.storage.getProjectTree(usured, selection.codCli, selection.proyecto),
+      }))
+    );
+    const processes = new Map<number, Proceso>();
+
+    for (const { selection, tree } of trees) {
+      if (!tree) continue;
+      for (const disciplina of tree.disciplinas) {
+        for (const fase of disciplina.fases) {
+          for (const process of fase.procesos) {
+            if (processes.has(process.proceso)) continue;
+            processes.set(process.proceso, {
+              proceso: process.proceso,
+              nombre: process.nombre,
+              faseId: fase.fase,
+              faseNombre: fase.nombre,
+              proyectoId: tree.proyecto.proyecto,
+              proyectoNombre: tree.proyecto.nomProy || selection.nomProy,
+              clienteId: String(tree.cliente.codCli),
+              clienteNombre: tree.cliente.nomCliente || selection.nomCliente,
+              disciplinaId: disciplina.idDisciplina,
+              esProyectoOffline: true,
+            });
+          }
+        }
+      }
+    }
+
+    return [...processes.values()];
+  }
+
+  /**
    * Timestamp (ms) de la última vez que se actualizó el caché del usuario,
    * o null si el usuario todavía no tiene caché.
    */

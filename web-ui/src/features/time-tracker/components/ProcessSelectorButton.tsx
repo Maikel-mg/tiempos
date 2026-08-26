@@ -1,22 +1,27 @@
 import { useState, useMemo, useCallback } from 'react';
-import { ChevronDown, Search, RefreshCw, Plus } from 'lucide-react';
+import { ChevronDown, Search, RefreshCw, Plus, AlertTriangle } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useProcessCache } from '../hooks/useProcessCache';
+import { useOfflineFirstExperience } from '../hooks/useOfflineFirstExperience';
 import { usePendingProcesses } from '@/features/pending-process/hooks/usePendingProcesses';
 import { PendingProcessFormModal } from '@/features/pending-process/components/PendingProcessFormModal';
+import { OfflineTasksEmptyState } from './OfflineTasksEmptyState';
 import type { Proceso } from '../types';
 
 const MY_DEPARTMENT_ID = 5;
 
-interface ProcessSelectorButtonProps {
+export interface ProcessSelectorButtonProps {
   value: Proceso | null;
   onChange: (task: Proceso | null) => void;
   className?: string;
   disabled?: boolean;
+  /** True while editing an unsynchronized Entrada de Tiempo. */
+  entryPending?: boolean;
 }
 
 function matchesSearch(p: Proceso, lower: string): boolean {
@@ -40,21 +45,27 @@ export function ProcessSelectorButton({
   onChange,
   className,
   disabled,
+  entryPending = false,
 }: ProcessSelectorButtonProps) {
   const { processes, loading, error, refresh } = useProcessCache();
-  const { pendingProcesos, reload: reloadPending } = usePendingProcesses();
+  const { pendingProcesos, loading: pendingLoading, reload: reloadPending } = usePendingProcesses();
   const [open, setOpen] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showAllDepartments, setShowAllDepartments] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
+  const firstExperienceSuggestion = useOfflineFirstExperience({
+    open,
+    hasTasks: processes.length > 0 || pendingProcesos.length > 0,
+    loading: loading || pendingLoading,
+  });
 
   // Filter system processes: department first, then search text.
   // Pending processes have no department, so they are always visible.
   const filteredProcesses = useMemo(() => {
     let result = processes;
     if (!showAllDepartments) {
-      result = result.filter((p) => p.departamentoId === MY_DEPARTMENT_ID);
+      result = result.filter((p) => p.esProyectoOffline || p.departamentoId === MY_DEPARTMENT_ID);
     }
     if (searchText) {
       const lower = searchText.toLowerCase();
@@ -68,6 +79,14 @@ export function ProcessSelectorButton({
     const lower = searchText.toLowerCase();
     return pendingProcesos.filter((p) => matchesSearch(p, lower));
   }, [pendingProcesos, searchText]);
+
+  const missingSelectedProcess = Boolean(
+    entryPending &&
+      value &&
+      value.proceso > 0 &&
+      !loading &&
+      !processes.some((process) => process.proceso === value.proceso)
+  );
 
   // Handle process selection
   const handleSelect = useCallback((process: Proceso) => {
@@ -152,15 +171,28 @@ export function ProcessSelectorButton({
           </div>
         </div>
 
+        {missingSelectedProcess && value && (
+          <Alert variant="warning" className="m-2">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Proceso no disponible offline</AlertTitle>
+            <AlertDescription>
+              El proceso &quot;{value.nombre}&quot; ya no está disponible offline. Selecciona otro proceso para
+              reasignar la Entrada de Tiempo.
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div className="max-h-[320px] overflow-y-auto">
           {loading ? (
             <p className="p-4 text-sm text-muted-foreground text-center">Cargando...</p>
           ) : error ? (
             <p className="p-4 text-sm text-destructive text-center">{error}</p>
           ) : visiblePending.length === 0 && filteredProcesses.length === 0 ? (
-            <p className="p-4 text-sm text-muted-foreground text-center">
-              {searchText ? 'No se encontraron procesos' : 'No hay procesos disponibles'}
-            </p>
+            searchText ? (
+              <p className="p-4 text-sm text-muted-foreground text-center">No se encontraron procesos</p>
+            ) : (
+              <OfflineTasksEmptyState firstExperience={firstExperienceSuggestion} />
+            )
           ) : (
             <>
               {visiblePending.map((process) => (

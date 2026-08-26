@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import '@testing-library/jest-dom';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import { ProcessSelectorButton } from '../ProcessSelectorButton';
 import type { Proceso } from '../../types';
 
@@ -10,6 +11,8 @@ import type { Proceso } from '../../types';
 const mockRefresh = vi.fn();
 const mockUseProcessCache = vi.fn();
 const mockUsePendingProcesses = vi.fn();
+const mockGetProjects = vi.fn();
+const mockWizardGet = vi.fn();
 
 vi.mock('../../hooks/useProcessCache', () => ({
   useProcessCache: () => mockUseProcessCache(),
@@ -22,6 +25,16 @@ vi.mock('@/features/pending-process/hooks/usePendingProcesses', () => ({
 vi.mock('@/features/pending-process/components/PendingProcessFormModal', () => ({
   PendingProcessFormModal: ({ open, onOpenChange }: any) =>
     open ? <div data-testid="pending-form-modal"><button onClick={() => onOpenChange(false)}>Close</button></div> : null,
+}));
+
+vi.mock('@/features/time-tracker/services/ProcessOfflineService', () => ({
+  processOfflineService: {
+    getProjects: (...args: unknown[]) => mockGetProjects(...args),
+  },
+}));
+
+vi.mock('@/config/stores', () => ({
+  wizardConfig: { get: () => mockWizardGet() },
 }));
 
 // ── Test data ────────────────────────────────────────────────────────────────
@@ -69,6 +82,9 @@ function setupMockProcesses(processes: Proceso[] = SEED_PROCESSES, loading = fal
 describe('ProcessSelectorButton', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
+    mockWizardGet.mockReturnValue(null);
+    mockGetProjects.mockResolvedValue([]);
   });
 
   it('renders button with placeholder text when no process selected', () => {
@@ -233,6 +249,31 @@ describe('ProcessSelectorButton', () => {
     expect(screen.queryByText('Diseño UX')).not.toBeInTheDocument();
   });
 
+  it('shows processes from offline projects with the department filter enabled', async () => {
+    const user = userEvent.setup();
+    setupMockProcesses([
+      {
+        proceso: 401,
+        nombre: 'Proceso Offline',
+        proyectoNombre: 'Proyecto Offline',
+        esProyectoOffline: true,
+      },
+    ]);
+
+    render(
+      <MemoryRouter>
+        <ProcessSelectorButton
+          value={null}
+          onChange={vi.fn()}
+        />
+      </MemoryRouter>
+    );
+
+    await user.click(screen.getByRole('button', { name: /seleccionar proceso/i }));
+
+    expect(await screen.findByText('Proceso Offline')).toBeInTheDocument();
+  });
+
   it('selects a process and calls onChange', async () => {
     const user = userEvent.setup();
     setupMockProcesses();
@@ -258,6 +299,30 @@ describe('ProcessSelectorButton', () => {
     );
   });
 
+  it('warns when a pending time entry references a missing process and allows reassignment', async () => {
+    const user = userEvent.setup();
+    setupMockProcesses();
+    const onChange = vi.fn();
+
+    render(
+      <ProcessSelectorButton
+        value={{ proceso: 999, nombre: 'Proceso desaparecido' }}
+        onChange={onChange}
+        entryPending
+      />
+    );
+
+    await user.click(screen.getByRole('button', { name: /proceso desaparecido/i }));
+
+    expect(screen.getByRole('alert')).toHaveTextContent(/ya no está disponible offline/i);
+
+    await user.click(screen.getByText('Desarrollo Frontend'));
+
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({ proceso: 101, nombre: 'Desarrollo Frontend' })
+    );
+  });
+
   it('shows loading state while fetching', () => {
     setupMockProcesses([], true);
 
@@ -274,22 +339,50 @@ describe('ProcessSelectorButton', () => {
     expect(screen.getByRole('button', { name: /seleccionar proceso/i })).toBeInTheDocument();
   });
 
-  it('shows "No hay procesos disponibles" when empty', async () => {
+  it('shows offline guidance with a link to Proyectos when empty', async () => {
     const user = userEvent.setup();
     setupMockProcesses([]);
 
     render(
-      <ProcessSelectorButton
-        value={null}
-        onChange={vi.fn()}
-      />
+      <MemoryRouter>
+        <ProcessSelectorButton
+          value={null}
+          onChange={vi.fn()}
+        />
+      </MemoryRouter>
     );
 
     await user.click(screen.getByRole('button', { name: /seleccionar proceso/i }));
 
     await waitFor(() => {
-      expect(screen.getByText('No hay procesos disponibles')).toBeInTheDocument();
+      expect(screen.getByTestId('offline-tasks-empty-state')).toHaveTextContent(
+        'No hay tareas disponibles offline. Conecta y marca tus proyectos en Proyectos'
+      );
     });
+    expect(screen.getByRole('link', { name: 'Proyectos' })).toHaveAttribute('href', '/projects');
+  });
+
+  it('shows the connected first-experience suggestion only once per usuario', async () => {
+    const user = userEvent.setup();
+    mockWizardGet.mockReturnValue({ usuario: 'MG01' });
+    mockGetProjects.mockResolvedValue([{ Proyecto: 'P1' }]);
+    setupMockProcesses([]);
+
+    render(
+      <MemoryRouter>
+        <ProcessSelectorButton value={null} onChange={vi.fn()} />
+      </MemoryRouter>
+    );
+
+    await user.click(screen.getByRole('button', { name: /seleccionar proceso/i }));
+    expect(await screen.findByTestId('offline-first-experience')).toBeInTheDocument();
+    expect(mockGetProjects).toHaveBeenCalledWith('MG01', { refresh: true });
+
+    await user.click(screen.getByRole('button', { name: /seleccionar proceso/i }));
+    await user.click(screen.getByRole('button', { name: /seleccionar proceso/i }));
+
+    expect(screen.queryByTestId('offline-first-experience')).not.toBeInTheDocument();
+    expect(mockGetProjects).toHaveBeenCalledTimes(1);
   });
 
   it('shows "No se encontraron procesos" when search has no results', async () => {

@@ -22,7 +22,7 @@ import { wizardConfig, dbConfig, proposalConfig } from '@/config/stores';
 import { TaskProposalModal } from '@/features/proposal-ui/components/TaskProposalModal';
 import { extractProposalsFromLocal } from '@/domain/proposals/extract-local-proposals';
 import type { TaskProposal } from '@/domain/proposals/extract-proposals';
-import type { ProcesoPendiente, TimeEntry } from '../types';
+import type { Proceso, ProcesoPendiente, TimeEntry } from '../types';
 import type { PeriodType, DateRange } from '@/components/shared/PeriodSelector';
 
 function formatDurationHMS(totalSeconds: number): string {
@@ -352,6 +352,7 @@ export function TimeTrackingPage() {
     endTime: string;
     description?: string;
     recoverable: boolean;
+    proceso: Proceso;
   }) => {
     if (editingEntry) {
       await updateEntry(editingEntry.id, data);
