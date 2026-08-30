@@ -53,20 +53,20 @@ export function buildProcessesQuery(params: { usured: string }): string {
 export interface TimeEntry {
   entryId: string;
   Usured: string;
-  Fecha: string;       // YYYYMMDD
-  HoraDesde: string;
-  HoraHasta: string;
+  Fecha: string;
   Minutos: number;
   Proceso: number;
   pTipoHora?: number;
   Comentario?: string;
+  HoraDesde: string;
+  HoraHasta: string;
 }
 
 export interface CreateProcessDTO {
   nombre: string;
-  fechaInicio: string;  // DD/MM/YYYY
-  fechaFin: string;     // DD/MM/YYYY
-  fechaEstimacion: string; // DD/MM/YYYY
+  fechaInicio: string;
+  fechaFin: string;
+  fechaEstimacion: string;
   minutos: number;
   usuario: string;
   fase: string;
@@ -91,7 +91,7 @@ export function buildCreateProcessSQL(dto: CreateProcessDTO): string {
   const fechaFin = parseDDMMYYYYToYYYYMMDD(dto.fechaFin);
   const fechaEstimacion = parseDDMMYYYYToYYYYMMDD(dto.fechaEstimacion);
 
-  return `SET LANGUAGE Spanish;\nSET DATEFORMAT dmy;\n\nDECLARE @p38 VARCHAR(200)\nSET @p38 = NULL\n\nEXEC spNETTiempos_Procesos_Mantenimiento\n    @pAccion = 'I',\n    @pProceso = NULL,\n    @pNombre = '${nombre}',\n    @pFechaIniPrevista = '${fechaInicio}',\n    @pFechaFinPrevista = '${fechaFin}',\n    @pFechaIniReal = NULL,\n    @pFechaFinReal = NULL,\n    @pTiempoPrevisto = ${minutos},\n    @pTecnicoPrev = ${minutos},\n    @pObservaciones = NULL,\n    @pRutaDOC = NULL,\n    @pTipoDeHora = 1,\n    @pPresencial = 1,\n    @pDisponible = 1,\n    @pCosteEmpresa = 1,\n    @pFechaAviso = NULL,\n    @pHoraAviso = NULL,\n    @pUsuredAviso = NULL,\n    @pUsuredResp = 'BR00',\n    @pUsuredRespRev = 'BR00',\n    @pRecursos = NULL,\n    @pDiseño = 'N',\n    @pTecnicos = '${usured}',\n    @pIdDpto = 5,\n    @pFase = '${fase}',\n    @pComentarioOblig = 0,\n    @pCliente = 'ELECNOR',\n    @pIdDptoClte = NULL,\n    @pIdAplicacion = NULL,\n    @pFechaEstimacion = '${fechaEstimacion}',\n    @pTareaTecnica = 1,\n    @pObservacionEstExt = NULL,\n    @pHito = 0,\n    @pDesplazamientoPS = 0,\n    @pHerramienta = NULL,\n    @pProtegida = 0,\n    @pFaseAnterior = NULL,\n    @Resultado = @p38 OUTPUT;`;
+  return `SET LANGUAGE Spanish;\nSET DATEFORMAT dmy;\n\nDECLARE @p38 VARCHAR(200)\nSET @p38 = NULL\n\nEXEC spNETTiempos_Procesos_Mantenimiento\n    @pAccion = 'I',\n    @pProceso = NULL,\n    @pNombre = '${nombre}',\n    @pFechaIniPrevista = '${fechaInicio}',\n    @pFechaFinPrevista = '${fechaFin}',\n    @pFechaIniReal = NULL,\n    @pFechaFinReal = NULL,\n    @pTiempoPrevisto = ${minutos},\n    @pTecnicoPrev = ${minutos},\n    @pObservaciones = NULL,\n    @pRutaDOC = NULL,\n    @pTipoDeHora = 1,\n    @pPresencial = 1,\n    @pDisponible = 1,\n    @pCosteEmpresa = 1,\n    @pFechaAviso = NULL,\n    @pHoraAviso = NULL,\n    @pUsuredAviso = NULL,\n    @pUsuredResp = 'BR00',\n    @pUsuredRespRev = 'BR00',\n    @pRecursos = NULL,\n    @pDise\u00f1o = 'N',\n    @pTecnicos = '${usured}',\n    @pIdDpto = 5,\n    @pFase = '${fase}',\n    @pComentarioOblig = 0,\n    @pCliente = 'ELECNOR',\n    @pIdDptoClte = NULL,\n    @pIdAplicacion = NULL,\n    @pFechaEstimacion = '${fechaEstimacion}',\n    @pTareaTecnica = 1,\n    @pObservacionEstExt = NULL,\n    @pHito = 0,\n    @pDesplazamientoPS = 0,\n    @pHerramienta = NULL,\n    @pProtegida = 0,\n    @pFaseAnterior = NULL,\n    @Resultado = @p38 OUTPUT;\n\nSELECT @p38 AS NProceso;`;
 }
 
 export function buildExecuteTimeEntriesSQL(entries: TimeEntry[]): string {

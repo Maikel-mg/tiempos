@@ -1,6 +1,6 @@
 import { db } from './IndexedDBStorage';
 import type { ProcessOfflineStorage } from './ProcessOfflineStorage';
-import type { OfflineProjectSelection, Proceso, ProcesoPendiente } from '../../features/time-tracker/types';
+import type { OfflineProjectSelection, Proceso, ProcesoPendiente, TimeEntry } from '../../features/time-tracker/types';
 import type { Project, ProjectTreeResponse } from '../../features/projects/types';
 
 function processKey(usured: string, proceso: number): string {
@@ -132,6 +132,15 @@ export class IndexedDBProcessOfflineStorage implements ProcessOfflineStorage {
 
   async removePendingProcess(usured: string, id: number): Promise<void> {
     await db.pendingProcesses.delete(pendingKey(usured, id));
+  }
+
+  // TimeEntries (remap)
+  async getTimeEntries(): Promise<TimeEntry[]> {
+    return db.timeEntries.toArray();
+  }
+
+  async putTimeEntry(entry: TimeEntry): Promise<void> {
+    await db.timeEntries.put(entry);
   }
 
   // Metadata

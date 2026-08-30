@@ -387,17 +387,25 @@ app.post('/api/create-process', async (req: Request, res: Response) => {
 
   try {
     const sql = buildCreateProcessSQL(dto);
-    const results = await executeStatements(
+    const recordsets = await executeQueryRaw(
       { server, database, username, password: password || '' } as DbConnectionParams,
-      [sql]
+      sql
     );
-    const totalRowsAffected = results.reduce((sum, r) => sum + r.rowsAffected, 0);
+    // recordsets contains all recordsets; the last one holds NProceso from SELECT @p38
+    let nProceso: number | null = null;
+    for (const rs of recordsets) {
+      if (Array.isArray(rs) && rs.length > 0 && rs[0]?.NProceso != null) {
+        const raw = rs[0].NProceso;
+        const parsed = Number(String(raw).trim());
+        if (Number.isFinite(parsed) && parsed > 0) nProceso = parsed;
+      }
+    }
 
     res.json({
       success: true,
       message: 'Proceso creado exitosamente',
-      totalRowsAffected,
-      results
+      nProceso,
+      recordsets
     });
   } catch (error: any) {
     console.error('Create Process Error:', error.message);

@@ -1,5 +1,5 @@
 import type { ProcessOfflineStorage } from '../ProcessOfflineStorage';
-import type { Proceso, ProcesoPendiente, OfflineProjectSelection } from '../../../features/time-tracker/types';
+import type { Proceso, ProcesoPendiente, OfflineProjectSelection, TimeEntry } from '../../../features/time-tracker/types';
 import type { Project, ProjectTreeResponse } from '../../../features/projects/types';
 
 /**
@@ -13,6 +13,7 @@ export class InMemoryProcessOfflineStorage implements ProcessOfflineStorage {
   private treesByUser = new Map<string, ProjectTreeResponse>();
   private offlineSelections = new Map<string, OfflineProjectSelection>();
   private pendingProcesses = new Map<string, ProcesoPendiente>();
+  private timeEntries = new Map<string, TimeEntry>();
   private lastUpdatedByUser = new Map<string, number>();
 
   async getProcesses(usured: string): Promise<Proceso[]> {
@@ -73,6 +74,14 @@ export class InMemoryProcessOfflineStorage implements ProcessOfflineStorage {
 
   async removePendingProcess(usured: string, id: number): Promise<void> {
     this.pendingProcesses.delete(this.pendingKey(usured, id));
+  }
+
+  async getTimeEntries(): Promise<TimeEntry[]> {
+    return [...this.timeEntries.values()];
+  }
+
+  async putTimeEntry(entry: TimeEntry): Promise<void> {
+    this.timeEntries.set(entry.id, entry);
   }
 
   async getLastUpdated(usured: string): Promise<number | null> {

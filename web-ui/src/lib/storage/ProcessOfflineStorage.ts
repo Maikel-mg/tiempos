@@ -1,4 +1,4 @@
-import type { Proceso, ProcesoPendiente, OfflineProjectSelection } from '../../features/time-tracker/types';
+import type { Proceso, ProcesoPendiente, OfflineProjectSelection, TimeEntry } from '../../features/time-tracker/types';
 import type { Project, ProjectTreeResponse } from '../../features/projects/types';
 
 /**
@@ -30,6 +30,10 @@ export interface ProcessOfflineStorage {
   getPendingProcesses(usured: string): Promise<ProcesoPendiente[]>;
   putPendingProcess(usured: string, pendiente: ProcesoPendiente): Promise<void>;
   removePendingProcess(usured: string, id: number): Promise<void>;
+
+  // TimeEntries (remap)
+  getTimeEntries(): Promise<TimeEntry[]>;
+  putTimeEntry(entry: TimeEntry): Promise<void>;
 
   // Metadata
   getLastUpdated(usured: string): Promise<number | null>;

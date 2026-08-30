@@ -116,3 +116,56 @@ export interface TimerState {
   elapsed: number;
   description?: string;
 }
+
+// ── Sync de Procesos (T6) ───────────────────────────────────────────────────
+
+export interface ProcessDuplicate {
+  pending: ProcesoPendiente;
+  system: Proceso;
+}
+
+export interface ProcessSyncPlan {
+  /** Procesos del sistema que no están en local (excluyendo duplicados por nombre), preseleccionados */
+  pull: Proceso[];
+  /** Pendientes que se crearán en BBDD (excluyendo duplicados) */
+  push: ProcesoPendiente[];
+  /** Pares local/sistema que comparten nombre (normalizado) */
+  duplicates: ProcessDuplicate[];
+}
+
+export type DuplicateResolution = 'useExisting' | 'createNew';
+
+export interface ProcessSyncExecutionOptions {
+  /** IDs de procesos del pull que el usuario quiere importar (default: todos) */
+  selectedPullIds?: number[];
+  /** Resolución por pendiente duplicado: pending.id → resolución */
+  duplicateResolutions?: Record<number, DuplicateResolution>;
+  /** Si se provee, solo reintenta estos pendingIds fallados */
+  retryFailedIds?: number[];
+}
+
+export type ProcessSyncStage = 'pull' | 'push' | 'remap' | 'mirror' | 'done';
+
+export interface ProcessSyncProgress {
+  stage: ProcessSyncStage;
+  completed: number;
+  total: number;
+}
+
+export interface ProcessSyncResult {
+  /** Cuántos del pull se importaron al caché */
+  pulled: number;
+  /** Resultado de creación de pendientes en BBDD */
+  created: {
+    succeeded: number;
+    failed: number;
+    failures: Array<{ pendingId: number; error: string }>;
+  };
+  /** Cuántos duplicados se resolvieron con "usar el existente" (remapeados sin crear) */
+  remappedDuplicates: number;
+  /** Cuántas Entradas de Tiempo fueron remapeadas a NProceso oficial */
+  remappedEntries: number;
+  /** IDs que fallaron y pueden reintentarse */
+  failedIds: number[];
+  lastUpdated: number | null;
+}

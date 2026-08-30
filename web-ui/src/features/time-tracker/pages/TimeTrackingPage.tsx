@@ -10,6 +10,7 @@ import { TimeEntryViewSwitcher } from '../components/TimeEntryViewSwitcher';
 import { OverlapAlert } from '../components/OverlapAlert';
 import { SyncPanel } from '../components/SyncPanel';
 import { PeriodProgressPanel } from '../components/PeriodProgressPanel';
+import { ProcessSyncDialog } from '../components/ProcessSyncDialog';
 import { useTimeEntries } from '../hooks/useTimeEntries';
 import { useTimer } from '../hooks/useTimer';
 import { useCommandActions } from '@/components/CommandActionsContext';
@@ -36,6 +37,7 @@ function formatDurationHMS(totalSeconds: number): string {
 export function TimeTrackingPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [syncPanelOpen, setSyncPanelOpen] = useState(false);
+  const [processSyncOpen, setProcessSyncOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
   const [period, setPeriod] = useState<PeriodType>('week');
   const [customRange, setCustomRange] = useState<DateRange | undefined>(undefined);
@@ -667,6 +669,15 @@ export function TimeTrackingPage() {
                 </span>
               </button>
             )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setProcessSyncOpen(true)}
+              className="gap-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Sincronizar procesos
+            </Button>
             {pendingEntries.length > 0 && (
               <Button
                 variant="outline"
@@ -706,6 +717,7 @@ export function TimeTrackingPage() {
           tableRef={tableRef}
           getRowProps={getRowProps}
         />
+        <ProcessSyncDialog open={processSyncOpen} onOpenChange={setProcessSyncOpen} />
       </div>
       </div>
     </main>

@@ -1,10 +1,12 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FolderKanban } from 'lucide-react';
+import { FolderKanban, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { ProjectsTable } from '@/features/projects/components/ProjectsTable';
 import { useProjects } from '@/features/projects/hooks/use-projects';
 import { useOfflineProjects } from '@/features/projects/hooks/use-offline-projects';
 import { useTableKeyboardNavigation } from '@/hooks/useTableKeyboardNavigation';
+import { ProcessSyncDialog } from '@/features/time-tracker/components/ProcessSyncDialog';
 import type { Project } from '@/features/projects/types';
 
 export function ProjectsPage() {
@@ -38,18 +40,26 @@ export function ProjectsPage() {
     focusFirst();
   }, [projects.length, focusFirst]);
 
+  const [processSyncOpen, setProcessSyncOpen] = useState(false);
+
   return (
     <main className="w-full px-4 sm:px-6 lg:px-8 py-5">
-      <div className="flex items-center gap-3 mb-5">
-        <div className="p-2 bg-primary/10 rounded-lg text-primary">
-          <FolderKanban className="w-5 h-5" />
+      <div className="flex items-center justify-between gap-3 mb-5">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-primary/10 rounded-lg text-primary">
+            <FolderKanban className="w-5 h-5" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">Proyectos</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Explorá y gestioná los proyectos del sistema
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Proyectos</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Explorá y gestioná los proyectos del sistema
-          </p>
-        </div>
+        <Button variant="outline" size="sm" className="gap-2" onClick={() => setProcessSyncOpen(true)}>
+          <RefreshCw className="w-4 h-4" />
+          Sincronizar procesos
+        </Button>
       </div>
 
       <ProjectsTable 
@@ -68,6 +78,7 @@ export function ProjectsPage() {
           mark ? offline.markProject(project) : offline.removeProject(project)
         }
       />
+      <ProcessSyncDialog open={processSyncOpen} onOpenChange={setProcessSyncOpen} />
     </main>
   );
 }
