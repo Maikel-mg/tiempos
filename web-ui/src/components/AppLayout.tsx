@@ -26,6 +26,7 @@ import { CommandPaletteProvider } from "@/components/CommandPaletteContext"
 import { CommandActionsProvider } from "@/components/CommandActionsContext"
 import { CommandPalette } from "@/components/CommandPalette"
 import { useGlobalShortcuts } from "@/hooks/useGlobalShortcuts"
+import { OfflineStatusIndicator } from "@/components/OfflineStatusIndicator"
 
 const mainNavItems = [
   {
@@ -138,6 +139,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     </SidebarMenu>
                   </SidebarGroupContent>
                 </SidebarGroup>
+                <OfflineStatusIndicator collapsed={!open} />
                 <SidebarGroup className="mt-auto">
                   <SidebarGroupContent>
                     <SidebarMenu>

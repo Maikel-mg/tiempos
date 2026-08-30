@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SettingsPage } from '../SettingsPage';
-import { dbConfig, wizardConfig, proposalConfig } from '@/config/stores';
+import { dbConfig, wizardConfig, proposalConfig, connectivityConfig, scheduleConfig } from '@/config/stores';
 
 // Mock sonner toast
 vi.mock('sonner', () => ({
@@ -55,6 +55,8 @@ describe('SettingsPage - DB Connection Section', () => {
     dbConfig.reset();
     wizardConfig.reset();
     proposalConfig.reset();
+    connectivityConfig.reset();
+    scheduleConfig.reset();
     vi.clearAllMocks();
   });
 
@@ -221,8 +223,21 @@ describe('SettingsPage - Wizard Config Section', () => {
     dbConfig.reset();
     wizardConfig.reset();
     proposalConfig.reset();
+    connectivityConfig.reset();
+    scheduleConfig.reset();
     vi.clearAllMocks();
   });
+
+  const getWizardSaveButton = () => {
+    const input = getWizardUsuarioInput();
+    const card = input.closest('[class*="Card"]') ?? input.parentElement?.parentElement?.parentElement ?? document.body;
+    return Array.from(card.querySelectorAll('button')).find(b => /guardar/i.test(b.textContent || '')) as HTMLButtonElement;
+  };
+  const getWizardResetButton = () => {
+    const input = getWizardUsuarioInput();
+    const card = input.closest('[class*="Card"]') ?? input.parentElement?.parentElement?.parentElement ?? document.body;
+    return Array.from(card.querySelectorAll('button')).find(b => /restablecer/i.test(b.textContent || '')) as HTMLButtonElement;
+  };
 
   describe('Test 1: Renders wizard section with fields', () => {
     it('should render section heading "Preferencias de Importación"', () => {
@@ -277,9 +292,7 @@ describe('SettingsPage - Wizard Config Section', () => {
       fireEvent.change(getWizardUsuarioInput(), { target: { value: 'MG02' } });
       fireEvent.change(getWizardTipoHoraInput(), { target: { value: '20' } });
 
-      // Click second Guardar button (wizard section)
-      const saveButtons = screen.getAllByRole('button', { name: /guardar/i });
-      fireEvent.click(saveButtons[saveButtons.length - 1]);
+      fireEvent.click(getWizardSaveButton());
 
       const saved = wizardConfig.get();
       expect(saved?.usuario).toBe('MG02');
@@ -299,9 +312,7 @@ describe('SettingsPage - Wizard Config Section', () => {
 
       fireEvent.change(getWizardUsuarioInput(), { target: { value: 'CHANGED' } });
 
-      // Click second Restablecer button (wizard section)
-      const resetButtons = screen.getAllByRole('button', { name: /restablecer/i });
-      fireEvent.click(resetButtons[resetButtons.length - 1]);
+      fireEvent.click(getWizardResetButton());
 
       expect(getWizardUsuarioInput().value).toBe('SAVED');
     });
@@ -311,8 +322,7 @@ describe('SettingsPage - Wizard Config Section', () => {
     it('should show success toast when wizard Guardar is clicked', () => {
       renderPage();
 
-      const saveButtons = screen.getAllByRole('button', { name: /guardar/i });
-      fireEvent.click(saveButtons[saveButtons.length - 1]);
+      fireEvent.click(getWizardSaveButton());
 
       expect(toast.success).toHaveBeenCalled();
     });
@@ -324,10 +334,24 @@ describe('SettingsPage - Proposal Config Section', () => {
     dbConfig.reset();
     wizardConfig.reset();
     proposalConfig.reset();
+    connectivityConfig.reset();
+    scheduleConfig.reset();
     vi.clearAllMocks();
   });
 
   const getProposalThresholdInput = () => document.getElementById('proposal-threshold') as HTMLInputElement;
+  const getProposalSaveButton = () => {
+    const input = getProposalThresholdInput();
+    const card = input.closest('[class*="Card"]') ?? input.parentElement?.parentElement?.parentElement ?? document.body;
+    const buttons = Array.from(card.querySelectorAll('button')).filter(b => /guardar/i.test(b.textContent || ''));
+    return buttons[0] as HTMLButtonElement;
+  };
+  const getProposalResetButton = () => {
+    const input = getProposalThresholdInput();
+    const card = input.closest('[class*="Card"]') ?? input.parentElement?.parentElement?.parentElement ?? document.body;
+    const buttons = Array.from(card.querySelectorAll('button')).filter(b => /restablecer/i.test(b.textContent || ''));
+    return buttons[0] as HTMLButtonElement;
+  };
 
   describe('Renders proposal section', () => {
     it('should render "Detección de Propuestas" heading', () => {
@@ -372,8 +396,7 @@ describe('SettingsPage - Proposal Config Section', () => {
 
       fireEvent.change(getProposalThresholdInput(), { target: { value: '25' } });
 
-      const saveButtons = screen.getAllByRole('button', { name: /guardar/i });
-      fireEvent.click(saveButtons[saveButtons.length - 1]);
+      fireEvent.click(getProposalSaveButton());
 
       const saved = proposalConfig.get();
       expect(saved?.thresholdHours).toBe(25);
@@ -387,8 +410,7 @@ describe('SettingsPage - Proposal Config Section', () => {
 
       fireEvent.change(getProposalThresholdInput(), { target: { value: '50' } });
 
-      const resetButtons = screen.getAllByRole('button', { name: /restablecer/i });
-      fireEvent.click(resetButtons[resetButtons.length - 1]);
+      fireEvent.click(getProposalResetButton());
 
       expect(getProposalThresholdInput().value).toBe('12');
     });
@@ -416,13 +438,109 @@ describe('SettingsPage - Proposal Config Section', () => {
     it('should show success toast when Guardar is clicked', () => {
       renderPage();
 
-      const saveButtons = screen.getAllByRole('button', { name: /guardar/i });
-      fireEvent.click(saveButtons[saveButtons.length - 1]);
+      fireEvent.click(getProposalSaveButton());
 
       expect(toast.success).toHaveBeenCalledWith(
         'Umbral guardado',
         expect.objectContaining({ description: expect.any(String) })
       );
     });
+  });
+});
+
+describe('SettingsPage - Connectivity Config Section', () => {
+  beforeEach(() => {
+    dbConfig.reset();
+    wizardConfig.reset();
+    proposalConfig.reset();
+    connectivityConfig.reset();
+    scheduleConfig.reset();
+    vi.clearAllMocks();
+  });
+
+  const getPollingInput = () => document.getElementById('connectivity-polling-interval') as HTMLInputElement;
+  const getFreshnessInput = () => document.getElementById('connectivity-freshness-threshold') as HTMLInputElement;
+  const getConnectivitySaveButton = () => {
+    const input = getPollingInput();
+    const card = input.closest('[class*="Card"]') ?? input.parentElement?.parentElement?.parentElement ?? document.body;
+    return Array.from(card.querySelectorAll('button')).find(b => /guardar/i.test(b.textContent || '')) as HTMLButtonElement;
+  };
+  const getConnectivityResetButton = () => {
+    const input = getPollingInput();
+    const card = input.closest('[class*="Card"]') ?? input.parentElement?.parentElement?.parentElement ?? document.body;
+    return Array.from(card.querySelectorAll('button')).find(b => /restablecer/i.test(b.textContent || '')) as HTMLButtonElement;
+  };
+
+  it('renders connectivity section heading', () => {
+    renderPage();
+    expect(screen.getByText(/estado de conexión y frescura/i)).toBeDefined();
+  });
+
+  it('renders polling interval and freshness inputs with correct attrs', () => {
+    renderPage();
+    expect(getPollingInput().type).toBe('number');
+    expect(getPollingInput().min).toBe('1');
+    expect(getPollingInput().max).toBe('30');
+    expect(getFreshnessInput().type).toBe('number');
+    expect(getFreshnessInput().min).toBe('1');
+    expect(getFreshnessInput().max).toBe('30');
+  });
+
+  it('defaults to 5 min and 7 days when store empty', () => {
+    renderPage();
+    expect(getPollingInput().value).toBe('5');
+    expect(getFreshnessInput().value).toBe('7');
+  });
+
+  it('pre-populates from store', () => {
+    connectivityConfig.set({ pollingIntervalMinutes: 10, freshnessThresholdDays: 15 });
+    renderPage();
+    expect(getPollingInput().value).toBe('10');
+    expect(getFreshnessInput().value).toBe('15');
+  });
+
+  it('clamps polling interval to 1-30 on change', () => {
+    renderPage();
+    fireEvent.change(getPollingInput(), { target: { value: '0' } });
+    expect(getPollingInput().value).toBe('1');
+    fireEvent.change(getPollingInput(), { target: { value: '100' } });
+    expect(getPollingInput().value).toBe('30');
+  });
+
+  it('clamps freshness threshold to 1-30 on change', () => {
+    renderPage();
+    fireEvent.change(getFreshnessInput(), { target: { value: '0' } });
+    expect(getFreshnessInput().value).toBe('1');
+    fireEvent.change(getFreshnessInput(), { target: { value: '50' } });
+    expect(getFreshnessInput().value).toBe('30');
+  });
+
+  it('persists to store on Guardar with clamping', () => {
+    renderPage();
+    fireEvent.change(getPollingInput(), { target: { value: '12' } });
+    fireEvent.change(getFreshnessInput(), { target: { value: '20' } });
+    fireEvent.click(getConnectivitySaveButton());
+    const saved = connectivityConfig.get();
+    expect(saved?.pollingIntervalMinutes).toBe(12);
+    expect(saved?.freshnessThresholdDays).toBe(20);
+  });
+
+  it('reverts to saved on Restablecer', () => {
+    connectivityConfig.set({ pollingIntervalMinutes: 8, freshnessThresholdDays: 12 });
+    renderPage();
+    fireEvent.change(getPollingInput(), { target: { value: '20' } });
+    fireEvent.change(getFreshnessInput(), { target: { value: '25' } });
+    fireEvent.click(getConnectivityResetButton());
+    expect(getPollingInput().value).toBe('8');
+    expect(getFreshnessInput().value).toBe('12');
+  });
+
+  it('shows success toast on save', () => {
+    renderPage();
+    fireEvent.click(getConnectivitySaveButton());
+    expect(toast.success).toHaveBeenCalledWith(
+      'Configuración de conexión guardada',
+      expect.objectContaining({ description: expect.any(String) })
+    );
   });
 });

@@ -68,3 +68,13 @@ export const scheduleConfig = defineConfig('schedule', {
     default: [] as Array<{ start: string; end: string; dailyHours: number }>
   }
 });
+
+/**
+ * Connectivity / offline-indicator configuration store
+ * - pollingIntervalMinutes: intervalo de comprobación de conexión a BBDD (1–30 min, default 5)
+ * - freshnessThresholdDays: umbral de frescura de la caché (1–30 días, default 7)
+ */
+export const connectivityConfig = defineConfig('connectivity', {
+  pollingIntervalMinutes: { type: 'number', default: 5 },
+  freshnessThresholdDays: { type: 'number', default: 7 },
+});

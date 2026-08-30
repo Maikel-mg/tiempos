@@ -14,6 +14,7 @@ import {
   Clock,
   Plus,
   Trash2,
+  Wifi,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,7 +22,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { toast } from 'sonner';
-import { dbConfig, wizardConfig, proposalConfig, scheduleConfig } from '@/config/stores';
+import { dbConfig, wizardConfig, proposalConfig, scheduleConfig, connectivityConfig } from '@/config/stores';
 import { useTestDbConnection } from '@/features/live-entries/mutations/sql-mutations';
 
 interface DbConfig {
@@ -52,6 +53,11 @@ interface ScheduleConfigState {
   exceptions: ScheduleException[];
 }
 
+interface ConnectivityConfigState {
+  pollingIntervalMinutes: number;
+  freshnessThresholdDays: number;
+}
+
 export function SettingsPage() {
   const [config, setConfig] = useState<DbConfig>({
     server: '',
@@ -71,6 +77,10 @@ export function SettingsPage() {
   const [scheduleCfg, setScheduleCfg] = useState<ScheduleConfigState>({
     defaultHours: { mon: 8.25, tue: 8.25, wed: 8.25, thu: 8.25, fri: 7, sat: 0, sun: 0 },
     exceptions: [],
+  });
+  const [connectivityCfg, setConnectivityCfg] = useState<ConnectivityConfigState>({
+    pollingIntervalMinutes: 5,
+    freshnessThresholdDays: 7,
   });
 
   const testMutation = useTestDbConnection();
@@ -105,6 +115,14 @@ export function SettingsPage() {
       setScheduleCfg({
         defaultHours: savedSchedule.defaultHours ?? { mon: 8.25, tue: 8.25, wed: 8.25, thu: 8.25, fri: 7, sat: 0, sun: 0 },
         exceptions: savedSchedule.exceptions ?? [],
+      });
+    }
+
+    const savedConnectivity = connectivityConfig.get();
+    if (savedConnectivity) {
+      setConnectivityCfg({
+        pollingIntervalMinutes: savedConnectivity.pollingIntervalMinutes ?? 5,
+        freshnessThresholdDays: savedConnectivity.freshnessThresholdDays ?? 7,
       });
     }
   }, []);
@@ -193,6 +211,30 @@ export function SettingsPage() {
     });
     toast.info('Restablecido', {
       description: 'Se ha restablecido el horario laboral.',
+    });
+  };
+
+  const handleConnectivitySave = () => {
+    const polling = Math.min(30, Math.max(1, Math.floor(connectivityCfg.pollingIntervalMinutes) || 5));
+    const freshness = Math.min(30, Math.max(1, Math.floor(connectivityCfg.freshnessThresholdDays) || 7));
+    connectivityConfig.set({
+      pollingIntervalMinutes: polling,
+      freshnessThresholdDays: freshness,
+    });
+    setConnectivityCfg({ pollingIntervalMinutes: polling, freshnessThresholdDays: freshness });
+    toast.success('Configuración de conexión guardada', {
+      description: 'Intervalo de comprobación y umbral de frescura actualizados.',
+    });
+  };
+
+  const handleConnectivityReset = () => {
+    const saved = connectivityConfig.get();
+    setConnectivityCfg({
+      pollingIntervalMinutes: saved?.pollingIntervalMinutes ?? 5,
+      freshnessThresholdDays: saved?.freshnessThresholdDays ?? 7,
+    });
+    toast.info('Restablecido', {
+      description: 'Se han restablecido los valores de conexión.',
     });
   };
 
@@ -581,6 +623,65 @@ export function SettingsPage() {
                 Guardar
               </Button>
               <Button variant="ghost" onClick={handleScheduleReset}>
+                Restablecer
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Wifi className="w-5 h-5" />
+              Estado de Conexión y Frescura
+            </CardTitle>
+            <CardDescription>
+              Configura el intervalo de comprobación de conexión a la BBDD y el umbral de aviso de frescura de la caché.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="connectivity-polling-interval">Intervalo de comprobación (minutos)</Label>
+                <Input
+                  id="connectivity-polling-interval"
+                  type="number"
+                  min={1}
+                  max={30}
+                  value={connectivityCfg.pollingIntervalMinutes}
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value, 10);
+                    if (!isNaN(value)) {
+                      setConnectivityCfg({ ...connectivityCfg, pollingIntervalMinutes: Math.min(30, Math.max(1, value)) });
+                    }
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">1–30 minutos. Por defecto 5. Solo con pestaña visible.</p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="connectivity-freshness-threshold">Umbral de frescura (días)</Label>
+                <Input
+                  id="connectivity-freshness-threshold"
+                  type="number"
+                  min={1}
+                  max={30}
+                  value={connectivityCfg.freshnessThresholdDays}
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value, 10);
+                    if (!isNaN(value)) {
+                      setConnectivityCfg({ ...connectivityCfg, freshnessThresholdDays: Math.min(30, Math.max(1, value)) });
+                    }
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">1–30 días. Por defecto 7. Aviso ámbar si se supera.</p>
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <Button variant="outline" onClick={handleConnectivitySave}>
+                Guardar
+              </Button>
+              <Button variant="ghost" onClick={handleConnectivityReset}>
                 Restablecer
               </Button>
             </div>
