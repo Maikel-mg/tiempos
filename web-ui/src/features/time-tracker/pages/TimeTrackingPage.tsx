@@ -6,6 +6,8 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PeriodSelector } from '@/components/shared/PeriodSelector';
 import { TimeTrackerBar } from '../components/TimeTrackerBar';
 import type { TimeTrackerBarHandle } from '../components/TimeTrackerBar';
+import { TimeEntryEditorDialog } from '../components/TimeEntryEditorDialog';
+import type { TimeEntryFormData } from '../components/TimeEntryEditorDialog';
 import { TimeEntryViewSwitcher } from '../components/TimeEntryViewSwitcher';
 import { OverlapAlert } from '../components/OverlapAlert';
 import { SyncPanel } from '../components/SyncPanel';
@@ -36,6 +38,7 @@ export function TimeTrackingPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [syncPanelOpen, setSyncPanelOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
+  const [entryEditorOpen, setEntryEditorOpen] = useState(false);
   const [period, setPeriod] = useState<PeriodType>('week');
   const [customRange, setCustomRange] = useState<DateRange | undefined>(undefined);
   const [activeTab, setActiveTab] = useState('table');
@@ -209,11 +212,7 @@ export function TimeTrackingPage() {
 
   const handleEditEntry = useCallback((entry: TimeEntry) => {
     setEditingEntry(entry);
-  }, []);
-
-  const handleEditCancel = useCallback(() => {
-    setEditingEntry(null);
-    trackerBarRef.current?.reset();
+    setEntryEditorOpen(true);
   }, []);
 
   const handleSyncEntry = useCallback(async (entry: TimeEntry) => {
@@ -344,21 +343,17 @@ export function TimeTrackingPage() {
     }
   };
 
-  const handleSubmit = useCallback(async (data: {
-    taskId: number;
-    taskName: string;
-    date: string;
-    startTime: string;
-    endTime: string;
-    description?: string;
-    recoverable: boolean;
-  }) => {
+  const handleCreateEntry = useCallback(async (data: TimeEntryFormData) => {
+    await createEntry(data);
+  }, [createEntry]);
+
+  const handleEditorSubmit = useCallback(async (data: TimeEntryFormData) => {
     if (editingEntry) {
       await updateEntry(editingEntry.id, data);
-      setEditingEntry(null);
     } else {
       await createEntry(data);
     }
+    setEditingEntry(null);
   }, [editingEntry, updateEntry, createEntry]);
 
   const handleAcceptProposal = useCallback(async (
@@ -396,17 +391,6 @@ export function TimeTrackingPage() {
       toast.error('Error al reasignar entradas: ' + (error as Error).message);
     }
   }, [entries, updateEntry]);
-
-  useEffect(() => {
-    if (!editingEntry) return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        handleEditCancel();
-      }
-    };
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [editingEntry, handleEditCancel]);
 
   // Register command palette actions for this page
   const commandActions = useMemo(() => [
@@ -502,7 +486,7 @@ export function TimeTrackingPage() {
       icon: <span className="flex items-center"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>,
       action: () => {
         setEditingEntry(null);
-        trackerBarRef.current?.focusDescription();
+        setEntryEditorOpen(true);
       },
       group: 'TimeTracker',
     },
@@ -522,7 +506,7 @@ export function TimeTrackingPage() {
       when: () => activeTab !== 'grouped',
       group: 'TimeTracker',
     },
-  ], [pendingEntries, handlePlayEntry, timerHook.isRunning, timerHook.stop, createEntry, activeTab, activeItem, handleEditEntry, handleDeleteEntry, handleDuplicateEntry, handleSyncEntry, trackerBarRef]);
+  ], [pendingEntries, handlePlayEntry, timerHook.isRunning, timerHook.stop, createEntry, activeTab, activeItem, handleEditEntry, handleDeleteEntry, handleDuplicateEntry, handleSyncEntry]);
 
   useCommandActions('time-tracker', commandActions);
 
@@ -533,23 +517,23 @@ export function TimeTrackingPage() {
         <div className="px-4 sm:px-6 py-3">
           <TimeTrackerBar
             ref={trackerBarRef}
-            onSubmit={handleSubmit}
-            initialData={editingEntry ?? undefined}
-            defaultMode={editingEntry ? 'manual' : 'timer'}
+            onSubmit={handleCreateEntry}
             disabled={false}
             timer={timerHook}
           />
         </div>
-          {/* Cancel editing indicator */}
-        {editingEntry && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span>Editando: <strong>{editingEntry.taskName}</strong> — {editingEntry.date}</span>
-          <Button variant="ghost" size="sm" onClick={handleEditCancel}>
-            Cancelar edición
-          </Button>
-        </div>
-      )}
       </div>
+
+      <TimeEntryEditorDialog
+        open={entryEditorOpen}
+        mode={editingEntry ? 'edit' : 'create'}
+        entry={editingEntry}
+        onOpenChange={(open) => {
+          setEntryEditorOpen(open);
+          if (!open) setEditingEntry(null);
+        }}
+        onSubmit={handleEditorSubmit}
+      />
 
       <div className="px-4 sm:px-6 py-5 space-y-5">
          {/* Period progress panel */}

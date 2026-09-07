@@ -133,7 +133,7 @@ describe('TimeTrackingPage handleTimerStop', () => {
 });
 
 describe('TimeTrackingPage edit', () => {
-  it('clicking edit shows inline edit indicator', async () => {
+  it('clicking edit opens the entry editor dialog', async () => {
     const user = userEvent.setup();
     const entries = [makeEntry('1', false)];
     setupMocks({ entries });
@@ -142,13 +142,13 @@ describe('TimeTrackingPage edit', () => {
 
     // Table is shown by default
     const entryRow = screen.getByText('Task 1').closest('tr')!;
-    // Buttons in order: checkbox[0], play[1], edit[2], duplicate[3], delete[4]
-    const rowEditBtn = entryRow.querySelectorAll('button')[2];
+    // Buttons in order: checkbox[0], play[1], sync[2], edit[3], duplicate[4], delete[5]
+    const rowEditBtn = entryRow.querySelectorAll('button')[3];
     await user.click(rowEditBtn);
 
-    // Inline edit indicator should appear — text is split across elements
     await waitFor(() => {
-      expect(screen.getByText(/Editando:/)).toBeInTheDocument();
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /editar registro de tiempo/i })).toBeInTheDocument();
     });
   });
 
@@ -161,20 +161,17 @@ describe('TimeTrackingPage edit', () => {
 
     // Table is shown by default
     const entryRow = screen.getByText('Task 1').closest('tr')!;
-    const rowEditBtn = entryRow.querySelectorAll('button')[2];
+    const rowEditBtn = entryRow.querySelectorAll('button')[3];
     await user.click(rowEditBtn);
 
-    await waitFor(() => {
-      expect(screen.getByText(/Editando:/)).toBeInTheDocument();
-    });
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument());
 
     // Click cancel button
-    const cancelBtn = screen.getByRole('button', { name: /cancelar edición/i });
+    const cancelBtn = screen.getByRole('button', { name: /^cancelar$/i });
     await user.click(cancelBtn);
 
-    // Edit indicator should disappear
     await waitFor(() => {
-      expect(screen.queryByText(/Editando:/)).not.toBeInTheDocument();
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
 
     // No update should have been called
@@ -192,8 +189,8 @@ describe('TimeTrackingPage undoable delete', () => {
 
     // Table is shown by default
     const entryRow = screen.getByText('Task 1').closest('tr')!;
-    // Buttons: checkbox[0], play[1], edit[2], duplicate[3], delete[4]
-    const trashBtn = entryRow.querySelectorAll('button')[4];
+    // Buttons: checkbox[0], play[1], sync[2], edit[3], duplicate[4], delete[5]
+    const trashBtn = entryRow.querySelectorAll('button')[5];
     await user.click(trashBtn);
 
     // Toast should have been called with "Entrada eliminada"
@@ -219,8 +216,8 @@ describe('TimeTrackingPage undoable delete', () => {
 
     // Table is shown by default
     const entryRow = screen.getByText('Task 1').closest('tr')!;
-    // Buttons: checkbox[0], play[1], edit[2], duplicate[3], delete[4]
-    const trashBtn = entryRow.querySelectorAll('button')[4];
+    // Buttons: checkbox[0], play[1], sync[2], edit[3], duplicate[4], delete[5]
+    const trashBtn = entryRow.querySelectorAll('button')[5];
     await user.click(trashBtn);
 
     // Get the undo callback from the toast call
@@ -252,12 +249,12 @@ describe('TimeTrackingPage edit recoverable status', () => {
 
     // Click edit on the entry
     const entryRow = screen.getByText('Task 1').closest('tr')!;
-    const rowEditBtn = entryRow.querySelectorAll('button')[2];
+    const rowEditBtn = entryRow.querySelectorAll('button')[3];
     await user.click(rowEditBtn);
 
     // The recoverable toggle should reflect the entry's state (ON)
     await waitFor(() => {
-      const toggle = screen.getByRole('button', { name: /permiso/i });
+      const toggle = within(screen.getByRole('dialog')).getByRole('button', { name: /permiso/i });
       expect(toggle).toHaveAttribute('aria-pressed', 'true');
     });
   });
@@ -271,11 +268,11 @@ describe('TimeTrackingPage edit recoverable status', () => {
     renderWithProviders(<TimeTrackingPage />);
 
     const entryRow = screen.getByText('Task 1').closest('tr')!;
-    const rowEditBtn = entryRow.querySelectorAll('button')[2];
+    const rowEditBtn = entryRow.querySelectorAll('button')[3];
     await user.click(rowEditBtn);
 
     await waitFor(() => {
-      const toggle = screen.getByRole('button', { name: /permiso/i });
+      const toggle = within(screen.getByRole('dialog')).getByRole('button', { name: /permiso/i });
       expect(toggle).toHaveAttribute('aria-pressed', 'false');
     });
   });
@@ -290,15 +287,15 @@ describe('TimeTrackingPage edit recoverable status', () => {
 
     // Enter edit mode
     const entryRow = screen.getByText('Task 1').closest('tr')!;
-    const rowEditBtn = entryRow.querySelectorAll('button')[2];
+    const rowEditBtn = entryRow.querySelectorAll('button')[3];
     await user.click(rowEditBtn);
 
     await waitFor(() => {
-      expect(screen.getByText(/Editando:/)).toBeInTheDocument();
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
     });
 
     // Toggle recoverable ON
-    const toggle = screen.getByRole('button', { name: /permiso/i });
+    const toggle = within(screen.getByRole('dialog')).getByRole('button', { name: /permiso/i });
     expect(toggle).toHaveAttribute('aria-pressed', 'false');
     await user.click(toggle);
     expect(toggle).toHaveAttribute('aria-pressed', 'true');
@@ -318,19 +315,19 @@ describe('TimeTrackingPage edit recoverable status', () => {
 
     // Enter edit mode
     const entryRow = screen.getByText('Task 1').closest('tr')!;
-    const rowEditBtn = entryRow.querySelectorAll('button')[2];
+    const rowEditBtn = entryRow.querySelectorAll('button')[3];
     await user.click(rowEditBtn);
 
     await waitFor(() => {
-      expect(screen.getByText(/Editando:/)).toBeInTheDocument();
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
     });
 
     // Toggle recoverable ON
-    const toggle = screen.getByRole('button', { name: /permiso/i });
+    const toggle = within(screen.getByRole('dialog')).getByRole('button', { name: /permiso/i });
     await user.click(toggle);
 
     // Submit the edit
-    const submitBtn = screen.getByRole('button', { name: /añadir/i });
+    const submitBtn = screen.getByRole('button', { name: /guardar cambios/i });
     await user.click(submitBtn);
 
     // updateEntry should have been called with recoverable: true
@@ -354,21 +351,21 @@ describe('TimeTrackingPage edit recoverable status', () => {
 
     // Enter edit mode
     const entryRow = screen.getByText('Task 1').closest('tr')!;
-    const rowEditBtn = entryRow.querySelectorAll('button')[2];
+    const rowEditBtn = entryRow.querySelectorAll('button')[3];
     await user.click(rowEditBtn);
 
     await waitFor(() => {
-      expect(screen.getByText(/Editando:/)).toBeInTheDocument();
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
     });
 
     // Toggle recoverable OFF (it starts ON because entry is recoverable)
-    const toggle = screen.getByRole('button', { name: /permiso/i });
+    const toggle = within(screen.getByRole('dialog')).getByRole('button', { name: /permiso/i });
     expect(toggle).toHaveAttribute('aria-pressed', 'true');
     await user.click(toggle);
     expect(toggle).toHaveAttribute('aria-pressed', 'false');
 
     // Submit the edit
-    const submitBtn = screen.getByRole('button', { name: /añadir/i });
+    const submitBtn = screen.getByRole('button', { name: /guardar cambios/i });
     await user.click(submitBtn);
 
     // updateEntry should have been called with recoverable: false
@@ -392,20 +389,20 @@ describe('TimeTrackingPage edit recoverable status', () => {
 
     // Enter edit mode
     const entryRow = screen.getByText('Task 1').closest('tr')!;
-    const rowEditBtn = entryRow.querySelectorAll('button')[2];
+    const rowEditBtn = entryRow.querySelectorAll('button')[3];
     await user.click(rowEditBtn);
 
     await waitFor(() => {
-      expect(screen.getByText(/Editando:/)).toBeInTheDocument();
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
     });
 
     // Submit
-    const submitBtn = screen.getByRole('button', { name: /añadir/i });
+    const submitBtn = screen.getByRole('button', { name: /guardar cambios/i });
     await user.click(submitBtn);
 
     // Edit indicator should disappear after submit
     await waitFor(() => {
-      expect(screen.queryByText(/Editando:/)).not.toBeInTheDocument();
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
   });
 });

@@ -1,33 +1,23 @@
-import { useState, useMemo, useCallback, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
+import { useState, useCallback, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Clock, List, Pencil, ShieldCheck, ShieldOff } from 'lucide-react';
+import { Pencil, ShieldCheck, ShieldOff } from 'lucide-react';
 import { ProcessSelectorButton } from './ProcessSelectorButton';
 import { MidnightSplitModal } from './MidnightSplitModal';
 import { detectCrossing } from '../lib/timerCrossingDetector';
 import type { SplitProposal } from '../lib/timerCrossingDetector';
 import type { StopTimerResult } from '../services/timeTrackingService';
-import type { TimeEntry, Proceso, TimerState } from '../types';
+import type { TimeEntry } from '../types';
+import type { Proceso, TimerState } from '../types';
+import type { TimeEntryFormData } from './TimeEntryEditorDialog';
 
 export interface TimeTrackerBarHandle {
-  focusDescription: () => void;
-  reset: () => void;
   isEditingStartTime: boolean;
 }
 
 interface TimeTrackerBarProps {
-  onSubmit: (data: {
-    taskId: number;
-    taskName: string;
-    date: string;
-    startTime: string;
-    endTime: string;
-    description?: string;
-    recoverable: boolean;
-  }) => Promise<void>;
-  initialData?: Partial<TimeEntry>;
+  onSubmit: (data: TimeEntryFormData) => Promise<void>;
   disabled?: boolean;
-  defaultMode?: 'timer' | 'manual';
   timer: {
     isRunning: boolean;
     elapsed: number;
@@ -47,448 +37,218 @@ function formatDuration(seconds: number): string {
   return `${h}:${m}:${s}`;
 }
 
-function computeDurationSeconds(startTime: string, endTime: string): number {
-  if (!startTime || !endTime) return 0;
-  const [sh, sm] = startTime.split(':').map(Number);
-  const [eh, em] = endTime.split(':').map(Number);
-  return ((eh * 60 + em) - (sh * 60 + sm)) * 60;
-}
-
 export const TimeTrackerBar = forwardRef<TimeTrackerBarHandle, TimeTrackerBarProps>(function TimeTrackerBar(
-  { onSubmit, initialData, disabled, defaultMode = 'timer', timer },
+  { onSubmit, disabled, timer },
   ref
 ) {
   const inputRef = useRef<HTMLInputElement>(null);
-
-  useImperativeHandle(ref, () => ({
-    focusDescription: () => {
-      setMode('manual');
-      requestAnimationFrame(() => {
-        inputRef.current?.focus();
-      });
-    },
-    reset: () => {
-      setTask(null);
-      setDescription('');
-      setDate(new Date().toISOString().split('T')[0]);
-      setStartTime('09:00');
-      setEndTime('');
-      setRecoverable(false);
-      setMode('timer');
-    },
-    get isEditingStartTime() {
-      return editingStartTime;
-    },
-  }));
-
-  const today = new Date().toISOString().split('T')[0];
-
-  const [mode, setMode] = useState<'timer' | 'manual'>(defaultMode);
-  const [task, setTask] = useState<Proceso | null>(
-    initialData?.taskId != null
-      ? { proceso: initialData.taskId, nombre: initialData.taskName || '' }
-      : null
-  );
-  const [description, setDescription] = useState(initialData?.description || '');
-  const [date, setDate] = useState(initialData?.date || today);
-  const [startTime, setStartTime] = useState(initialData?.startTime || '09:00');
-  const [endTime, setEndTime] = useState(initialData?.endTime || '');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [recoverable, setRecoverable] = useState(initialData?.recoverable ?? false);
-
-  // Start time editing state
+  const [task, setTask] = useState<Proceso | null>(null);
+  const [description, setDescription] = useState('');
+  const [recoverable, setRecoverable] = useState(false);
   const [editingStartTime, setEditingStartTime] = useState(false);
-
-  // Midnight split modal state
   const [splitModalOpen, setSplitModalOpen] = useState(false);
   const [splitProposal, setSplitProposal] = useState<SplitProposal[]>([]);
   const [pendingStop, setPendingStop] = useState<StopTimerResult | null>(null);
 
-  // Restore task from running timer on mount
+  useImperativeHandle(ref, () => ({
+    get isEditingStartTime() {
+      return editingStartTime;
+    },
+  }), [editingStartTime]);
+
   useEffect(() => {
-    if (timer.timerState?.isRunning && !task) {
+    if (timer.timerState?.isRunning) {
       setTask({ proceso: timer.timerState.taskId, nombre: timer.timerState.taskName });
-      setMode('timer');
-    }
-    if (timer.timerState?.isRunning && timer.timerState.description) {
-      setDescription(timer.timerState.description);
+      if (timer.timerState.description !== undefined) {
+        setDescription(timer.timerState.description);
+      }
     }
   }, [timer.timerState]);
 
-  // Sync form state when initialData changes (edit mode)
-  const prevInitialDataRef = useRef(initialData);
   useEffect(() => {
-    if (initialData) {
-      setTask(
-        initialData.taskId != null
-          ? { proceso: initialData.taskId, nombre: initialData.taskName || '' }
-          : null
-      );
-      setDescription(initialData.description || '');
-      setDate(initialData.date || today);
-      setStartTime(initialData.startTime || '09:00');
-      setEndTime(initialData.endTime || '');
-      setRecoverable(initialData.recoverable ?? false);
-      setMode('manual');
-
-      // Focus description input only when initialData actually changes (not on mount)
-      if (prevInitialDataRef.current !== initialData) {
-        requestAnimationFrame(() => {
-          inputRef.current?.focus();
-        });
-      }
-    }
-    prevInitialDataRef.current = initialData;
-  }, [initialData]);
-
-  const durationSeconds = useMemo(
-    () => computeDurationSeconds(startTime, endTime),
-    [startTime, endTime]
-  );
-
-  const durationDisplay = useMemo(() => formatDuration(durationSeconds), [durationSeconds]);
-
-  // Manual mode validation
-  const isManualValid = !!task && !!date && !!startTime && !!endTime && durationSeconds > 0;
-
-  const handleSubmit = useCallback(async () => {
-    if (!isManualValid || !task || durationSeconds <= 0) return;
-
-    setIsSubmitting(true);
-    try {
-      await onSubmit({
-        taskId: task.proceso,
-        taskName: task.nombre,
-        date,
-        startTime,
-        endTime,
-        description: description || undefined,
-        recoverable,
-      });
-      setStartTime('09:00');
-      setEndTime('');
-      setDescription('');
-      setRecoverable(false);
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [isManualValid, task, durationSeconds, date, startTime, endTime, description, recoverable, onSubmit]);
-
-  // Timer handlers
-  const handleStart = useCallback(async () => {
-    if (!task) return;
-    await timer.start(task.proceso, task.nombre, description || undefined);
-  }, [task, timer, description]);
-
-  const handleStop = useCallback(async () => {
-    const result = await timer.stop({ persist: false });
-    if (!result || !('start' in result)) return;
-
-    const crossing = detectCrossing(result.start, result.end);
-    if (crossing.crossed && crossing.splits) {
-      setSplitProposal(crossing.splits);
-      setPendingStop(result);
-      setSplitModalOpen(true);
-    } else {
-      await onSubmit({
-        taskId: result.taskId,
-        taskName: result.taskName,
-        date: result.end.toLocaleDateString('sv-SE'),
-        startTime: result.start.toTimeString().slice(0, 5),
-        endTime: result.end.toTimeString().slice(0, 5),
-        description: description || undefined,
-        recoverable,
-      });
-    }
-  }, [timer, onSubmit, description, recoverable]);
-
-  const handleCancel = useCallback(async () => {
-    await timer.cancel();
-  }, [timer]);
-
-  const handleSplitConfirm = useCallback(async () => {
-    if (!pendingStop) return;
-    for (const split of splitProposal) {
-      await onSubmit({
-        taskId: pendingStop.taskId,
-        taskName: pendingStop.taskName,
-        date: split.date,
-        startTime: split.startTime,
-        endTime: split.endTime,
-        description: description || undefined,
-        recoverable,
-      });
-    }
-    setSplitModalOpen(false);
-    setPendingStop(null);
-    setSplitProposal([]);
-  }, [pendingStop, splitProposal, onSubmit, description, recoverable]);
-
-  const handleKeepSingle = useCallback(async () => {
-    if (!pendingStop) return;
-    await onSubmit({
-      taskId: pendingStop.taskId,
-      taskName: pendingStop.taskName,
-      date: pendingStop.end.toLocaleDateString('sv-SE'),
-      startTime: pendingStop.start.toTimeString().slice(0, 5),
-      endTime: pendingStop.end.toTimeString().slice(0, 5),
-      description: description || undefined,
-      recoverable,
-    });
-    setSplitModalOpen(false);
-    setPendingStop(null);
-    setSplitProposal([]);
-  }, [pendingStop, onSubmit, description, recoverable]);
-
-  // Force timer mode when timer is running
-  useEffect(() => {
-    if (timer.isRunning) {
-      setMode('timer');
-    }
+    if (!timer.isRunning) setEditingStartTime(false);
   }, [timer.isRunning]);
 
-  // Reset editing state when timer stops
-  useEffect(() => {
-    if (!timer.isRunning) {
-      setEditingStartTime(false);
-    }
-  }, [timer.isRunning]);
-
-  // Persist description to IndexedDB when it changes while timer is running
   useEffect(() => {
     if (timer.isRunning && description) {
       timer.updateDescription(description);
     }
   }, [description, timer.isRunning]);
 
+  const handleStart = useCallback(async () => {
+    if (!task) return;
+    await timer.start(task.proceso, task.nombre, description || undefined);
+  }, [description, task, timer]);
+
+  const createTimerEntry = useCallback(async (result: StopTimerResult, date: string, startTime: string, endTime: string) => {
+    await onSubmit({
+      taskId: result.taskId,
+      taskName: result.taskName,
+      date,
+      startTime,
+      endTime,
+      description: description || undefined,
+      recoverable,
+    });
+  }, [description, onSubmit, recoverable]);
+
+  const handleStop = useCallback(async () => {
+    const result = await timer.stop({ persist: false });
+    if (!result || !('start' in result)) return;
+
+    const stopResult = result as StopTimerResult;
+    const crossing = detectCrossing(stopResult.start, stopResult.end);
+    if (crossing.crossed && crossing.splits) {
+      setSplitProposal(crossing.splits);
+      setPendingStop(stopResult);
+      setSplitModalOpen(true);
+      return;
+    }
+
+    await createTimerEntry(
+      stopResult,
+      stopResult.end.toLocaleDateString('sv-SE'),
+      stopResult.start.toTimeString().slice(0, 5),
+      stopResult.end.toTimeString().slice(0, 5),
+    );
+  }, [createTimerEntry, timer]);
+
+  const handleSplitConfirm = useCallback(async () => {
+    if (!pendingStop) return;
+    for (const split of splitProposal) {
+      await createTimerEntry(pendingStop, split.date, split.startTime, split.endTime);
+    }
+    setSplitModalOpen(false);
+    setPendingStop(null);
+    setSplitProposal([]);
+  }, [createTimerEntry, pendingStop, splitProposal]);
+
+  const handleKeepSingle = useCallback(async () => {
+    if (!pendingStop) return;
+    await createTimerEntry(
+      pendingStop,
+      pendingStop.end.toLocaleDateString('sv-SE'),
+      pendingStop.start.toTimeString().slice(0, 5),
+      pendingStop.end.toTimeString().slice(0, 5),
+    );
+    setSplitModalOpen(false);
+    setPendingStop(null);
+    setSplitProposal([]);
+  }, [createTimerEntry, pendingStop]);
+
   return (
     <>
-      <div className="flex items-center gap-2.5 w-full flex-wrap p-3 rounded-lg bg-card border border-border">
-        {/* Description — shared across modes */}
+      <div className="flex items-center gap-2.5 w-full flex-wrap rounded-lg border border-border bg-card p-3">
         <Input
           ref={inputRef}
           value={description}
-          onChange={(e) => setDescription(e.target.value)}
+          onChange={(event) => setDescription(event.target.value)}
           placeholder="¿En qué estás trabajando?"
-          disabled={disabled || isSubmitting}
-          className="flex-1 min-w-0 dabg-background border-border"
+          disabled={disabled}
+          className="min-w-0 flex-1 border-border bg-background"
         />
 
-        {/* Process selector — shared across modes */}
         <ProcessSelectorButton
           value={task}
           onChange={setTask}
-          disabled={disabled || isSubmitting || timer.isRunning}
+          disabled={disabled || timer.isRunning}
           className="w-96"
         />
 
-        {/* Recoverable toggle — shared across modes */}
         <button
           type="button"
-          onClick={() => setRecoverable((r) => !r)}
-          disabled={disabled || isSubmitting}
+          onClick={() => setRecoverable((current) => !current)}
+          disabled={disabled}
           aria-label="Permiso (recuperable)"
           aria-pressed={recoverable}
           title="Marcar como permiso"
-          className={`flex items-center gap-1.5 px-2.5 py-2 rounded-md text-sm font-medium transition-all ${
+          className={`flex items-center gap-1.5 rounded-md px-2.5 py-2 text-sm font-medium transition-all ${
             recoverable
               ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
-              : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
+              : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
           }`}
         >
-          {recoverable ? (
-            <ShieldCheck className="h-4 w-4" />
-          ) : (
-            <ShieldOff className="h-4 w-4" />
-          )}
+          {recoverable ? <ShieldCheck className="h-4 w-4" /> : <ShieldOff className="h-4 w-4" />}
         </button>
 
-        {mode === 'timer' ? (
-          <>
-            {/* Clock display */}
-            <span className="font-mono text-sm tabular-nums whitespace-nowrap w-20 text-center text-foreground">
-              {formatDuration(timer.elapsed)}
-            </span>
+        <span className="w-20 whitespace-nowrap text-center font-mono text-sm tabular-nums text-foreground">
+          {formatDuration(timer.elapsed)}
+        </span>
 
-            {/* Start time display / edit */}
-            {timer.isRunning && (
-              (() => {
-                // Convertir startTime UTC a componentes locales para mostrar/editar
-                const getLocalTimeHHMM = (isoString: string): string => {
-                  const d = new Date(isoString);
-                  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-                };
+        {timer.isRunning && (() => {
+          const getLocalTimeHHMM = (isoString: string): string => {
+            const date = new Date(isoString);
+            return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+          };
 
-                const handleSave = (val: string) => {
-                  if (!val || !timer.timerState?.startTime) return;
-                  const [hours, minutes] = val.split(':').map(Number);
-                  const d = new Date(timer.timerState.startTime);
-                  d.setHours(hours, minutes, 0, 0);
-                  timer.updateStartTime(d.toISOString());
-                };
+          const handleSave = (value: string) => {
+            if (!value || !timer.timerState?.startTime) return;
+            const [hours, minutes] = value.split(':').map(Number);
+            const date = new Date(timer.timerState.startTime);
+            date.setHours(hours, minutes, 0, 0);
+            timer.updateStartTime(date.toISOString());
+          };
 
-                return editingStartTime ? (
-                  <Input
-                    type="time"
-                    defaultValue={
-                      timer.timerState?.startTime
-                        ? getLocalTimeHHMM(timer.timerState.startTime)
-                        : ''
-                    }
-                    className="w-24 font-mono text-xs tabular-nums"
-                    autoFocus
-                    onBlur={(e) => {
-                      handleSave(e.target.value);
-                      setEditingStartTime(false);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.stopPropagation();
-                        handleSave((e.target as HTMLInputElement).value);
-                        setEditingStartTime(false);
-                      } else if (e.key === 'Escape') {
-                        e.stopPropagation();
-                        setEditingStartTime(false);
-                      }
-                    }}
-                  />
-                ) : (
-                  <span
-                    className="inline-flex items-center gap-1.5 text-xs cursor-pointer transition-colors whitespace-nowrap rounded px-2 py-1 hover:bg-accent text-muted-foreground hover:text-foreground"
-                    role="button"
-                    tabIndex={0}
-                    aria-label={`Hora de inicio: ${timer.timerState?.startTime ? getLocalTimeHHMM(timer.timerState.startTime) : '--:--'}. Click para editar.`}
-                    onClick={() => setEditingStartTime(true)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        setEditingStartTime(true);
-                      }
-                    }}
-                  >
-                    <span className="text-muted-foreground/70">Inicio:</span>
-                    <span className="font-mono font-medium text-foreground tabular-nums">
-                      {timer.timerState?.startTime
-                        ? getLocalTimeHHMM(timer.timerState.startTime)
-                        : '--:--'}
-                    </span>
-                    <Pencil className="w-3 h-3 opacity-40 group-hover:opacity-100" />
-                  </span>
-                );
-              })()
-            )}
-
-            {/* INICIO / DETENER */}
-            {timer.isRunning ? (
-              <div className="flex items-center gap-1 shrink-0">
-                <Button
-                  variant="destructive"
-                  onClick={handleStop}
-                  disabled={disabled}
-                  className="border border-destructive/50"
-                >
-                  Detener
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-9 w-9"
-                  onClick={handleCancel}
-                  disabled={disabled}
-                  title="Cancelar"
-                >
-                  ✕
-                </Button>
-              </div>
-            ) : (
-              <Button
-                onClick={handleStart}
-                disabled={disabled || !task}
-                title={!task ? 'Seleccioná una tarea primero' : undefined}
-                className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium"
-              >
-                Iniciar
-              </Button>
-            )}
-          </>
-        ) : (
-          <>
-            {/* Manual mode fields */}
-            <Input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              disabled={disabled || isSubmitting}
-              className="w-36"
-            />
-
+          return editingStartTime ? (
             <Input
               type="time"
-              value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
-              disabled={disabled || isSubmitting}
-              className="w-28"
+              defaultValue={timer.timerState?.startTime ? getLocalTimeHHMM(timer.timerState.startTime) : ''}
+              className="w-24 font-mono text-xs tabular-nums"
+              autoFocus
+              onBlur={(event) => {
+                handleSave(event.target.value);
+                setEditingStartTime(false);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.stopPropagation();
+                  handleSave(event.currentTarget.value);
+                  setEditingStartTime(false);
+                } else if (event.key === 'Escape') {
+                  event.stopPropagation();
+                  setEditingStartTime(false);
+                }
+              }}
             />
-
-            <Input
-              type="time"
-              value={endTime}
-              onChange={(e) => setEndTime(e.target.value)}
-              disabled={disabled || isSubmitting}
-              className="w-28"
-            />
-
-            <span className="font-mono text-sm tabular-nums whitespace-nowrap w-20 text-center">
-              {durationDisplay}
-            </span>
-
-            <Button
-              onClick={handleSubmit}
-              disabled={!isManualValid || isSubmitting || disabled}
+          ) : (
+            <span
+              className="inline-flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              role="button"
+              tabIndex={0}
+              aria-label={`Hora de inicio: ${timer.timerState?.startTime ? getLocalTimeHHMM(timer.timerState.startTime) : '--:--'}. Click para editar.`}
+              onClick={() => setEditingStartTime(true)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  setEditingStartTime(true);
+                }
+              }}
             >
-              {isSubmitting ? 'Guardando...' : 'Añadir'}
+              <span className="text-muted-foreground/70">Inicio:</span>
+              <span className="font-mono font-medium tabular-nums text-foreground">
+                {timer.timerState?.startTime ? getLocalTimeHHMM(timer.timerState.startTime) : '--:--'}
+              </span>
+              <Pencil className="h-3 w-3 opacity-40" />
+            </span>
+          );
+        })()}
+
+        {timer.isRunning ? (
+          <div className="flex shrink-0 items-center gap-1">
+            <Button variant="destructive" onClick={handleStop} disabled={disabled} className="border border-destructive/50">
+              Detener
             </Button>
-          </>
-        )}
-
-        {/* Stacked mode icons — hidden while timer is running to prevent mode switching */}
-        {!timer.isRunning && (
-          <div className="flex rounded-lg bg-muted/80 p-1 border border-border/60">
-            <button
-              type="button"
-              onClick={() => setMode('timer')}
-              disabled={disabled}
-              aria-label="Modo temporizador"
-              aria-pressed={mode === 'timer'}
-              title="Timer"
-              className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${
-                mode === 'timer'
-                  ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
-              }`}
-            >
-              <Clock className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode('manual')}
-              disabled={disabled}
-              aria-label="Modo manual"
-              aria-pressed={mode === 'manual'}
-              title="Manual"
-              className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${
-                mode === 'manual'
-                  ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
-              }`}
-            >
-              <List className="h-4 w-4" />
-            </button>
+            <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => timer.cancel()} disabled={disabled} title="Cancelar">
+              ✕
+            </Button>
           </div>
+        ) : (
+          <Button onClick={handleStart} disabled={disabled || !task} title={!task ? 'Seleccioná una tarea primero' : undefined}>
+            Iniciar
+          </Button>
         )}
       </div>
 
-      {/* Midnight split modal */}
       <MidnightSplitModal
         open={splitModalOpen}
         onOpenChange={setSplitModalOpen}

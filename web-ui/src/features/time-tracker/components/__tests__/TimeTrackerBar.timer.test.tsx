@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { TimeTrackerBar } from '../TimeTrackerBar';
 import type { Proceso } from '../../types';
@@ -30,8 +30,8 @@ vi.mock('../../hooks/useTimer', () => ({
 }));
 
 const SEED_PROCESSES: Proceso[] = [
-  { proceso: 101, nombre: 'Desarrollo Frontend', faseNombre: 'Fase Construcción' },
-  { proceso: 102, nombre: 'Desarrollo Backend', faseNombre: 'Fase Construcción' },
+  { proceso: 101, nombre: 'Desarrollo Frontend', faseNombre: 'Fase Construcción', departamentoId: 5 },
+  { proceso: 102, nombre: 'Desarrollo Backend', faseNombre: 'Fase Construcción', departamentoId: 5 },
 ];
 
 function setupMockProcesses(processes: Proceso[] = SEED_PROCESSES) {
@@ -75,7 +75,7 @@ describe('TimeTrackerBar — Timer Mode', () => {
     renderBar();
 
     expect(screen.getByText('00:00:00')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /inicio/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /iniciar/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /detener/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /añadir/i })).not.toBeInTheDocument();
   });
@@ -90,7 +90,7 @@ describe('TimeTrackerBar — Timer Mode', () => {
   it('disables INICIO when no task is selected', () => {
     renderBar();
 
-    const inicioBtn = screen.getByRole('button', { name: /inicio/i });
+    const inicioBtn = screen.getByRole('button', { name: /iniciar/i });
     expect(inicioBtn).toBeDisabled();
     expect(inicioBtn).toHaveAttribute('title', 'Seleccioná una tarea primero');
   });
@@ -103,7 +103,7 @@ describe('TimeTrackerBar — Timer Mode', () => {
     await user.click(selectBtn);
     await user.click(await screen.findByText('Desarrollo Frontend'));
 
-    const inicioBtn = screen.getByRole('button', { name: /inicio/i });
+    const inicioBtn = screen.getByRole('button', { name: /iniciar/i });
     expect(inicioBtn).toBeEnabled();
   });
 
@@ -117,9 +117,9 @@ describe('TimeTrackerBar — Timer Mode', () => {
     await user.click(await screen.findByText('Desarrollo Frontend'));
 
     // Click INICIO
-    await user.click(screen.getByRole('button', { name: /inicio/i }));
+    await user.click(screen.getByRole('button', { name: /iniciar/i }));
 
-    expect(timerMock.start).toHaveBeenCalledWith(101, 'Desarrollo Frontend');
+    expect(timerMock.start).toHaveBeenCalledWith(101, 'Desarrollo Frontend', undefined);
   });
 
   it('shows DETENER button when timer is running', () => {
@@ -130,7 +130,7 @@ describe('TimeTrackerBar — Timer Mode', () => {
     renderBar();
 
     expect(screen.getByRole('button', { name: /detener/i })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /inicio/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /iniciar/i })).not.toBeInTheDocument();
   });
 
   it('shows elapsed time on clock when timer is running', () => {
@@ -281,13 +281,13 @@ describe('TimeTrackerBar — Timer Mode', () => {
     expect(mockOnSubmit).not.toHaveBeenCalled();
   });
 
-  it('disables inputs when timer is running', () => {
+  it('keeps the task selector disabled but leaves the description editable when timer is running', () => {
     timerMock.isRunning = true;
     timerMock.timerState = { isRunning: true, taskId: 101, taskName: 'Desarrollo Frontend', startTime: new Date().toISOString(), elapsed: 60 };
 
     renderBar();
 
-    expect(screen.getByPlaceholderText(/en qué estás trabajando/i)).toBeDisabled();
+    expect(screen.getByPlaceholderText(/en qué estás trabajando/i)).not.toBeDisabled();
     expect(screen.getByRole('button', { name: /desarrollo frontend/i })).toBeDisabled();
   });
 
@@ -323,28 +323,4 @@ describe('TimeTrackerBar — Timer Mode', () => {
     );
   });
 
-  it('switches to manual mode when toggle is clicked', async () => {
-    const user = userEvent.setup();
-    renderBar();
-
-    // Switch to manual
-    await user.click(screen.getByRole('button', { name: /manual/i }));
-
-    expect(screen.getByRole('button', { name: /añadir/i })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /inicio/i })).not.toBeInTheDocument();
-  });
-
-  it('switches to timer mode when toggle is clicked', async () => {
-    const user = userEvent.setup();
-    renderBar({ defaultMode: 'manual' });
-
-    // Start in manual mode
-    expect(screen.getByRole('button', { name: /añadir/i })).toBeInTheDocument();
-
-    // Switch to timer
-    await user.click(screen.getByRole('button', { name: /timer/i }));
-
-    expect(screen.getByRole('button', { name: /inicio/i })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /añadir/i })).not.toBeInTheDocument();
-  });
 });

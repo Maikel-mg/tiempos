@@ -59,3 +59,19 @@ _Avoid_: Default task, Catch-all task, Tarea por defecto
 **Propuesta de Tarea**:
 Sugerencia de crear una Tarea dedicada a partir de tiempo acumulado contra un Proceso Genérico, agrupando entradas locales por descripción repetida. Cuando el total supera un umbral de horas, el sistema propone un nombre y permite crear la Tarea.
 _Avoid_: Task suggestion, Auto-create task, Sugerencia automática
+
+**Registro de tiempo**:
+Unidad de tiempo ya finalizada que pertenece a una Tarea (Proceso), tiene fecha, intervalo y descripción, y puede quedar pendiente o sincronizada con la base de datos.
+_Avoid_: Timer, temporizador, sesión activa
+
+**Timer activo**:
+Medición de tiempo en curso para una Tarea, todavía no convertida en un Registro de tiempo finalizado. Es independiente de cualquier Registro de tiempo que el usuario esté editando.
+_Avoid_: Registro en curso, entrada activa
+
+**Formulario de edición**:
+Formulario dedicado a modificar un Registro de tiempo existente sin compartir estado con el Timer activo ni con el formulario de creación manual.
+_Avoid_: Modo edición del timer, editar desde la barra
+
+**Editor de registros**:
+Diálogo centrado y reutilizable para crear un Registro de tiempo o modificar uno existente desde cualquier pantalla de la aplicación.
+_Avoid_: Editor del timer, formulario de la barra
