@@ -38,7 +38,7 @@ export interface ProcessIdValidation {
 }
 
 /**
- * Time entry from Clockify or similar source
+ * Time entry from a time tracking source
  */
 export interface TimeEntry {
   taskName?: string;

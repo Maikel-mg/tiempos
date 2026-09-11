@@ -9,7 +9,7 @@ import { updateMapping } from '@/lib/task-mapping-storage';
 import { Eye } from 'lucide-react';
 import { SQLPreviewModal } from '@/components/SQLPreviewModal';
 import { useCreateProcess } from '@/features/process-management/mutations/useCreateProcess';
-import type { TaskProposal } from '@/domain/proposals/extract-proposals';
+import type { TaskProposal } from '@/domain/proposals/task-proposal';
 import type { ProcessConfig } from '@/features/process-management/types';
 
 export interface TaskProposalModalProps {

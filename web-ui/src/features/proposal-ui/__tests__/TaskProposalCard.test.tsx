@@ -1,7 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { TaskProposalCard } from '../components/TaskProposalCard';
-import type { TaskProposal } from '@/domain/proposals/extract-proposals';
+import type { TaskProposal } from '@/domain/proposals/task-proposal';
 
 const mockProposals: TaskProposal[] = [
   {
@@ -15,7 +15,6 @@ const mockProposals: TaskProposal[] = [
     fechaFin: '2024-01-31',
     entryCount: 3,
     entryIds: ['1', '2', '3'],
-    clockifyProjectId: 'cp1',
   },
   {
     description: 'Code review',
@@ -28,7 +27,6 @@ const mockProposals: TaskProposal[] = [
     fechaFin: '2024-01-31',
     entryCount: 2,
     entryIds: ['4', '5'],
-    clockifyProjectId: 'cp2',
   },
 ];
 

@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import '@testing-library/jest-dom';
 import { TaskProposalModal } from '../components/TaskProposalModal';
-import type { TaskProposal } from '@/domain/proposals/extract-proposals';
+import type { TaskProposal } from '@/domain/proposals/task-proposal';
 import type { ProcessConfig } from '@/features/process-management/types';
 
 // Mock the child components
@@ -61,7 +61,6 @@ describe('TaskProposalModal', () => {
       fechaFin: '2025-01-15',
       entryCount: 5,
       entryIds: ['1', '2'],
-      clockifyProjectId: '123',
     },
     {
       description: 'Desarrollo features',
@@ -74,7 +73,6 @@ describe('TaskProposalModal', () => {
       fechaFin: '2025-01-16',
       entryCount: 8,
       entryIds: ['3', '4'],
-      clockifyProjectId: '456',
     },
   ];
 
@@ -302,7 +300,6 @@ describe('TaskProposalModal', () => {
         fechaFin: '2025-02-10',
         entryCount: 2,
         entryIds: ['10'],
-        clockifyProjectId: '789',
       },
     ];
 

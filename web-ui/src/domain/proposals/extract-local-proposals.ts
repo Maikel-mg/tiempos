@@ -1,13 +1,12 @@
 import type { TimeEntry } from '@/features/time-tracker/types';
-import type { TaskProposal } from './extract-proposals';
+import type { TaskProposal } from './task-proposal';
 import { isGenericTask, parseGenericTask } from './generic-task';
 import { normalizeForMatch } from '@/lib/normalize';
 
 /**
  * Extrae Propuestas de Tarea desde entradas locales del time-tracker.
  *
- * Hermana de `extractProposals` (que opera sobre entradas de Clockify).
- * Esta función opera sobre entradas locales (IndexedDB), donde:
+ * Opera sobre entradas locales (IndexedDB), donde:
  * - `taskName` es el nombre del Proceso (ej: "IPKWEB 2026-06. Errores")
  * - `description` es texto libre del usuario
  * - `duration` está en SEGUNDOS (no ISO 8601)
@@ -69,7 +68,6 @@ export function extractProposalsFromLocal(
         end: e.date + 'T' + e.endTime,
         projectId: '',
       })),
-      clockifyProjectId: '', // no aplica para entradas locales
     });
   }
 

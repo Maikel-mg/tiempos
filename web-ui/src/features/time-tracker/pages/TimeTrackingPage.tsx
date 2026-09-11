@@ -23,7 +23,7 @@ import { syncTimeEntries } from '../services/timeEntrySyncService';
 import { wizardConfig, dbConfig, proposalConfig } from '@/config/stores';
 import { TaskProposalModal } from '@/features/proposal-ui/components/TaskProposalModal';
 import { extractProposalsFromLocal } from '@/domain/proposals/extract-local-proposals';
-import type { TaskProposal } from '@/domain/proposals/extract-proposals';
+import type { TaskProposal } from '@/domain/proposals/task-proposal';
 import type { TimeEntry } from '../types';
 import type { PeriodType, DateRange } from '@/components/shared/PeriodSelector';
 
@@ -108,7 +108,7 @@ export function TimeTrackingPage() {
   }, [entries, period, customRange]);
 
   const proposals = useMemo(() => {
-    // Solo entradas del mes actual (consistente con LiveTimeEntriesPage)
+    // Solo entradas del mes actual
     const now = new Date();
     const start = new Date(now.getFullYear(), now.getMonth(), 1);
     const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);

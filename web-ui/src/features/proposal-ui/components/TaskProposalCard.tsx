@@ -3,7 +3,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Lightbulb, ChevronDown, ChevronUp } from 'lucide-react';
-import type { TaskProposal } from '@/domain/proposals/extract-proposals';
+import type { TaskProposal } from '@/domain/proposals/task-proposal';
 
 export interface TaskProposalCardProps {
   proposals: TaskProposal[];
