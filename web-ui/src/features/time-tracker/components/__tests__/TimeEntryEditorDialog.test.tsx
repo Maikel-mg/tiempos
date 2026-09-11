@@ -93,6 +93,28 @@ describe('TimeEntryEditorDialog', () => {
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
+  it('does not submit or close when opening the process selector in edit mode', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    const onOpenChange = vi.fn();
+
+    render(
+      <TimeEntryEditorDialog
+        open
+        mode="edit"
+        entry={entry}
+        onOpenChange={onOpenChange}
+        onSubmit={onSubmit}
+      />
+    );
+
+    await user.click(screen.getByRole('button', { name: /desarrollo frontend/i }));
+    await screen.findByPlaceholderText(/buscar por nombre/i);
+
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(onOpenChange).not.toHaveBeenCalledWith(false);
+  });
+
   it('asks before discarding dirty changes', async () => {
     const user = userEvent.setup();
     const onOpenChange = vi.fn();

@@ -82,6 +82,7 @@ export function ProcessSelectorButton({
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button
+          type="button"
           variant="outline"
           className={`justify-between ${className}`}
           disabled={disabled}
@@ -109,6 +110,7 @@ export function ProcessSelectorButton({
             </label>
           </div>
           <Button
+            type="button"
             variant="ghost"
             size="icon"
             className="h-7 w-7"
@@ -147,6 +149,7 @@ export function ProcessSelectorButton({
             filteredProcesses.map((process) => (
               <button
                 key={process.proceso}
+                type="button"
                 className="w-full px-3 py-2 text-left hover:bg-muted transition-colors flex flex-col gap-0.5"
                 onClick={() => handleSelect(process)}
               >
