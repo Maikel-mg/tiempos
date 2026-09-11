@@ -14,21 +14,6 @@ export interface ClockifyReportResponse {
   error?: string;
 }
 
-export interface ExecuteSqlParams {
-  server: string;
-  database: string;
-  username: string;
-  password?: string;
-  sqlStatements: string[];
-}
-
-export interface ExecuteSqlResponse {
-  success: boolean;
-  message: string;
-  totalRowsAffected?: number;
-  results?: { success: boolean; rowsAffected: number }[];
-}
-
 export function useClockifyReport(params: ClockifyReportParams) {
   return useQuery<ClockifyReportResponse, Error>({
     queryKey: ['clockify-report', params.startDate, params.endDate],
@@ -44,18 +29,5 @@ export function useClockifyReport(params: ClockifyReportParams) {
     },
     staleTime: 5 * 60 * 1000,
     retry: 1
-  });
-}
-
-export function useTestConnection() {
-  return useQuery({
-    queryKey: ['db-health'],
-    queryFn: async () => {
-      const result = await apiClient.get<{ status: string }>('/health');
-      if (result.success) return result.data;
-      throw new Error(result.message);
-    },
-    retry: 1,
-    enabled: false
   });
 }
