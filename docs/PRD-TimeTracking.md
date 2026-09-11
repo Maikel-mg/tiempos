@@ -2,25 +2,25 @@
 
 ## 1. Resumen Ejecutivo
 
-Este documento describe los requisitos para reemplazar Clockify por un sistema de registro de tiempos integrado en la aplicación web existente. El nuevo sistema permitirá a los usuarios registrar tiempo sobre tareas existentes de la aplicación mediante entrada manual o temporizador, con persistencia local y sincronización dual (SQL manual o automática) hacia la base de datos de la empresa.
+Este documento describe los requisitos para reemplazar la herramienta externa por un sistema de registro de tiempos integrado en la aplicación web existente. El nuevo sistema permitirá a los usuarios registrar tiempo sobre tareas existentes de la aplicación mediante entrada manual o temporizador, con persistencia local y sincronización dual (SQL manual o automática) hacia la base de datos de la empresa.
 
 ## 2. Contexto del Proyecto
 
 ### Situación Actual
-- El usuario utiliza **Clockify** como herramienta de terceros para registrar tiempos
-- Los registros se visualizan en `LiveTimeEntriesPage.tsx`
+- El usuario registraba tiempos en una herramienta de terceros
+- Los registros se visualizaban en `LiveTimeEntriesPage.tsx`
 - La sincronización con la BBDD empresarial se realiza mediante generación de SQL
 - Los procesos/tareas se gestionan en la aplicación actual
 
 ### Objetivo
-Reemplazar la funcionalidad de Clockify por un sistema interno con:
+Reemplazar la funcionalidad de la herramienta externa por un sistema interno con:
 - Entrada manual de hora de entrada/salida
 - Temporizador con estado persistente en IndexedDB
 - Sincronización dual: SQL manual o automática
 - Arquitectura que permita cambiar el almacenamiento (plugin/estrategia)
 
 ### Restricciones
-- Mantener Clockify existente sin cambios (solo lectura/históricos)
+- Mantener la herramienta externa existente sin cambios (solo lectura/históricos)
 - Un solo usuario
 - Solo acceso web
 - No requiere exportación a CSV/Excel
@@ -120,7 +120,7 @@ Reemplazar la funcionalidad de Clockify por un sistema interno con:
 
 | ID | Requisito | Prioridad |
 |----|-----------|-----------|
-| RNF-09 | Interfaz intuitiva similar a Clockify | Mandatory |
+| RNF-09 | Interfaz intuitiva similar a la herramienta previa | Mandatory |
 | RNF-10 | Feedback visual durante temporización | Mandatory |
 | RNF-11 | Diseño coherente con el resto de la aplicación | Mandatory |
 | RNF-12 | Tiempos de respuesta < 200ms | Mandatory |
@@ -283,14 +283,14 @@ interface Task {
 | `ProcessMappingTable` | ✅ Sí | Añadir como fuente de tareas |
 | `ImportConfigPanel` | ✅ Sí | Reutilizar configuración (usuario, fase, tipoHora) |
 | `DBConnection` | ✅ Sí | Para ejecución automática de SQL |
-| `LiveTimeEntriesPage` | ⚠️ Parcial | Mantener para Clockify, crear nueva página para sistema interno |
+| `LiveTimeEntriesPage` | ❌ No | Eliminada; reemplazada por el sistema interno |
 
 ### 8.2 Nueva Página Propuesta
 
 - Nombre: `TimeTrackingPage.tsx` o similar
 - Ubicación: `web-ui/src/pages/`
-- Reemplaza funcionalmente a Clockify para creación de registros
-- Convive con `LiveTimeEntriesPage` (mantener Clockify)
+- Reemplaza funcionalmente a la herramienta externa para creación de registros
+- Reemplaza a `LiveTimeEntriesPage`
 
 ---
 
@@ -304,11 +304,11 @@ interface Task {
   - `timerState`: Estado del temporizador
   - `tasks`: Caché de tareas (opcional)
 
-### 9.2 Sincronización con Clockify
+### 9.2 Sincronización con la herramienta externa
 
-- Mantener `LiveTimeEntriesPage` intacta
+- La herramienta externa queda fuera de alcance
 - Nueva página solo para el sistema interno
-- No hay migración de datos de Clockify necesaria
+- No hay migración de datos de la herramienta externa necesaria
 
 ### 9.3 Validaciones
 

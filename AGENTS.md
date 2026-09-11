@@ -2,7 +2,7 @@
 
 ## Qué es
 
-Importador de tiempos: herramienta que obtiene registros de tiempo desde **Clockify** (API) y permite generar/insertar datos en **SQL Server** mediante una interfaz web.
+Importador de tiempos: herramienta con temporizador interno para registrar tiempos que permite generar/insertar datos en **SQL Server** mediante una interfaz web.
 
 ## Stack
 
@@ -11,13 +11,12 @@ Importador de tiempos: herramienta que obtiene registros de tiempo desde **Clock
 | Backend | Node.js + Express + TypeScript |
 | Frontend | React 18 + Vite + TailwindCSS |
 | Base de datos | SQL Server (vía `mssql`) |
-| API externa | Clockify API (time entries + reports) |
-| Config | `.env` con `CLOCKIFY_API_KEY`, `CLOCKIFY_WORKSPACE_ID`, `CLOCKIFY_USER_ID`, credenciales SQL |
+| Config | `.env` con `PORT`; conexión SQL configurada en el cliente (ConfigStore) |
 
 ## Estructura
 
 ```
-server.ts          Backend Express (endpoints: /api/test-connection, /api/execute-sql, /api/clockify/report, /api/time-entries)
+server.ts          Backend Express (endpoints: /api/test-connection, /api/execute-sql, /api/projects, /api/processes, /api/sync-time-entries, /api/execute-time-entries)
 src/
   domain/models/   Modelos de dominio (vacío actualmente)
   application/     Lógica de aplicación (vacío actualmente)
@@ -27,7 +26,7 @@ web-ui/            Frontend React (wizard de 3 pasos: subir CSV, asignar IDs, ge
   src/lib/         Utilidades
   src/pages/       Páginas
   src/styles/      Estilos
-  src/features/    Features organizadas por dominio (import-csv, live-entries)
+  src/features/    Features organizadas por dominio (time-tracker, dashboard, import-csv, projects, process-management)
   src/lib/api/     ApiClient centralizado (axios wrapper)
 ```
 
@@ -40,7 +39,7 @@ web-ui/            Frontend React (wizard de 3 pasos: subir CSV, asignar IDs, ge
 
 ## Flujo principal
 
-1. Usuario sube CSV exportado de app externa (o Clockify vía API)
+1. Usuario sube un CSV exportado de una app externa
 2. Frontend parsea CSV, detecta separador (tab/coma)
 3. Usuario asigna IDs de proceso a cada tarea
 4. Se genera SQL con `INSERT` para ejecutar en SQL Server

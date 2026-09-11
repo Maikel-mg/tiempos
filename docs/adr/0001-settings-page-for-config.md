@@ -23,4 +23,4 @@ La configuración de la app (DB connection, usuario, tipoHora, fase) estaba disp
 - **Modal/Dialog** — demasiado compacto para 4 campos de DB + password
 - **Accordion inline** — esconde config, difícil de descubrir
 - **Auto-save** — riesgoso para credenciales de DB
-- **Redirect a Settings si falta config** — bloquea exploración de datos de Clockify
+- **Redirect a Settings si falta config** — bloquea la exploración de datos en vivo

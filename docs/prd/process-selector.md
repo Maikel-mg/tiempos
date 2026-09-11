@@ -1,6 +1,6 @@
 ## Problem Statement
 
-En la página LiveTimeEntriesPage, los usuarios deben asignar un ID interno de tarea a cada nombre de tarea Clockify que aparece en sus entradas de tiempo. Actualmente esto se hace mediante un input manual donde el usuario teclea el ID. Este flujo es propenso a errores (ID incorrectos, tareas duplicadas sin ID) y no permite visualizar qué tareas internas ya existen en el sistema para facilitar la selección.
+En la página de mapeo de tareas, los usuarios deben asignar un ID interno de tarea a cada nombre de tarea externa que aparece en sus entradas de tiempo. Actualmente esto se hace mediante un input manual donde el usuario teclea el ID. Este flujo es propenso a errores (ID incorrectos, tareas duplicadas sin ID) y no permite visualizar qué tareas internas ya existen en el sistema para facilitar la selección.
 
 El objetivo es reemplazar el input manual por un selector visual en dos niveles (proyecto → proceso/tarea) que permita buscar, navegar con teclado y autocompletar el ID, todo dentro de un popup accesible desde la columna "ID de Proceso" de ProcessMappingTable.
 

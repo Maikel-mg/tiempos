@@ -3,7 +3,6 @@ schema: spec-driven
 context: |
   Tech stack: Node.js + Express + TypeScript (backend), React 18 + Vite + TailwindCSS (frontend)
   Database: SQL Server via mssql driver
-  External API: Clockify (time entries + reports)
   Testing: Vitest (unit + integration with @testing-library/react, jsdom)
   Style: TypeScript strict mode, no linter/formatter configured
   Domain: Time tracking import tool — CSV/JSON → SQL Server inserts via web UI

@@ -1,7 +1,7 @@
 ## Exploration: feature/projects-screen
 
 ### Current State
-The application currently has features for importing CSVs, fetching live entries from Clockify, and a dashboard. It also has a basic time-tracking screen (`TimeTrackingPage`) with hardcoded tasks. There is no screen to view or select real projects from the SQL Server database. The backend has several endpoints in `server.ts` to execute SQL and call stored procedures, but none for listing projects.
+The application currently has features for importing CSVs, a local time tracker, and a dashboard. It also has a basic time-tracking screen (`TimeTrackingPage`) with hardcoded tasks. There is no screen to view or select real projects from the SQL Server database. The backend has several endpoints in `server.ts` to execute SQL and call stored procedures, but none for listing projects.
 
 ### Affected Areas
 - `server.ts` — Need to add a new endpoint `/api/projects` to call `spNETProyectos_SeleccionProyectos`.

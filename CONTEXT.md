@@ -1,6 +1,6 @@
 # Importador de Tiempos
 
-Aplicación para obtener registros de tiempo desde Clockify y generar/ejecutar SQL en SQL Server.
+Aplicación para registrar tiempos con temporizador interno y generar/ejecutar SQL en SQL Server.
 
 ## Language
 
@@ -29,7 +29,7 @@ Store interno que cachea las fases sugeridas por mes. Se actualiza automáticame
 _Avoid_: Phase cache, Month phases
 
 **Fase (contextual)**:
-ID de fase que varía por mes. En Settings se muestra la actual. En LiveTimeEntriesPage muestra hint con sugerencia mensual y botón "Aplicar".
+ID de fase que varía por mes. En Settings se muestra la actual. Las páginas que registran tiempos muestran un hint con la sugerencia mensual y un botón «Aplicar».
 _Avoid_: Phase ID, Fase ID
 
 **Tipo de Hora**:
@@ -47,10 +47,6 @@ _Avoid_: SQL generator, Query builder
 **EntryClassifier**:
 Módulo que compara entradas de tiempo entrantes contra filas de BD y clasifica cada una como `alreadyExists` o `willInsert`. Función pura.
 _Avoid_: Validator, Checker
-
-**ClockifyApp**:
-Capa de aplicación que envuelve `ClockifyApiClient` con operaciones de nivel de negocio (obtener workspaces, entradas, reportes, crear tareas, etc.).
-_Avoid_: ClockifyService
 
 **Proceso Genérico**:
 Tarea de propósito amplio (General, Errores) contra la que se trackea tiempo cuando no hay una Tarea específica creada. Se crea uno nuevo por mes con nombre `IPKWEB AAAA-MM. General` o `IPKWEB AAAA-MM. Errores`. El tiempo acumulado contra un proceso genérico con una misma descripción repetida es candidato a generar una Propuesta de Tarea.

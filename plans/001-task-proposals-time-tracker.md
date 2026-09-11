@@ -23,7 +23,7 @@
 
 ## Why this matters
 
-Los usuarios del time-tracker arrancan timers contra Procesos Genéricos mensuales (`IPKWEB AAAA-MM. General` / `IPKWEB AAAA-MM. Errores`) para bugs o tareas que creen chicas. Cuando un bug se lleva 2-3 días, el tiempo queda enterrado en el proceso genérico en vez de tener su propia Tarea dedicada para reporting. `LiveTimeEntriesPage` ya resuelve esto para entradas de Clockify vía `extractProposals` + `TaskProposalCard` + `TaskProposalModal`. Este plan trae ese mismo mecanismo al time-tracker, operando sobre las entradas locales (IndexedDB) en vez de las de Clockify, y reasignando las entradas no sincronizadas a la Tarea nueva al aceptar.
+Los usuarios del time-tracker arrancan timers contra Procesos Genéricos mensuales (`IPKWEB AAAA-MM. General` / `IPKWEB AAAA-MM. Errores`) para bugs o tareas que creen chicas. Cuando un bug se lleva 2-3 días, el tiempo queda enterrado en el proceso genérico en vez de tener su propia Tarea dedicada para reporting. El mecanismo ya existía para entradas externas vía `TaskProposalCard` + `TaskProposalModal`. Este plan trae ese mismo mecanismo al time-tracker, operando sobre las entradas locales (IndexedDB) en vez de las externas, y reasignando las entradas no sincronizadas a la Tarea nueva al aceptar.
 
 ## Current state
 
@@ -36,7 +36,7 @@ Los términos `Proceso Genérico` y `Propuesta de Tarea` ya están en `CONTEXT.m
 
 ### Archivos clave
 
-- `web-ui/src/domain/proposals/extract-proposals.ts` — extractor existente para Clockify. Función pura `extractProposals(entries: TimeEntry[], thresholdHours=8): TaskProposal[]`. Regex `GENERIC_TASK_PATTERN` en L18: `/^(?:(\w+)\s+)?(\d{4}-\d{2})\.\s*(General|Errores)$/`. Interfaz `TaskProposal` en L3-16. `parseGenericTask` (L24) extrae `{projectCode, period}` del taskName. **Esta regex y este parser se reusan sin modificar.**
+- `web-ui/src/domain/proposals/extract-proposals.ts` — extractor existente para entradas externas. Función pura `extractProposals(entries: TimeEntry[], thresholdHours=8): TaskProposal[]`. Regex `GENERIC_TASK_PATTERN` en L18: `/^(?:(\w+)\s+)?(\d{4}-\d{2})\.\s*(General|Errores)$/`. Interfaz `TaskProposal` en L3-16. `parseGenericTask` (L24) extrae `{projectCode, period}` del taskName. **Esta regex y este parser se reusan sin modificar.**
 - `web-ui/src/features/proposal-ui/components/TaskProposalCard.tsx` — card reactiva que muestra propuestas. Props: `{proposals: TaskProposal[], onOpenModal: () => void}`. **Se reusa sin modificar.**
 - `web-ui/src/features/proposal-ui/components/TaskProposalModal.tsx` — modal editable. Ya usa `useCreateProcess()` (L44) y `SQLPreviewModal` (L190-200) internamente para crear procesos vía el botón ojo. Props: `{open, onOpenChange, proposals, onAccept: (proposal, proposedName, processId) => void, config: ProcessConfig}`. `onAccept` se llama cuando el usuario selecciona un proceso **existente** vía `ProcessSelector` (L88). **Se reusa sin modificar** — el time-tracker solo provee el `onAccept` handler.
 - `web-ui/src/features/time-tracker/types/index.ts` — `TimeEntry` local (L24-41). Campo `duration: number` en **segundos** (L33). Campo `synced: boolean` (L38), `syncedAt?`, `syncError?` (L39-40). Campo `taskName: string` (L27), `description?: string` (L34), `taskId: number` (L26), `id: string` (L25), `date: string` (L30), `startTime`/`endTime: string` (L31-32).
@@ -175,7 +175,7 @@ import { normalizeForMatch } from '@/lib/normalize';
 /**
  * Extrae Propuestas de Tarea desde entradas locales del time-tracker.
  *
- * Hermana de `extractProposals` (que opera sobre entradas de Clockify).
+ * Hermana de `extractProposals` (que opera sobre entradas externas).
  * Esta función opera sobre entradas locales (IndexedDB), donde:
  * - `taskName` es el nombre del Proceso (ej: "IPKWEB 2026-06. Errores")
  * - `description` es texto libre del usuario
@@ -238,7 +238,7 @@ export function extractProposalsFromLocal(
         end: e.date + 'T' + e.endTime,
         projectId: '',
       })),
-      clockifyProjectId: '', // no aplica para entradas locales
+      // sin projectId externo (entradas locales)
     });
   }
 
@@ -249,7 +249,7 @@ export function extractProposalsFromLocal(
 **Notas de diseño:**
 - Devuelve `TaskProposal[]` (mismo tipo que `extractProposals`) para que `TaskProposalCard` y `TaskProposalModal` lo consuman sin cambios.
 - `entryIds` se llena con los `id` reales de las entries locales — el handler de aceptación los usa para reasignar.
-- `clockifyProjectId: ''` porque las entries locales no tienen projectId de Clockify.
+- Sin `projectId` externo porque las entries locales no lo tienen.
 
 **Verify**: `cd web-ui && npm run type-check` → exit 0, no errors.
 
