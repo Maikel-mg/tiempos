@@ -48,11 +48,6 @@ const mainNavItems = [
     url: "/projects",
     icon: FolderOpen,
   },
-  // {
-  //   title: "Tiempos en Vivo",
-  //   url: "/live-entries",
-  //   icon: Clock,
-  // },
   {
     title: "Mis Tareas",
     url: "/my-tasks",

@@ -46,7 +46,7 @@ export function HomePage() {
                     <div className="rounded-lg border p-4">
                         <h3 className="font-semibold mb-1">Seguimiento</h3>
                         <p className="text-sm text-muted-foreground">
-                            Visualiza entradas en vivo desde Clockify o usa el temporizador interno.
+                            Visualiza entradas en vivo con el temporizador interno.
                         </p>
                     </div>
                     <div className="rounded-lg border p-4">

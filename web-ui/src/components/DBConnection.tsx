@@ -86,9 +86,15 @@ export function DBConnection({ dbConfig, onUpdateDbConfig }: DBConnectionProps) 
         setTestResult(null);
 
         try {
-            const response = await fetch('http://localhost:3001/api/time-entries', {
-                method: 'GET',
+            const response = await fetch('http://localhost:3001/api/test-connection', {
+                method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    server: dbConfig.server,
+                    database: dbConfig.database,
+                    username: dbConfig.username,
+                    password: dbConfig.password || '',
+                }),
             });
 
             const data = await response.json();
