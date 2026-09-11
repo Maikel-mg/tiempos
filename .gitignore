@@ -5,3 +5,5 @@ skills-lock.json
 .agents/skills
 .atl
 .windsurf/skills
+.env
+.codegraph
