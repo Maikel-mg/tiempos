@@ -22,7 +22,7 @@ vi.mock('mssql', () => ({
 import app from '../server';
 
 // ---------------------------------------------------------------------------
-// Helper — identical pattern to clockify-endpoints.test.ts
+// Helper — shared test endpoint caller
 // ---------------------------------------------------------------------------
 function callEndpoint(
     method: 'GET' | 'POST' | 'PUT' | 'DELETE',

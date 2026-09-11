@@ -12,7 +12,6 @@ import {
 } from './src/application/sql-executor';
 import { buildProjectsQuery, buildProjectsTreeQuery, buildProcessesQuery, buildExecuteTimeEntriesSQL, buildCreateProcessSQL, type CreateProcessDTO } from './src/application/sp-builder';
 import { classifyEntries, type TimeEntry } from './src/application/entry-classifier';
-import * as clockifyApp from './src/application/clockify-app';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -94,133 +93,7 @@ app.post('/api/execute-sql', async (req: Request, res: Response) => {
 
 
 
-app.get('/api/get-workspace-id', async (_req: Request, res: Response) => {
-  try {
-    const workspaces = await clockifyApp.getWorkspaces();
 
-    res.json({
-      success: true,
-      message: 'Copia el ID del workspace que quieras usar',
-      workspaces
-    });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-app.get('/api/time-entries', async (req: Request, res: Response) => {
-    try {
-        const { startDate, endDate } = req.query as Record<string, string>;
-
-        if (!startDate) {
-            return res.status(400).json({
-                error: 'El parámetro startDate es requerido (formato: YYYY-MM-DD)'
-            });
-        }
-
-        const data = await clockifyApp.getTimeEntries({ startDate, endDate });
-
-        res.json({
-            success: true,
-            count: Array.isArray(data) ? data.length : 0,
-            data
-        });
-    } catch (error: any) {
-        res.status(500).json({
-            success: false,
-            error: 'Error al obtener datos de Clockify',
-            details: error.message
-        });
-    }
-});
-
-app.post('/api/clockify/report', async (req: Request, res: Response) => {
-  try {
-    const { startDate, endDate } = req.body;
-    const data = await clockifyApp.getReport({ startDate, endDate });
-
-    res.json({
-      success: true,
-      count: data.length || 0,
-      data
-    });
-  } catch (error: any) {
-    if (error.message === 'Timeout: La petición tardó demasiado') {
-      return res.status(504).json({
-        success: false,
-        error: 'Timeout: La petición tardó demasiado'
-      });
-    }
-    res.status(500).json({
-      success: false,
-      error: 'Error interno al generar el reporte',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
-});
-
-// --- Clockify: Create Task ---
-app.post('/api/clockify/create-task', async (req: Request, res: Response) => {
-    try {
-        const { projectId, name: taskName } = req.body;
-
-        if (!projectId || !taskName) {
-            return res.status(400).json({
-                success: false,
-                message: 'Los campos projectId y name son requeridos'
-            });
-        }
-
-        const result = await clockifyApp.createTask(projectId, taskName);
-
-        res.json({
-            success: true,
-            taskId: result.taskId,
-            message: 'Tarea creada'
-        });
-    } catch (error: any) {
-        res.status(500).json({
-            success: false,
-            message: 'Error interno al crear la tarea',
-            details: process.env.NODE_ENV === 'development' ? error.message : undefined
-        });
-    }
-});
-
-// --- Clockify: Bulk Update Entries ---
-app.put('/api/clockify/bulk-update-entries', async (req: Request, res: Response) => {
-    try {
-        const { entries, taskId } = req.body;
-
-        if (!entries || !Array.isArray(entries) || entries.length === 0) {
-            return res.status(400).json({
-                success: false,
-                message: 'El campo entries es requerido y debe ser un array no vacío'
-            });
-        }
-
-        if (!taskId) {
-            return res.status(400).json({
-                success: false,
-                message: 'El campo taskId es requerido'
-            });
-        }
-
-        await clockifyApp.bulkUpdateEntries(entries, taskId);
-
-        res.json({
-            success: true,
-            updated: entries.length,
-            message: `${entries.length} entradas reasignadas`
-        });
-    } catch (error: any) {
-        res.status(500).json({
-            success: false,
-            message: 'Error interno al actualizar las entradas',
-            details: process.env.NODE_ENV === 'development' ? error.message : undefined
-        });
-    }
-});
 
 
 interface ValidateEntriesParams extends DbConnectionParams {
