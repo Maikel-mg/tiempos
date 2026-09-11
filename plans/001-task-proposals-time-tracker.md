@@ -36,7 +36,7 @@ Los términos `Proceso Genérico` y `Propuesta de Tarea` ya están en `CONTEXT.m
 
 ### Archivos clave
 
-- `web-ui/src/domain/proposals/extract-proposals.ts` — extractor existente para entradas externas. Función pura `extractProposals(entries: TimeEntry[], thresholdHours=8): TaskProposal[]`. Regex `GENERIC_TASK_PATTERN` en L18: `/^(?:(\w+)\s+)?(\d{4}-\d{2})\.\s*(General|Errores)$/`. Interfaz `TaskProposal` en L3-16. `parseGenericTask` (L24) extrae `{projectCode, period}` del taskName. **Esta regex y este parser se reusan sin modificar.**
+- `web-ui/src/domain/proposals/generic-task.ts` — regex `GENERIC_TASK_PATTERN` y `parseGenericTask` (extrae `{projectCode, period}` del taskName). **Se reusan sin modificar.** (El extractor `extract-proposals.ts` ya no existe; la interfaz `TaskProposal` vive en `domain/proposals/task-proposal.ts`.)
 - `web-ui/src/features/proposal-ui/components/TaskProposalCard.tsx` — card reactiva que muestra propuestas. Props: `{proposals: TaskProposal[], onOpenModal: () => void}`. **Se reusa sin modificar.**
 - `web-ui/src/features/proposal-ui/components/TaskProposalModal.tsx` — modal editable. Ya usa `useCreateProcess()` (L44) y `SQLPreviewModal` (L190-200) internamente para crear procesos vía el botón ojo. Props: `{open, onOpenChange, proposals, onAccept: (proposal, proposedName, processId) => void, config: ProcessConfig}`. `onAccept` se llama cuando el usuario selecciona un proceso **existente** vía `ProcessSelector` (L88). **Se reusa sin modificar** — el time-tracker solo provee el `onAccept` handler.
 - `web-ui/src/features/time-tracker/types/index.ts` — `TimeEntry` local (L24-41). Campo `duration: number` en **segundos** (L33). Campo `synced: boolean` (L38), `syncedAt?`, `syncError?` (L39-40). Campo `taskName: string` (L27), `description?: string` (L34), `taskId: number` (L26), `id: string` (L25), `date: string` (L30), `startTime`/`endTime: string` (L31-32).
@@ -168,7 +168,7 @@ Crear `web-ui/src/domain/proposals/extract-local-proposals.ts`:
 
 ```typescript
 import type { TimeEntry } from '@/features/time-tracker/types';
-import type { TaskProposal } from './extract-proposals';
+import type { TaskProposal } from './task-proposal';
 import { isGenericTask, parseGenericTask } from './generic-task';
 import { normalizeForMatch } from '@/lib/normalize';
 
@@ -247,7 +247,7 @@ export function extractProposalsFromLocal(
 ```
 
 **Notas de diseño:**
-- Devuelve `TaskProposal[]` (mismo tipo que `extractProposals`) para que `TaskProposalCard` y `TaskProposalModal` lo consuman sin cambios.
+- Devuelve `TaskProposal[]` para que `TaskProposalCard` y `TaskProposalModal` lo consuman sin cambios.
 - `entryIds` se llena con los `id` reales de las entries locales — el handler de aceptación los usa para reasignar.
 - Sin `projectId` externo porque las entries locales no lo tienen.
 

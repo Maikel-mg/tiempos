@@ -6,13 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { dbConfig as dbConfigStore } from '@/config/stores';
-
-export interface DbConfig {
-    server: string;
-    database: string;
-    username: string;
-    password?: string;
-}
+import { useTestDbConnection } from '@/features/db-connection';
+import type { DbConfig, TestConnectionResult } from '@/lib/types';
 
 export interface DBConnectionProps {
     dbConfig: DbConfig;
@@ -23,10 +18,10 @@ export interface DBConnectionProps {
 
 export function DBConnection({ dbConfig, onUpdateDbConfig }: DBConnectionProps) {
   const [showPassword, setShowPassword] = useState(false);
-  const [isTesting, setIsTesting] = useState(false);
-  const [testResult, setTestResult] = useState<any>(null);
+  const [testResult, setTestResult] = useState<TestConnectionResult | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [hasConfig, setHasConfig] = useState(false);
+  const testConnection = useTestDbConnection();
 
   useEffect(() => {
     const saved = dbConfigStore.get();
@@ -82,31 +77,23 @@ export function DBConnection({ dbConfig, onUpdateDbConfig }: DBConnectionProps) 
             return;
         }
 
-        setIsTesting(true);
         setTestResult(null);
 
         try {
-            const response = await fetch('http://localhost:3001/api/test-connection', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    server: dbConfig.server,
-                    database: dbConfig.database,
-                    username: dbConfig.username,
-                    password: dbConfig.password || '',
-                }),
+            const data = await testConnection.mutateAsync({
+                server: dbConfig.server,
+                database: dbConfig.database,
+                username: dbConfig.username,
+                password: dbConfig.password || '',
             });
-
-            const data = await response.json();
             setTestResult(data);
-        } catch (error: any) {
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Unknown error';
             setTestResult({
                 success: false,
-                message: `Connection failed: ${error.message}`,
+                message: `Connection failed: ${message}`,
                 suggestions: ['Make sure backend server is running on port 3001', 'Check network connectivity']
             });
-        } finally {
-            setIsTesting(false);
         }
     };
 
@@ -206,9 +193,9 @@ export function DBConnection({ dbConfig, onUpdateDbConfig }: DBConnectionProps) 
                     <Button 
                         variant="outline" 
                         onClick={handleTestConnection}
-                        disabled={isTesting}
+                        disabled={testConnection.isPending}
                     >
-                        {isTesting ? (
+                        {testConnection.isPending ? (
                             <>
                                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                                 Probando...

@@ -1,5 +1,5 @@
 import type { TimeEntry } from '@/lib/types';
-import type { DbConfig } from '@/components/DBConnection';
+import type { DbConfig } from '@/lib/types';
 
 export interface SyncValidationRequest {
   dbConfig: DbConfig;

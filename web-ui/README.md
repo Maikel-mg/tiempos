@@ -1,51 +1,66 @@
 # Web UI - Importador de Tiempos
 
-Interfaz web completa para importar tiempos desde CSV a SQL Server. Funciona 100% en el navegador sin necesidad de backend.
+Interfaz web para registrar tiempos y generar/ejecutar SQL en SQL Server. Combina un temporizador interno, la importación de CSV y un dashboard. Necesita el backend Express para las operaciones contra la base de datos.
 
 ## Características
 
-- ✅ Funciona completamente en el navegador (sin backend)
-- ✅ Drag & drop de archivos CSV
-- ✅ Detección automática de separador (TAB o coma)
-- ✅ Asignación visual de IDs de tareas
-- ✅ Generación de SQL con validación
-- ✅ Vista previa con syntax highlighting
-- ✅ Descarga del archivo .sql generado
-- ✅ Copiar al portapapeles
-- ✅ Responsive con TailwindCSS
-- ✅ Componentes shadcn/ui
+- Temporizador interno y registro manual de tiempos, con persistencia local en IndexedDB.
+- Importación de CSV con drag & drop y detección automática de separador (TAB o coma).
+- Asignación visual de IDs de proceso/tarea.
+- Generación, vista previa y ejecución de SQL contra SQL Server.
+- Sincronización de registros de tiempo con la base de datos.
+- Dashboard con resumen de horas y desglose por tarea.
+- Propuestas de tarea a partir de procesos genéricos.
+- Tema claro/oscuro, notificaciones (toast) y diseño responsive con TailwindCSS.
 
-## Estructura del Proyecto
+## Stack
+
+| Paquete | Uso |
+|---------|-----|
+| React 18 + TypeScript | Framework UI |
+| Vite | Bundler / Dev server |
+| TailwindCSS + shadcn/ui | Estilos y componentes |
+| TanStack Query v5 | Estado de datos (caché, loading, error) |
+| React Router v7 | Navegación |
+| Axios | Cliente HTTP centralizado (`ApiClient`) |
+| Dexie | Persistencia local en IndexedDB |
+| Vitest + Testing Library | Testing |
+| Sonner | Notificaciones toast |
+
+## Estructura del proyecto
 
 ```
 web-ui/
 ├── src/
 │   ├── components/
-│   │   ├── ui/           # Componentes shadcn/ui
-│   │   ├── Step1Upload.jsx    # Paso 1: Subir CSV
-│   │   ├── Step2Tasks.jsx     # Paso 2: Asignar tareas
-│   │   └── Step3Preview.jsx   # Paso 3: Vista previa SQL
-│   ├── hooks/
-│   │   └── useWizard.js       # Hook de estado del wizard
+│   │   ├── ui/                    # Componentes shadcn/ui
+│   │   └── ...                    # Componentes compartidos (AppLayout, DBConnection, ...)
+│   ├── config/                    # Stores de configuración (ConfigStore)
+│   ├── features/                  # Features organizadas por dominio
+│   │   ├── time-tracker/          # Temporizador y registros locales
+│   │   ├── dashboard/             # Métricas y gráficos
+│   │   ├── import-csv/            # Wizard de importación
+│   │   ├── process-management/    # Procesos/tareas
+│   │   ├── projects/              # Proyectos
+│   │   ├── proposal-ui/           # Propuestas de tarea
+│   │   ├── db-connection/         # Test de conexión a base de datos
+│   │   └── sync-validator/        # Validación de sincronización
 │   ├── lib/
-│   │   ├── csv-parser.js      # Parser de CSV (FileReader API)
-│   │   ├── sql-generator.js   # Generador de SQL
-│   │   └── utils.js           # Utilidades (cn function)
-│   ├── styles/
-│   │   └── index.css          # Estilos Tailwind
-│   ├── App.jsx                # Componente principal
-│   └── main.jsx               # Punto de entrada React
+│   │   ├── api/client.ts          # ApiClient centralizado (axios)
+│   │   ├── storage/               # IndexedDB (Dexie)
+│   │   └── ...                    # Utilidades (sql-generator, task-mapping-storage, ...)
+│   ├── pages/                     # Páginas (composición de features)
+│   └── styles/                    # CSS global y variables Tailwind
 ├── index.html
 ├── package.json
-├── vite.config.js
-├── tailwind.config.js
-└── components.json            # Config shadcn/ui
+├── tsconfig.json
+└── vite.config.ts
 ```
 
 ## Requisitos
 
 - Node.js 18+
-- npm o yarn
+- Backend en `http://localhost:3001` (ver `npm run dev-backend` en la raíz del repo)
 
 ## Instalación
 
@@ -71,44 +86,19 @@ Los archivos generados estarán en la carpeta `dist/`.
 
 ## Uso
 
-1. **Paso 1 - Subir CSV**: 
-   - Arrastra tu archivo CSV o selecciónalo
-   - Configura usuario y tipo de hora
-   - Haz clic en "Procesar Archivo"
+1. **Configuración (`/settings`)**: introduce los datos de conexión a SQL Server (servidor, base de datos, usuario, contraseña) y las preferencias de importación.
+2. **TimeTracker (`/time-tracker`)**: registra tiempos con el temporizador o de forma manual. Los registros se guardan en el navegador hasta que se sincronizan.
+3. **Importar CSV (`/import`)**: sube un CSV, asigna un ID a cada tarea y genera el SQL.
+4. **Dashboard (`/dashboard`)**: revisa las horas registradas y el desglose por tarea.
+5. **Proyectos (`/projects`) y Mis Tareas (`/my-tasks`)**: consulta proyectos y procesos disponibles desde la base de datos.
 
-2. **Paso 2 - Asignar Tareas**:
-   - Verás todas las tareas únicas encontradas en el CSV
-   - Asigna un ID numérico positivo a cada tarea
-   - Cuando todas tengan ID válido, genera el SQL
+## Configuración
 
-3. **Paso 3 - Vista Previa**:
-   - Revisa las sentencias SQL generadas
-   - Copia al portapapeles o descarga como .sql
-   - Vuelve atrás si necesitas corregir algo
+La conexión a SQL Server y las preferencias se guardan en el navegador mediante el ConfigStore y se editan en la página `/settings`. El backend solo necesita `PORT` en el archivo `.env`.
 
-## Columnas CSV Requeridas
+## Tests
 
-El CSV debe contener las siguientes columnas:
-- **Tarea**: Nombre de la tarea
-- **Fecha de inicio**: DD/MM/AAAA
-- **Hora de inicio**: HH:MM:SS
-- **Fecha de finalización**: DD/MM/AAAA
-- **Hora de finalización**: HH:MM:SS
-- **Duración (decimal)**: Horas en formato decimal (ej: 1,5)
-
-Columna opcional:
-- **Descripción**: Descripción del trabajo realizado
-
-## Soporte de Formatos
-
-- Separadores: TAB o coma (detectado automáticamente)
-- Codificación: UTF-8 (configurable)
-- Campos entrecomillados: Soportado
-
-## Tecnologías
-
-- React 18
-- Vite 5
-- TailwindCSS 3
-- shadcn/ui
-- Lucide Icons
+```bash
+npm run test:run     # ejecuta Vitest una vez
+npm run type-check   # comprueba tipos con TypeScript
+```

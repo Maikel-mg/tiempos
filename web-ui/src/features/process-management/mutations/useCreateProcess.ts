@@ -2,7 +2,7 @@ import { useMutation } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
 import { dbConfig } from '@/config/stores';
 import type { CreateProcessDTO } from '../types';
-import type { ExecuteSqlResponse } from '@/lib/api/sql-execution';
+import type { ExecuteSqlResponse } from '@/lib/types';
 
 /**
  * Mutation hook to create a process via the /api/create-process endpoint.

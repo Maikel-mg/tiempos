@@ -22,14 +22,8 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import { dbConfig, wizardConfig, proposalConfig, scheduleConfig } from '@/config/stores';
-import { useTestDbConnection } from '@/lib/api/sql-execution';
-
-interface DbConfig {
-  server: string;
-  database: string;
-  username: string;
-  password: string;
-}
+import { useTestDbConnection } from '@/features/db-connection';
+import type { DbConfig } from '@/lib/types';
 
 interface WizardConfig {
   usuario: string;

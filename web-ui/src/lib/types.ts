@@ -5,6 +5,24 @@ export interface DbConfig {
   password?: string;
 }
 
+export interface ExecuteSqlParams extends DbConfig {
+  sqlStatements: string[];
+}
+
+export interface ExecuteSqlResponse {
+  success: boolean;
+  message: string;
+  totalRowsAffected?: number;
+  results?: { success: boolean; rowsAffected: number }[];
+}
+
+export interface TestConnectionResult {
+  success: boolean;
+  message: string;
+  details?: { server: string; database: string };
+  suggestions?: string[];
+}
+
 export interface TimeEntry {
   id?: string;
   _id?: string;

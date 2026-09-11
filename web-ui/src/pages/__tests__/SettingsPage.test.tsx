@@ -16,7 +16,7 @@ vi.mock('sonner', () => ({
 }));
 
 // Mock the mutation hook
-vi.mock('@/lib/api/sql-execution', () => ({
+vi.mock('@/features/db-connection', () => ({
   useTestDbConnection: vi.fn(() => ({
     mutateAsync: vi.fn(),
     isPending: false,
@@ -172,7 +172,7 @@ describe('SettingsPage - DB Connection Section', () => {
   describe('Test 6: Probar conexión calls mutation', () => {
     it('should call useTestDbConnection mutation with form values', async () => {
       const mockMutateAsync = vi.fn().mockResolvedValue({ success: true, message: 'OK' });
-      vi.mocked(await import('@/lib/api/sql-execution')).useTestDbConnection.mockReturnValue({
+      vi.mocked(await import('@/features/db-connection')).useTestDbConnection.mockReturnValue({
         mutateAsync: mockMutateAsync,
         isPending: false,
         isSuccess: false,

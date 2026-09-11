@@ -36,12 +36,17 @@ export function useTimeEntries(params: UseTimeEntriesParams) {
     queryKey: ['local-time-entries', params.startDate, params.endDate],
     queryFn: async () => {
       const entries = await indexedDBStorage.getEntriesByDateRange(params.startDate, params.endDate);
+      const worked = entries.filter((entry) => !entry.recoverable);
       return {
         success: true,
-        count: entries.length,
-        data: entries.map(toDashboardEntry)
+        count: worked.length,
+        data: worked.map(toDashboardEntry)
       };
     },
-    staleTime: 60 * 1000
+    // Datos locales (IndexedDB): releerlos es barato. Con staleTime 0, el
+    // Dashboard se refresca al montar y al volver a la pestaña, sin depender
+    // de invalidaciones cruzadas desde el tracker.
+    staleTime: 0,
+    retry: 1
   });
 }
