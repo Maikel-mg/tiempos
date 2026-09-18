@@ -1,17 +1,25 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Clock, Calendar, Landmark, CalendarDays } from 'lucide-react';
-import { computeDailyBalance, computeWeeklyBalance, computeBanco } from '../lib/balance';
+import { computeDailyBalance, computeWeeklyBalance, computeBanco, computeRangeBalance } from '../lib/balance';
 import { getDailyTarget } from '../lib/schedule';
+import { resolvePeriodRange } from '../lib/periodRange';
+import type { ResolvedPeriodRange } from '../lib/periodRange';
 import type { TimeEntry } from '../types';
 import type { PeriodType } from '@/components/shared/PeriodSelector';
+
+type BalanceScope = 'period' | 'global';
 
 export interface PeriodProgressPanelProps {
   entries: TimeEntry[];
   period: PeriodType;
+  /** Resolved selected period range. Falls back to resolvePeriodRange(period). */
+  periodRange?: ResolvedPeriodRange;
   /** Elapsed seconds from a running timer (throttled). Added to today/week/month worked. */
   timerElapsed?: number;
   /** Whether today falls within the selected period range. */
@@ -29,11 +37,6 @@ function getWeekStartStr(): string {
   const monday = new Date(now);
   monday.setDate(now.getDate() - diffToMonday);
   return monday.toISOString().slice(0, 10);
-}
-
-function getMonthStartStr(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
 }
 
 function getDaysInMonth(date: Date): number {
@@ -79,6 +82,7 @@ interface CardData {
   accentClass: string;
   percent: number;
   onClick?: () => void;
+  headerAction?: React.ReactNode;
 }
 
 function ProgressCard({ card, onClick }: { card: CardData; onClick?: () => void }) {
@@ -94,11 +98,14 @@ function ProgressCard({ card, onClick }: { card: CardData; onClick?: () => void 
       data-testid={card.segmentTestId}
     >
       <CardContent className="flex flex-col gap-2 p-3">
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <Icon className="w-4 h-4" />
-          <span className="text-xs font-semibold uppercase tracking-widest">
-            {card.label}
-          </span>
+        <div className="flex items-center justify-between gap-2 text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <Icon className="w-4 h-4" />
+            <span className="text-xs font-semibold uppercase tracking-widest">
+              {card.label}
+            </span>
+          </div>
+          {card.headerAction}
         </div>
 
         <span
@@ -126,13 +133,18 @@ function ProgressCard({ card, onClick }: { card: CardData; onClick?: () => void 
 
 export function PeriodProgressPanel({
   entries,
-  period: _period,
+  period,
+  periodRange,
   timerElapsed = 0,
   todayInRange = false,
 }: PeriodProgressPanelProps) {
   const todayStr = getTodayStr();
   const weekStartStr = getWeekStartStr();
-  const monthStartStr = getMonthStartStr();
+
+  const range = useMemo(
+    () => periodRange ?? resolvePeriodRange(period),
+    [periodRange, period],
+  );
 
   // Timer elapsed only counts when today is in the selected period range
   const elapsed = todayInRange ? timerElapsed : 0;
@@ -195,8 +207,28 @@ export function PeriodProgressPanel({
 
   const banco = useMemo(() => computeBanco(entries), [entries]);
 
+  const [balanceScope, setBalanceScope] = useState<BalanceScope>('period');
+  const periodBalance = useMemo(
+    () => computeRangeBalance(entries, range.startStr, range.endStr) + elapsed,
+    [entries, range.startStr, range.endStr, elapsed],
+  );
+  const globalBalance = useMemo(() => banco + elapsed, [banco, elapsed]);
+  const balance = balanceScope === 'period' ? periodBalance : globalBalance;
+
   const [balanceSheetOpen, setBalanceSheetOpen] = useState(false);
   const [balanceFilter, setBalanceFilter] = useState<'all' | 'positive' | 'negative'>('all');
+  const [balanceFrom, setBalanceFrom] = useState(range.startStr);
+  const [balanceTo, setBalanceTo] = useState(range.endStr);
+
+  useEffect(() => {
+    if (balanceScope === 'period') {
+      setBalanceFrom(range.startStr);
+      setBalanceTo(range.endStr);
+    } else {
+      setBalanceFrom('');
+      setBalanceTo('');
+    }
+  }, [balanceScope, range.startStr, range.endStr]);
 
   const breakdown = useMemo(() => {
     // Group entries by date (exclude recoverable)
@@ -205,6 +237,11 @@ export function PeriodProgressPanel({
       if (entry.recoverable) continue;
       const existing = dateMap.get(entry.date) || 0;
       dateMap.set(entry.date, existing + entry.duration);
+    }
+    // Include the running timer as in-progress work for today
+    if (elapsed > 0) {
+      const existing = dateMap.get(todayStr) || 0;
+      dateMap.set(todayStr, existing + elapsed);
     }
     // Convert to array with target and delta
     const items = Array.from(dateMap.entries()).map(([date, worked]) => {
@@ -219,18 +256,26 @@ export function PeriodProgressPanel({
     // Sort by date ascending
     items.sort((a, b) => a.date.localeCompare(b.date));
     return items;
-  }, [entries]);
+  }, [entries, elapsed, todayStr]);
 
   const filteredBreakdown = useMemo(() => {
-    if (balanceFilter === 'positive') return breakdown.filter((item) => item.delta > 0);
-    if (balanceFilter === 'negative') return breakdown.filter((item) => item.delta < 0);
-    return breakdown;
-  }, [breakdown, balanceFilter]);
+    let items = breakdown;
+    if (balanceFrom) items = items.filter((item) => item.date >= balanceFrom);
+    if (balanceTo) items = items.filter((item) => item.date <= balanceTo);
+    if (balanceFilter === 'positive') return items.filter((item) => item.delta > 0);
+    if (balanceFilter === 'negative') return items.filter((item) => item.delta < 0);
+    return items;
+  }, [breakdown, balanceFilter, balanceFrom, balanceTo]);
+
+  const filteredTotal = useMemo(
+    () => filteredBreakdown.reduce((sum, item) => sum + item.delta, 0),
+    [filteredBreakdown],
+  );
 
   const hoyPercent = percentWidth(workedToday, todayTargetSec);
   const semanaPercent = percentWidth(workedWeek, weekTargetSec);
   const mesPercent = percentWidth(workedMonth, monthTargetSec);
-  const balancePercent = banco >= 0 ? 100 : 0;
+  const balancePercent = balance >= 0 ? 100 : 0;
 
   const targetStr = formatTargetHM(todayTargetHours);
 
@@ -273,6 +318,33 @@ export function PeriodProgressPanel({
     mesAccent = 'text-emerald-600 dark:text-emerald-400';
   }
 
+  const balanceScopeToggle = (
+    <div
+      className="flex items-center gap-0.5 rounded-md border p-0.5"
+      onClick={(e) => e.stopPropagation()}
+    >
+      {(['period', 'global'] as const).map((scope) => (
+        <button
+          key={scope}
+          type="button"
+          aria-pressed={balanceScope === scope}
+          data-testid={`balance-scope-${scope}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            setBalanceScope(scope);
+          }}
+          className={`px-1.5 py-0.5 text-[10px] font-medium rounded-sm transition-colors ${
+            balanceScope === scope
+              ? 'bg-foreground text-background'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          {scope === 'period' ? 'Período' : 'Histórico'}
+        </button>
+      ))}
+    </div>
+  );
+
   const cards: CardData[] = [
     {
       icon: Clock,
@@ -309,11 +381,12 @@ export function PeriodProgressPanel({
       label: 'Balance',
       segmentTestId: 'segment-balance',
       barTestId: 'bar-balance',
-      workedStr: formatHM(Math.abs(banco)),
-      subtext: banco >= 0 ? 'horas a favor' : 'horas en contra',
-      accentClass: banco >= 0 ? 'text-emerald-600 dark:text-emerald-400' : '',
+      workedStr: formatHM(Math.abs(balance)),
+      subtext: balance >= 0 ? 'horas a favor' : 'horas en contra',
+      accentClass: balance >= 0 ? 'text-emerald-600 dark:text-emerald-400' : '',
       percent: balancePercent,
       onClick: () => setBalanceSheetOpen(true),
+      headerAction: balanceScopeToggle,
     },
   ];
 
@@ -339,10 +412,43 @@ export function PeriodProgressPanel({
               <Landmark className="w-4 h-4" />
               Desglose del Balance
             </SheetTitle>
-            <p className={`text-sm font-medium ${banco >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
-              {banco >= 0 ? '+' : '-'}{formatHM(Math.abs(banco))} total
+            <p
+              data-testid="balance-total"
+              className={`text-sm font-medium ${filteredTotal >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}
+            >
+              {filteredTotal >= 0 ? '+' : '-'}{formatHM(Math.abs(filteredTotal))} total
+              <span className="text-muted-foreground font-normal">
+                {balanceScope === 'period' ? ' · período seleccionado' : ' · histórico'}
+              </span>
             </p>
           </SheetHeader>
+
+          <div className="grid grid-cols-2 gap-3 mb-3">
+            <div className="space-y-1">
+              <Label htmlFor="balance-from" className="text-xs text-muted-foreground">
+                Desde
+              </Label>
+              <Input
+                id="balance-from"
+                type="date"
+                value={balanceFrom}
+                onChange={(e) => setBalanceFrom(e.target.value)}
+                className="h-8 text-xs"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="balance-to" className="text-xs text-muted-foreground">
+                Hasta
+              </Label>
+              <Input
+                id="balance-to"
+                type="date"
+                value={balanceTo}
+                onChange={(e) => setBalanceTo(e.target.value)}
+                className="h-8 text-xs"
+              />
+            </div>
+          </div>
 
           <div className="flex items-center gap-1 mb-4">
             {(['all', 'positive', 'negative'] as const).map((filter) => (
@@ -358,7 +464,7 @@ export function PeriodProgressPanel({
             ))}
           </div>
 
-          <ScrollArea className="h-[calc(100vh-220px)]">
+          <ScrollArea className="h-[calc(100vh-320px)]">
             {filteredBreakdown.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">
                 {breakdown.length === 0

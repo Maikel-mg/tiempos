@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { PeriodProgressPanel } from '../PeriodProgressPanel';
 import type { TimeEntry } from '../../types';
 
@@ -81,7 +81,7 @@ describe('PeriodProgressPanel', () => {
       makeEntry({ date: '2026-06-08', duration: 32400, taskName: 'Mon' }),
     ];
 
-    render(<PeriodProgressPanel entries={entries} period="today" />);
+    render(<PeriodProgressPanel entries={entries} period="week" />);
 
     const balanceValue = screen.getByTestId('segment-balance-value');
     expect(balanceValue).toHaveTextContent('0:45');
@@ -97,7 +97,7 @@ describe('PeriodProgressPanel', () => {
       makeEntry({ date: '2026-06-08', duration: 25200, taskName: 'Mon' }),
     ];
 
-    render(<PeriodProgressPanel entries={entries} period="today" />);
+    render(<PeriodProgressPanel entries={entries} period="week" />);
 
     const balanceValue = screen.getByTestId('segment-balance-value');
     expect(balanceValue).toHaveTextContent('1:15');
@@ -236,5 +236,118 @@ describe('PeriodProgressPanel', () => {
 
     const semanaValue = screen.getByTestId('segment-semana-value');
     expect(semanaValue).toHaveTextContent('31:30');
+  });
+
+  it('defaults Balance to the selected period and switches to global', () => {
+    const periodRange = {
+      start: new Date('2026-06-08T00:00:00'),
+      end: new Date('2026-06-14T23:59:59'),
+      startStr: '2026-06-08',
+      endStr: '2026-06-14',
+    };
+    const entries = [
+      makeEntry({ date: '2026-06-08', duration: 32400, taskName: 'This week' }), // +2700
+      makeEntry({ date: '2026-06-01', duration: 25200, taskName: 'Prev week' }), // -4500
+    ];
+
+    render(<PeriodProgressPanel entries={entries} period="week" periodRange={periodRange} />);
+
+    // Default scope: selected period only → +2700 = 0:45
+    expect(screen.getByTestId('segment-balance-value')).toHaveTextContent('0:45');
+
+    // Global scope: +2700 - 4500 = -1800 = 0:30
+    fireEvent.click(screen.getByTestId('balance-scope-global'));
+    expect(screen.getByTestId('segment-balance-value')).toHaveTextContent('0:30');
+  });
+
+  it('includes the running timer in the period balance', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-06-11T14:00:00'));
+
+    // 4h logged + 4h running timer = 8h; Thu target 8.25h → -900s = 0:15
+    const entries = [
+      makeEntry({ date: '2026-06-11', duration: 14400, taskName: 'Morning' }),
+    ];
+
+    render(
+      <PeriodProgressPanel
+        entries={entries}
+        period="today"
+        timerElapsed={14400}
+        todayInRange
+      />,
+    );
+
+    expect(screen.getByTestId('segment-balance-value')).toHaveTextContent('0:15');
+    expect(screen.getByText('horas en contra')).toBeInTheDocument();
+  });
+
+  it('reconciles the drilldown total with the running timer', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-06-11T14:00:00'));
+
+    const entries = [
+      makeEntry({ date: '2026-06-11', duration: 14400, taskName: 'Morning' }),
+    ];
+
+    render(
+      <PeriodProgressPanel
+        entries={entries}
+        period="today"
+        timerElapsed={14400}
+        todayInRange
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('segment-balance'));
+
+    // Same as the card: 4h logged + 4h timer vs 8.25h target → -0:15
+    expect(screen.getByTestId('balance-total')).toHaveTextContent('-0:15');
+  });
+
+  it('ignores the running timer when todayInRange is false', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-06-11T14:00:00'));
+
+    const entries = [
+      makeEntry({ date: '2026-06-11', duration: 14400, taskName: 'Morning' }),
+    ];
+
+    render(
+      <PeriodProgressPanel
+        entries={entries}
+        period="today"
+        timerElapsed={14400}
+        todayInRange={false}
+      />,
+    );
+
+    // Timer not counted: 4h worked vs 8.25h target → 4:15
+    expect(screen.getByTestId('segment-balance-value')).toHaveTextContent('4:15');
+  });
+
+  it('filters the balance drilldown by date range', () => {
+    const periodRange = {
+      start: new Date('2026-06-08T00:00:00'),
+      end: new Date('2026-06-14T23:59:59'),
+      startStr: '2026-06-08',
+      endStr: '2026-06-14',
+    };
+    const entries = [
+      makeEntry({ date: '2026-06-08', duration: 32400, taskName: 'Mon' }),
+      makeEntry({ date: '2026-06-09', duration: 25200, taskName: 'Tue' }),
+    ];
+
+    render(<PeriodProgressPanel entries={entries} period="week" periodRange={periodRange} />);
+
+    fireEvent.click(screen.getByTestId('segment-balance'));
+
+    expect(screen.getByText('Lun 8 Jun')).toBeInTheDocument();
+    expect(screen.getByText('Mar 9 Jun')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Desde'), { target: { value: '2026-06-09' } });
+
+    expect(screen.queryByText('Lun 8 Jun')).not.toBeInTheDocument();
+    expect(screen.getByText('Mar 9 Jun')).toBeInTheDocument();
   });
 });

@@ -68,6 +68,25 @@ export function computeBanco(
 }
 
 /**
+ * Calcula el balance de un rango de fechas: suma de balances diarios de las
+ * fechas con entries dentro de [start, end]. Los días sin entries no cuentan.
+ * @param entries - entries históricas (se filtran por rango)
+ * @param start - fecha inicio inclusiva (YYYY-MM-DD)
+ * @param end - fecha fin inclusiva (YYYY-MM-DD)
+ * @param scheduleFn - función para resolver el target diario
+ * @returns balance del rango en segundos
+ */
+export function computeRangeBalance(
+  entries: TimeEntry[],
+  start: string,
+  end: string,
+  scheduleFn: (date: string) => number = getDailyTarget,
+): number {
+  const inRange = entries.filter((e) => e.date >= start && e.date <= end);
+  return computeBanco(inRange, scheduleFn);
+}
+
+/**
  * Asigna el banco a permisos cronológicamente (más antiguo primero).
  * Permite asignación parcial.
  * @param bancoAmount - cantidad disponible en el banco (segundos, debe ser positivo)

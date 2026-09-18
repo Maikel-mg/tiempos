@@ -3,6 +3,7 @@ import {
   computeDailyBalance,
   computeWeeklyBalance,
   computeBanco,
+  computeRangeBalance,
   allocateRecovery,
 } from '../balance';
 import type { TimeEntry } from '../../types';
@@ -143,6 +144,36 @@ describe('computeBanco', () => {
       makeEntry({ date: '2025-06-10', duration: 32400 }), // Tue 9h
     ];
     expect(computeBanco(entries)).toBe(5400);
+  });
+});
+
+describe('computeRangeBalance', () => {
+  it('only sums days with entries inside the range (no empty-day debt)', () => {
+    // Range Mon-Wed. Only Mon has an entry: 9h → +2700.
+    // Tue/Wed have no entries and must NOT count as negative targets.
+    const entries = [makeEntry({ date: '2025-06-09', duration: 32400 })];
+    expect(computeRangeBalance(entries, '2025-06-09', '2025-06-11')).toBe(2700);
+  });
+
+  it('excludes entries outside the range', () => {
+    const entries = [
+      makeEntry({ date: '2025-06-09', duration: 32400 }), // Mon +2700 (inside)
+      makeEntry({ date: '2025-06-16', duration: 28800 }), // next Mon -900 (outside)
+    ];
+    expect(computeRangeBalance(entries, '2025-06-09', '2025-06-13')).toBe(2700);
+  });
+
+  it('returns 0 when the range has no entries', () => {
+    const entries = [makeEntry({ date: '2025-06-16', duration: 32400 })];
+    expect(computeRangeBalance(entries, '2025-06-09', '2025-06-13')).toBe(0);
+  });
+
+  it('is inclusive on both bounds', () => {
+    const entries = [
+      makeEntry({ date: '2025-06-09', duration: 32400 }), // Mon +2700
+      makeEntry({ date: '2025-06-10', duration: 28800 }), // Tue -900
+    ];
+    expect(computeRangeBalance(entries, '2025-06-09', '2025-06-10')).toBe(1800);
   });
 });
 

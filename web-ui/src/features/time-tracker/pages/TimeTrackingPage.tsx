@@ -19,6 +19,7 @@ import { useTableKeyboardNavigation } from '@/hooks/useTableKeyboardNavigation';
 import { useTableRowShortcuts } from '@/hooks/useTableRowShortcuts';
 import { createVirtualTimerEntry } from '../lib/timerVirtualEntry';
 import { computePeriodTotal } from '../lib/computePeriodTotal';
+import { resolvePeriodRange } from '../lib/periodRange';
 import { syncTimeEntries } from '../services/timeEntrySyncService';
 import { wizardConfig, dbConfig, proposalConfig } from '@/config/stores';
 import { TaskProposalModal } from '@/features/proposal-ui/components/TaskProposalModal';
@@ -62,50 +63,15 @@ export function TimeTrackingPage() {
     return pendingEntries.filter((e) => selectedIds.has(e.id));
   }, [pendingEntries, selectedIds]);
 
-  const filteredByPeriod = useMemo(() => {
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const periodRange = useMemo(
+    () => resolvePeriodRange(period, customRange),
+    [period, customRange]
+  );
 
-    let start: Date;
-    let end: Date;
-
-    switch (period) {
-      case 'today':
-        start = today; end = now; break;
-      case 'week': {
-        const dayOfWeek = now.getDay();
-        const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-        start = new Date(today); start.setDate(today.getDate() - diffToMonday);
-        end = new Date(start); end.setDate(start.getDate() + 6); end.setHours(23,59,59,999);
-        break;
-      }
-      case 'month': {
-        start = new Date(now.getFullYear(), now.getMonth(), 1);
-        end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-        break;
-      }
-      case 'last-month': {
-        start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
-        break;
-      }
-      case 'custom':
-        start = customRange?.start || today;
-        end = customRange?.end || now;
-        break;
-      default:
-        start = today; end = now;
-    }
-
-    const startDay = start.getFullYear() * 10000 + (start.getMonth() + 1) * 100 + start.getDate();
-    const endDay = end.getFullYear() * 10000 + (end.getMonth() + 1) * 100 + end.getDate();
-
-    return entries.filter(e => {
-      const d = new Date(e.date + 'T12:00:00');
-      const entryDay = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
-      return entryDay >= startDay && entryDay <= endDay;
-    });
-  }, [entries, period, customRange]);
+  const filteredByPeriod = useMemo(
+    () => entries.filter(e => e.date >= periodRange.startStr && e.date <= periodRange.endStr),
+    [entries, periodRange]
+  );
 
   const proposals = useMemo(() => {
     // Solo entradas del mes actual
@@ -127,44 +93,9 @@ export function TimeTrackingPage() {
 
   const todayInRange = useMemo(() => {
     const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const todayDay = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
-
-    if (period === 'today') return true;
-
-    let start: Date;
-    let end: Date;
-
-    switch (period) {
-      case 'week': {
-        const dayOfWeek = now.getDay();
-        const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-        start = new Date(today); start.setDate(today.getDate() - diffToMonday);
-        end = new Date(start); end.setDate(start.getDate() + 6); end.setHours(23,59,59,999);
-        break;
-      }
-      case 'month': {
-        start = new Date(now.getFullYear(), now.getMonth(), 1);
-        end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-        break;
-      }
-      case 'last-month': {
-        start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
-        break;
-      }
-      case 'custom':
-        start = customRange?.start || today;
-        end = customRange?.end || now;
-        break;
-      default:
-        return false;
-    }
-
-    const startDay = start.getFullYear() * 10000 + (start.getMonth() + 1) * 100 + start.getDate();
-    const endDay = end.getFullYear() * 10000 + (end.getMonth() + 1) * 100 + end.getDate();
-    return todayDay >= startDay && todayDay <= endDay;
-  }, [period, customRange]);
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    return todayStr >= periodRange.startStr && todayStr <= periodRange.endStr;
+  }, [periodRange]);
 
   const { getRowProps, focusFirst, activeItem } = useTableKeyboardNavigation({
     containerRef: tableRef,
@@ -540,6 +471,7 @@ export function TimeTrackingPage() {
         <PeriodProgressPanel
           entries={entries}
           period={period}
+          periodRange={periodRange}
           timerElapsed={timerHook.isRunning ? throttledElapsed : 0}
           todayInRange={todayInRange}
         />
