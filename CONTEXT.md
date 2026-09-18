@@ -5,7 +5,7 @@ Aplicación para registrar tiempos con temporizador interno y generar/ejecutar S
 ## Language
 
 **Configuración (Settings)**:
-Página dedicada (`/settings`) para editar la configuración de la aplicación (conexión DB, preferencias de usuario). No es inline en los wizards.
+Página dedicada (`/settings`) para editar la configuración de la aplicación (conexión DB, preferencias de usuario). No es inline en los formularios.
 _Avoid_: Config page, Preferences, Ajustes
 
 **Info Bar**:
@@ -21,15 +21,11 @@ Store de configuración de conexión a SQL Server (server, database, username, p
 _Avoid_: DB settings, Database config
 
 **wizardConfig**:
-Store de preferencias de importación (usuario, fase, tipoHora). Se edita en Settings. La fase tiene comportamiento contextual por mes.
-_Avoid_: Import config, User preferences
+Store de preferencias de usuario (usuario, fase, tipoHora). Se edita en Settings.
+_Avoid_: User preferences
 
-**phaseByMonthConfig**:
-Store interno que cachea las fases sugeridas por mes. Se actualiza automáticamente al aplicar sugerencias. No tiene UI.
-_Avoid_: Phase cache, Month phases
-
-**Fase (contextual)**:
-ID de fase que varía por mes. En Settings se muestra la actual. Las páginas que registran tiempos muestran un hint con la sugerencia mensual y un botón «Aplicar».
+**Fase**:
+ID de fase asociado a los registros de tiempo. Se edita en Settings.
 _Avoid_: Phase ID, Fase ID
 
 **Tipo de Hora**:

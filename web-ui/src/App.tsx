@@ -2,7 +2,6 @@ import { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { HomePage } from './pages/HomePage';
-import { ImportCsvPage } from './pages/ImportCsvPage';
 import { ProjectsPage } from './pages/ProjectsPage';
 import { ProjectDetailPage } from './pages/ProjectDetailPage';
 import { DashboardPage } from './features/dashboard/DashboardPage';
@@ -38,7 +37,6 @@ function App() {
         <AppLayout>
             <Routes>
                 <Route path="/" element={<HomePage />} />
-                <Route path="/import" element={<ImportCsvPage />} />
                 <Route path="/projects" element={<ProjectsPage />} />
                 <Route path="/projects/:codCli/:proyecto" element={<ProjectDetailPage />} />
                 <Route path="/dashboard" element={<DashboardPage />} />

@@ -38,9 +38,9 @@ export function HomePage() {
                         </p>
                     </div>
                     <div className="rounded-lg border p-4">
-                        <h3 className="font-semibold mb-1">Importación</h3>
+                        <h3 className="font-semibold mb-1">Registro</h3>
                         <p className="text-sm text-muted-foreground">
-                            Sube archivos CSV y genera sentencias SQL listas para ejecutar.
+                            Registra tiempos con el temporizador interno y envíalos a SQL Server.
                         </p>
                     </div>
                     <div className="rounded-lg border p-4">

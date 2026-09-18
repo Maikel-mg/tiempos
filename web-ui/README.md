@@ -1,11 +1,10 @@
 # Web UI - Importador de Tiempos
 
-Interfaz web para registrar tiempos y generar/ejecutar SQL en SQL Server. Combina un temporizador interno, la importación de CSV y un dashboard. Necesita el backend Express para las operaciones contra la base de datos.
+Interfaz web para registrar tiempos y generar/ejecutar SQL en SQL Server. Combina un temporizador interno y un dashboard. Necesita el backend Express para las operaciones contra la base de datos.
 
 ## Características
 
 - Temporizador interno y registro manual de tiempos, con persistencia local en IndexedDB.
-- Importación de CSV con drag & drop y detección automática de separador (TAB o coma).
 - Asignación visual de IDs de proceso/tarea.
 - Generación, vista previa y ejecución de SQL contra SQL Server.
 - Sincronización de registros de tiempo con la base de datos.
@@ -39,7 +38,6 @@ web-ui/
 │   ├── features/                  # Features organizadas por dominio
 │   │   ├── time-tracker/          # Temporizador y registros locales
 │   │   ├── dashboard/             # Métricas y gráficos
-│   │   ├── import-csv/            # Wizard de importación
 │   │   ├── process-management/    # Procesos/tareas
 │   │   ├── projects/              # Proyectos
 │   │   ├── proposal-ui/           # Propuestas de tarea
@@ -86,11 +84,10 @@ Los archivos generados estarán en la carpeta `dist/`.
 
 ## Uso
 
-1. **Configuración (`/settings`)**: introduce los datos de conexión a SQL Server (servidor, base de datos, usuario, contraseña) y las preferencias de importación.
+1. **Configuración (`/settings`)**: introduce los datos de conexión a SQL Server (servidor, base de datos, usuario, contraseña) y las preferencias de usuario.
 2. **TimeTracker (`/time-tracker`)**: registra tiempos con el temporizador o de forma manual. Los registros se guardan en el navegador hasta que se sincronizan.
-3. **Importar CSV (`/import`)**: sube un CSV, asigna un ID a cada tarea y genera el SQL.
-4. **Dashboard (`/dashboard`)**: revisa las horas registradas y el desglose por tarea.
-5. **Proyectos (`/projects`) y Mis Tareas (`/my-tasks`)**: consulta proyectos y procesos disponibles desde la base de datos.
+3. **Dashboard (`/dashboard`)**: revisa las horas registradas y el desglose por tarea.
+4. **Proyectos (`/projects`) y Mis Tareas (`/my-tasks`)**: consulta proyectos y procesos disponibles desde la base de datos.
 
 ## Configuración
 

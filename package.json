@@ -1,7 +1,7 @@
 {
   "name": "importador-tiempos",
   "version": "1.0.0",
-  "description": "Importador de tiempos desde CSV a SQL Server (Web UI)",
+  "description": "Registro de tiempos con temporizador interno e importación a SQL Server (Web UI)",
   "main": "server.js",
   "scripts": {
     "dev": "pwsh -File scripts/dev.ps1",
@@ -14,7 +14,6 @@
   },
   "keywords": [
     "tiempos",
-    "csv",
     "sql",
     "importador"
   ],

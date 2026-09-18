@@ -20,13 +20,13 @@ server.ts          Backend Express (endpoints: /api/test-connection, /api/execut
 src/
   domain/models/   Modelos de dominio (vacío actualmente)
   application/     Lógica de aplicación (vacío actualmente)
-web-ui/            Frontend React (wizard de 3 pasos: subir CSV, asignar IDs, generar SQL)
+web-ui/            Frontend React (temporizador interno, dashboard, proyectos, sincronización con SQL Server)
   src/components/  Componentes UI
   src/hooks/       Custom hooks
   src/lib/         Utilidades
   src/pages/       Páginas
   src/styles/      Estilos
-  src/features/    Features organizadas por dominio (time-tracker, dashboard, import-csv, projects, process-management)
+  src/features/    Features organizadas por dominio (time-tracker, dashboard, projects, process-management)
   src/lib/api/     ApiClient centralizado (axios wrapper)
 ```
 
@@ -39,18 +39,16 @@ web-ui/            Frontend React (wizard de 3 pasos: subir CSV, asignar IDs, ge
 
 ## Flujo principal
 
-1. Usuario sube un CSV exportado de una app externa
-2. Frontend parsea CSV, detecta separador (tab/coma)
-3. Usuario asigna IDs de proceso a cada tarea
-4. Se genera SQL con `INSERT` para ejecutar en SQL Server
-5. Backend opcionalmente ejecuta el SQL directamente contra la BD
+1. Usuario registra tiempos con el temporizador interno o de forma manual
+2. Los registros se guardan localmente en el navegador (IndexedDB)
+3. Usuario sincroniza los registros con SQL Server
+4. Backend ejecuta las inserciones directamente contra la BD
+5. Dashboard y páginas de proyectos consultan los datos de la BD
 
 ## Convenciones
 
 - TypeScript estricto (`strict: true`)
 - Backend usa `tsx` para desarrollo, compila a `dist/` para producción
-- Frontend es standalone (no depende del backend para parsear CSV)
-- Archivos de ejemplo en raíz: `ejemplo.csv`, `ejemplo_comas.csv`, `tiemposEnero.csv`
 - **Ver [WEB_ARCHITECTURE.md](./WEB_ARCHITECTURE.md) para estándares de desarrollo frontend
 
 ### SQL Server — Fechas y lenguaje de sesión (CRÍTICO)

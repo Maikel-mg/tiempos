@@ -33,11 +33,6 @@ const mainNavItems = [
     url: "/dashboard",
     icon: LayoutDashboard,
   },
-  // {
-  //   title: "Importar CSV",
-  //   url: "/import",
-  //   icon: FileSpreadsheet,
-  // },
   {
     title: "Mi TimeTracker",
     url: "/time-tracker",

@@ -26,7 +26,6 @@ src/
   lib/
     api/client.ts          # ApiClient centralizado (axios wrapper)
     types.ts              # Tipos globales compartidos
-    csv-parser.ts         # Utilidad de parsing CSV
     sql-generator/        # Generador de SQL
     task-mapping-storage.ts
     utils.ts
@@ -141,7 +140,7 @@ export function useMiMutation() {
 - **Componentes**: UI pura, sin lógica de negocio. Reciben props y callbacks.
 - **Hooks**: Lógica de estado y coordinación. Usan React Query internamente.
 - **Queries/Mutations**: Definición de llamadas API con TanStack Query.
-- **Ports & Adapters**: Para lógica que no necesita red (ej: parsing CSV), usar el patrón de ports con interfaces en `ports.ts` e implementaciones en `adapters.ts`.
+- **Ports & Adapters**: Para lógica que no necesita red (ej: parsing de datos locales), usar el patrón de ports con interfaces en `ports.ts` e implementaciones en `adapters.ts`.
 
 ### Límite de tamaño
 

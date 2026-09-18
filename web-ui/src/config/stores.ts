@@ -39,14 +39,6 @@ export const uiConfig = defineConfig('ui', {
 });
 
 /**
- * Phase by month configuration store
- * Stores fase suggestions by month for the import wizard
- */
-export const phaseByMonthConfig = defineConfig('phase-by-month', {
-  phases: { type: 'object', default: {} as Record<string, string> }
-});
-
-/**
  * Proposal detection configuration store
  * Stores threshold hours for detecting task proposals from generic tasks
  */
