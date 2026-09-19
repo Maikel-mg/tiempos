@@ -1,19 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { TimeTrackingService } from '../services/timeTrackingService';
 import { indexedDBStorage } from '@/lib/storage/IndexedDBStorage';
-import { runningTimer } from '../lib/runningTimer';
+import { runningTimer, secondsSince } from '../lib/runningTimer';
 import type { TimerState } from '../types';
 
 // Instancia del servicio
 const service = new TimeTrackingService(indexedDBStorage);
-
-/**
- * Calcula el elapsed real desde el reloj del sistema (no desde ticks).
- * Esto es inmune a throttling de setInterval en pestañas background.
- */
-function computeElapsed(startTimeMs: number): number {
-  return Math.floor((Date.now() - startTimeMs) / 1000);
-}
 
 /**
  * Hook para manejar el temporizador (start/stop).
@@ -37,7 +29,7 @@ export function useTimer() {
         if (state) {
           setTimerState(state);
           startTimeMsRef.current = new Date(state.startTime).getTime();
-          setElapsed(computeElapsed(startTimeMsRef.current));
+          setElapsed(secondsSince(startTimeMsRef.current));
           runningTimer.start(startTimeMsRef.current, state.taskName);
         }
       } catch (error) {
@@ -51,11 +43,11 @@ export function useTimer() {
   useEffect(() => {
     if (timerState?.isRunning && startTimeMsRef.current) {
       // Sync inmediato al iniciar
-      setElapsed(computeElapsed(startTimeMsRef.current));
+      setElapsed(secondsSince(startTimeMsRef.current));
 
       intervalRef.current = setInterval(() => {
         if (startTimeMsRef.current) {
-          setElapsed(computeElapsed(startTimeMsRef.current));
+          setElapsed(secondsSince(startTimeMsRef.current));
         }
       }, 1000);
     } else {
@@ -76,7 +68,7 @@ export function useTimer() {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && timerState?.isRunning && startTimeMsRef.current) {
-        setElapsed(computeElapsed(startTimeMsRef.current));
+        setElapsed(secondsSince(startTimeMsRef.current));
       }
     };
 
@@ -92,7 +84,7 @@ export function useTimer() {
       const state = await service.startTimer(taskId, taskName, description);
       startTimeMsRef.current = new Date(state.startTime).getTime();
       setTimerState(state);
-      setElapsed(computeElapsed(startTimeMsRef.current));
+      setElapsed(secondsSince(startTimeMsRef.current));
       runningTimer.start(startTimeMsRef.current, taskName);
     } catch (error) {
       console.error('Error starting timer:', error);
@@ -145,7 +137,7 @@ export function useTimer() {
       setTimerState((prev) =>
         prev ? { ...prev, startTime: newStartTime, elapsed: newElapsed } : prev
       );
-      setElapsed(computeElapsed(startTimeMsRef.current));
+      setElapsed(secondsSince(startTimeMsRef.current));
       runningTimer.retime(startTimeMsRef.current);
     } catch (error) {
       console.error('Error updating start time:', error);

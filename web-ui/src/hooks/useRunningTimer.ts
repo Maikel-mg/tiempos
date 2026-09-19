@@ -36,8 +36,10 @@ export function useRunningTimer(): RunningTimerInfo {
           runningTimer.start(new Date(state.startTime).getTime(), state.taskName);
         }
       })
-      .catch(() => {
-        // Non-critical: the tab badge is purely informational.
+      .catch((error) => {
+        // Non-critical: the tab badge is purely informational. Logged anyway
+        // per WEB_ARCHITECTURE.md ("Manejo de errores", Regla 6).
+        console.error('Error recovering timer state for the tab badge:', error);
       });
 
     return () => {
