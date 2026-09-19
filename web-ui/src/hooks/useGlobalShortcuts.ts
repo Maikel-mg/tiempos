@@ -2,18 +2,21 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCommandPalette } from '@/components/CommandPaletteContext';
 import { useTheme } from '@/hooks/useTheme';
+import { useTimerToggle } from '@/hooks/useTimerToggle';
 import { isEditableElement } from '@/lib/keyboard-utils';
 
 /**
  * Global keyboard shortcuts hook.
  * - Cmd/Ctrl+K: Always opens command palette (works even in inputs)
  * - Cmd/Ctrl+Shift+T: Toggle theme (works even in inputs)
+ * - Cmd/Ctrl+Shift+S: Start/stop the timer with the last used task (works even in inputs)
  * - Alt+letter: Navigation shortcuts (only work outside inputs)
  */
 export function useGlobalShortcuts() {
   const navigate = useNavigate();
   const { open } = useCommandPalette();
   const { toggle: toggleTheme } = useTheme();
+  const { toggle: toggleTimerToggle } = useTimerToggle();
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -30,6 +33,13 @@ export function useGlobalShortcuts() {
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 't') {
         e.preventDefault();
         toggleTheme();
+        return;
+      }
+
+      // Cmd/Ctrl+Shift+S: Toggle the timer with the last used task (always works)
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        void toggleTimerToggle();
         return;
       }
       
@@ -64,5 +74,5 @@ export function useGlobalShortcuts() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [navigate, open, toggleTheme]);
+  }, [navigate, open, toggleTheme, toggleTimerToggle]);
 }

@@ -27,6 +27,7 @@ import {
 import { useCommandPalette } from '@/components/CommandPaletteContext';
 import { useAvailableActions } from '@/components/CommandActionsContext';
 import { useTheme } from '@/hooks/useTheme';
+import { useTimerToggle } from '@/hooks/useTimerToggle';
 
 const navigationActions = [
   { id: 'go-dashboard', label: 'Ir a Dashboard', icon: LayoutDashboard, url: '/dashboard', shortcut: 'Alt+D' },
@@ -41,6 +42,7 @@ export function CommandPalette() {
   const { isOpen, close } = useCommandPalette();
   const contextActions = useAvailableActions();
   const { theme, toggle: toggleTheme } = useTheme();
+  const { isRunning, taskName, toggle: toggleTimer } = useTimerToggle();
 
   const handleNavigation = (url: string) => {
     navigate(url);
@@ -76,6 +78,28 @@ export function CommandPalette() {
             <CommandSeparator />
           </>
         )}
+
+        {/* Global timer action */}
+        <CommandGroup heading="Timer">
+          <CommandItem
+            value={`${isRunning ? 'detener parar stop' : 'iniciar arrancar start'} timer ultima tarea`}
+            onSelect={() => handleContextAction(toggleTimer)}
+          >
+            {isRunning ? (
+              <Square className="mr-2 h-4 w-4" />
+            ) : (
+              <Play className="mr-2 h-4 w-4" />
+            )}
+            <span>
+              {isRunning
+                ? `Detener timer${taskName ? `: ${taskName}` : ''}`
+                : 'Iniciar timer con la última tarea'}
+            </span>
+            <CommandShortcut>Ctrl+Shift+S</CommandShortcut>
+          </CommandItem>
+        </CommandGroup>
+
+        <CommandSeparator />
 
         {/* Global navigation actions */}
         <CommandGroup heading="Navegación">

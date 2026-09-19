@@ -3,9 +3,20 @@ import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useLiveTabTitle } from '../useLiveTabTitle';
 import { runningTimer } from '@/features/time-tracker/lib/runningTimer';
+import type { TimerState } from '@/features/time-tracker/types';
 
 const BASE_TITLE = 'Importador de Tiempos';
 const BASE_FAVICON = '/vite.svg';
+
+function makeRunningState(startTimeMs: number, taskName: string): TimerState {
+  return {
+    isRunning: true,
+    taskId: 1,
+    taskName,
+    startTime: new Date(startTimeMs).toISOString(),
+    elapsed: 0,
+  };
+}
 
 function iconHref(): string | null {
   return document.querySelector('link[rel="icon"]')?.getAttribute('href') ?? null;
@@ -38,7 +49,7 @@ describe('useLiveTabTitle', () => {
     renderHook(() => useLiveTabTitle());
 
     act(() => {
-      runningTimer.start(Date.now() - 90_000, 'Revisar informes');
+      runningTimer.start(makeRunningState(Date.now() - 90_000, 'Revisar informes'));
     });
 
     expect(document.title).toBe('00:01:30 · Revisar informes');
@@ -55,7 +66,7 @@ describe('useLiveTabTitle', () => {
     renderHook(() => useLiveTabTitle());
 
     act(() => {
-      runningTimer.start(Date.now(), 'Tarea');
+      runningTimer.start(makeRunningState(Date.now(), 'Tarea'));
     });
     expect(document.title).not.toBe(BASE_TITLE);
 
@@ -71,7 +82,7 @@ describe('useLiveTabTitle', () => {
     const { unmount } = renderHook(() => useLiveTabTitle());
 
     act(() => {
-      runningTimer.start(Date.now(), 'Tarea');
+      runningTimer.start(makeRunningState(Date.now(), 'Tarea'));
     });
 
     unmount();
@@ -84,7 +95,7 @@ describe('useLiveTabTitle', () => {
     renderHook(() => useLiveTabTitle());
 
     act(() => {
-      runningTimer.start(Date.now(), 'A'.repeat(80));
+      runningTimer.start(makeRunningState(Date.now(), 'A'.repeat(80)));
     });
 
     const title = document.title;

@@ -1,173 +1,95 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { TimeTrackingService } from '../services/timeTrackingService';
-import { indexedDBStorage } from '@/lib/storage/IndexedDBStorage';
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { runningTimer, secondsSince } from '../lib/runningTimer';
+import * as timerActions from '../lib/timerActions';
 import type { TimerState } from '../types';
 
-// Instancia del servicio
-const service = new TimeTrackingService(indexedDBStorage);
-
 /**
- * Hook para manejar el temporizador (start/stop).
- * Persiste el estado en IndexedDB y lo recupera al reopen del navegador.
+ * Adapter over the app-wide timer store, for the TimeTracker page.
  *
- * El elapsed se calcula desde el reloj del sistema (wall clock) en vez de
- * contar ticks de setInterval. Esto previene que el tiempo se desactualice
- * cuando la pestaña queda en background (browser throttles setTimeout/setInterval).
+ * The timer itself is owned by `timerActions` + `runningTimer`, so a start/stop
+ * triggered elsewhere (the global shortcut) is reflected here automatically.
+ * Elapsed is derived from the system clock instead of accumulated ticks, which
+ * keeps it correct when the browser throttles intervals in background tabs.
  */
 export function useTimer() {
-  const [timerState, setTimerState] = useState<TimerState | null>(null);
+  const snapshot = useSyncExternalStore(
+    runningTimer.subscribe,
+    runningTimer.getSnapshot,
+    runningTimer.getSnapshot,
+  );
   const [elapsed, setElapsed] = useState(0);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const startTimeMsRef = useRef<number | null>(null);
 
-  // Recuperar estado al montar el componente
   useEffect(() => {
-    const recoverState = async () => {
-      try {
-        const state = await service.recoverTimerState();
-        if (state) {
-          setTimerState(state);
-          startTimeMsRef.current = new Date(state.startTime).getTime();
-          setElapsed(secondsSince(startTimeMsRef.current));
-          runningTimer.start(startTimeMsRef.current, state.taskName);
-        }
-      } catch (error) {
-        console.error('Error recovering timer state:', error);
-      }
-    };
-    recoverState();
-  }, []);
-
-  // Timer tick — calcula elapsed desde wall clock, no desde ticks acumulados
-  useEffect(() => {
-    if (timerState?.isRunning && startTimeMsRef.current) {
-      // Sync inmediato al iniciar
-      setElapsed(secondsSince(startTimeMsRef.current));
-
-      intervalRef.current = setInterval(() => {
-        if (startTimeMsRef.current) {
-          setElapsed(secondsSince(startTimeMsRef.current));
-        }
-      }, 1000);
-    } else {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
+    if (!snapshot.isRunning) {
+      setElapsed(0);
+      return;
     }
+
+    const sync = () => setElapsed(secondsSince(snapshot.startTimeMs));
+    sync();
+    const interval = setInterval(sync, 1000);
+    document.addEventListener('visibilitychange', sync);
 
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', sync);
     };
-  }, [timerState?.isRunning]);
+  }, [snapshot.isRunning, snapshot.startTimeMs]);
 
-  // Resync al volver a la pestaña — corrige throttling acumulado
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && timerState?.isRunning && startTimeMsRef.current) {
-        setElapsed(secondsSince(startTimeMsRef.current));
-      }
-    };
+  // Intentionally memoized on the identity fields only: consumers such as
+  // TimeTrackerBar key effects on `timerState`, so a fresh object on every
+  // render (this hook re-renders while the parent ticks) would thrash them.
+  // The live clock is the separate `elapsed` value returned below.
+  const { isRunning, taskId, taskName, startTime, description, startTimeMs } = snapshot;
+  const timerState: TimerState | null = useMemo(
+    () =>
+      isRunning
+        ? {
+            isRunning: true,
+            taskId,
+            taskName,
+            startTime,
+            elapsed: secondsSince(startTimeMs),
+            description,
+          }
+        : null,
+    [isRunning, taskId, taskName, startTime, description, startTimeMs],
+  );
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [timerState?.isRunning]);
+  const start = useCallback(
+    async (taskId: number, taskName: string, description?: string): Promise<void> => {
+      await timerActions.startTimer(taskId, taskName, description);
+    },
+    [],
+  );
 
-  /**
-   * Inicia el temporizador para una tarea.
-   */
-  const start = useCallback(async (taskId: number, taskName: string, description?: string) => {
-    try {
-      const state = await service.startTimer(taskId, taskName, description);
-      startTimeMsRef.current = new Date(state.startTime).getTime();
-      setTimerState(state);
-      setElapsed(secondsSince(startTimeMsRef.current));
-      runningTimer.start(startTimeMsRef.current, taskName);
-    } catch (error) {
-      console.error('Error starting timer:', error);
-      throw error;
-    }
-  }, []);
+  const stop = useCallback(
+    (options?: { persist?: boolean }) => timerActions.stopTimer(options),
+    [],
+  );
 
-  /**
-   * Detiene el temporizador y crea un registro de tiempo.
-   * @param options.persist Si es false, retorna start/end sin crear entrada.
-   * @returns El TimeEntry creado, StopTimerResult si persist=false, o null
-   */
-  const stop = useCallback(async (options?: { persist?: boolean }) => {
-    try {
-      const result = await service.stopTimer(options);
-      startTimeMsRef.current = null;
-      setTimerState(null);
-      setElapsed(0);
-      runningTimer.stop();
-      return result;
-    } catch (error) {
-      console.error('Error stopping timer:', error);
-      throw error;
-    }
-  }, []);
+  const updateStartTime = useCallback(
+    async (newStartTime: string): Promise<void> => {
+      await timerActions.updateTimerStartTime(newStartTime);
+    },
+    [],
+  );
 
-  /**
-   * Actualiza la descripción del temporizador en ejecución.
-   * Persiste en IndexedDB para que sobreviva navegación.
-   */
-  const updateDescription = useCallback(async (description: string) => {
-    try {
-      await service.updateTimerDescription(description);
-      setTimerState((prev) =>
-        prev ? { ...prev, description } : prev
-      );
-    } catch (error) {
-      console.error('Error updating timer description:', error);
-    }
-  }, []);
+  const updateDescription = useCallback(
+    (description: string) => timerActions.updateTimerDescription(description),
+    [],
+  );
 
-  /**
-   * Actualiza la hora de inicio del temporizador en ejecución.
-   * Recalcula elapsed y persiste en IndexedDB.
-   */
-  const updateStartTime = useCallback(async (newStartTime: string) => {
-    try {
-      const newElapsed = await service.updateTimerStartTime(newStartTime);
-      startTimeMsRef.current = new Date(newStartTime).getTime();
-      setTimerState((prev) =>
-        prev ? { ...prev, startTime: newStartTime, elapsed: newElapsed } : prev
-      );
-      setElapsed(secondsSince(startTimeMsRef.current));
-      runningTimer.retime(startTimeMsRef.current);
-    } catch (error) {
-      console.error('Error updating start time:', error);
-      throw error;
-    }
-  }, []);
-
-  /**
-   * Cancela el temporizador sin crear registro.
-   */
-  const cancel = useCallback(async () => {
-    try {
-      await service.cancelTimer();
-      startTimeMsRef.current = null;
-      setTimerState(null);
-      setElapsed(0);
-      runningTimer.stop();
-    } catch (error) {
-      console.error('Error cancelling timer:', error);
-    }
-  }, []);
+  const cancel = useCallback(() => timerActions.cancelTimer(), []);
 
   return {
     timerState,
-    isRunning: timerState?.isRunning ?? false,
+    isRunning: snapshot.isRunning,
     elapsed,
     start,
     stop,
     updateStartTime,
     updateDescription,
-    cancel
+    cancel,
   };
 }
