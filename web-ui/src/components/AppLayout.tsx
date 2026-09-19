@@ -26,6 +26,7 @@ import { CommandPaletteProvider } from "@/components/CommandPaletteContext"
 import { CommandActionsProvider } from "@/components/CommandActionsContext"
 import { CommandPalette } from "@/components/CommandPalette"
 import { useGlobalShortcuts } from "@/hooks/useGlobalShortcuts"
+import { useLiveTabTitle } from "@/hooks/useLiveTabTitle"
 
 const mainNavItems = [
   {
@@ -60,6 +61,11 @@ const settingsNavItems = [
 
 function GlobalShortcuts() {
   useGlobalShortcuts();
+  return null;
+}
+
+function LiveTabTitle() {
+  useLiveTabTitle();
   return null;
 }
 
@@ -162,6 +168,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </SidebarProvider>
         <CommandPalette />
         <GlobalShortcuts />
+        <LiveTabTitle />
       </CommandActionsProvider>
     </CommandPaletteProvider>
   )

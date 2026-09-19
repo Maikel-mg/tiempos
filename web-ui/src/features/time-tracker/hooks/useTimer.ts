@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { TimeTrackingService } from '../services/timeTrackingService';
 import { indexedDBStorage } from '@/lib/storage/IndexedDBStorage';
+import { runningTimer } from '../lib/runningTimer';
 import type { TimerState } from '../types';
 
 // Instancia del servicio
@@ -37,6 +38,7 @@ export function useTimer() {
           setTimerState(state);
           startTimeMsRef.current = new Date(state.startTime).getTime();
           setElapsed(computeElapsed(startTimeMsRef.current));
+          runningTimer.start(startTimeMsRef.current, state.taskName);
         }
       } catch (error) {
         console.error('Error recovering timer state:', error);
@@ -91,6 +93,7 @@ export function useTimer() {
       startTimeMsRef.current = new Date(state.startTime).getTime();
       setTimerState(state);
       setElapsed(computeElapsed(startTimeMsRef.current));
+      runningTimer.start(startTimeMsRef.current, taskName);
     } catch (error) {
       console.error('Error starting timer:', error);
       throw error;
@@ -108,6 +111,7 @@ export function useTimer() {
       startTimeMsRef.current = null;
       setTimerState(null);
       setElapsed(0);
+      runningTimer.stop();
       return result;
     } catch (error) {
       console.error('Error stopping timer:', error);
@@ -142,6 +146,7 @@ export function useTimer() {
         prev ? { ...prev, startTime: newStartTime, elapsed: newElapsed } : prev
       );
       setElapsed(computeElapsed(startTimeMsRef.current));
+      runningTimer.retime(startTimeMsRef.current);
     } catch (error) {
       console.error('Error updating start time:', error);
       throw error;
@@ -157,6 +162,7 @@ export function useTimer() {
       startTimeMsRef.current = null;
       setTimerState(null);
       setElapsed(0);
+      runningTimer.stop();
     } catch (error) {
       console.error('Error cancelling timer:', error);
     }
