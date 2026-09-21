@@ -10,6 +10,7 @@ import { TimeEntryEditorDialog } from '../components/TimeEntryEditorDialog';
 import type { TimeEntryFormData } from '../components/TimeEntryEditorDialog';
 import { TimeEntryViewSwitcher } from '../components/TimeEntryViewSwitcher';
 import { OverlapAlert } from '../components/OverlapAlert';
+import type { OverlapFix } from '../lib/overlaps';
 import { SyncPanel } from '../components/SyncPanel';
 import { PeriodProgressPanel } from '../components/PeriodProgressPanel';
 import { useTimeEntries } from '../hooks/useTimeEntries';
@@ -168,6 +169,16 @@ export function TimeTrackingPage() {
       toast.error(`Error al sincronizar: ${error}`);
     }
   }, [markSynced]);
+
+  const handleApplyOverlapFix = useCallback(async (fix: OverlapFix) => {
+    try {
+      await updateEntry(fix.entryId, fix.patch);
+      toast.success('Solapamiento corregido');
+    } catch (error) {
+      console.error('Error applying overlap fix:', error);
+      toast.error('No se pudo aplicar la corrección');
+    }
+  }, [updateEntry]);
 
   const handleDuplicateEntry = useCallback(async (entry: TimeEntry) => {
     await createEntry({
@@ -514,7 +525,7 @@ export function TimeTrackingPage() {
 
     
 
-      <OverlapAlert entries={filteredByPeriod} />
+      <OverlapAlert entries={filteredByPeriod} onApplyFix={handleApplyOverlapFix} />
 
       <div className="space-y-4">
         {/* List header with period total + sync icon */}

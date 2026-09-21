@@ -1,52 +1,16 @@
 import { AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { buildOverlapFixes, findOverlaps, type OverlapFix } from '../lib/overlaps';
 import type { TimeEntry } from '../types';
 
 interface OverlapAlertProps {
   entries: TimeEntry[];
-}
-
-/**
- * Encuentra registros que se solapan en el mismo día.
- */
-function findOverlaps(entries: TimeEntry[]): Array<[TimeEntry, TimeEntry]> {
-  const overlaps: Array<[TimeEntry, TimeEntry]> = [];
-  const byDate = new Map<string, TimeEntry[]>();
-
-  // Group by date
-  entries.forEach(e => {
-    const list = byDate.get(e.date) || [];
-    list.push(e);
-    byDate.set(e.date, list);
-  });
-
-  // Check overlaps per day
-  byDate.forEach((dayEntries) => {
-    for (let i = 0; i < dayEntries.length; i++) {
-      for (let j = i + 1; j < dayEntries.length; j++) {
-        const a = dayEntries[i];
-        const b = dayEntries[j];
-        
-        // Convert HH:MM to minutes
-        const toMin = (t: string) => {
-          const [h, m] = t.split(':').map(Number);
-          return h * 60 + m;
-        };
-        
-        const aStart = toMin(a.startTime);
-        const aEnd = toMin(a.endTime);
-        const bStart = toMin(b.startTime);
-        const bEnd = toMin(b.endTime);
-
-        // Check if overlaps (not just touching)
-        if (aStart < bEnd && bStart < aEnd) {
-          overlaps.push([a, b]);
-        }
-      }
-    }
-  });
-
-  return overlaps;
+  /**
+   * Aplica una corrección sugerida. Sin este callback la alerta es de sólo
+   * lectura y no muestra botones.
+   */
+  onApplyFix?: (fix: OverlapFix) => void;
 }
 
 /**
@@ -60,10 +24,13 @@ function formatDate(dateStr: string): string {
 /**
  * Alerta visual que se muestra siempre cuando hay registros solapados.
  * Cumple con el requisito del PRD: alertas siempre visibles.
+ *
+ * Cuando recibe `onApplyFix`, cada solapamiento ofrece las correcciones
+ * rápidas que dejan los dos registros con duración positiva.
  */
-export function OverlapAlert({ entries }: OverlapAlertProps) {
+export function OverlapAlert({ entries, onApplyFix }: OverlapAlertProps) {
   const overlaps = findOverlaps(entries);
-  
+
   if (overlaps.length === 0) return null;
 
   return (
@@ -71,12 +38,27 @@ export function OverlapAlert({ entries }: OverlapAlertProps) {
       <AlertTriangle className="h-4 w-4" />
       <AlertTitle>Registros solapados detectados</AlertTitle>
       <AlertDescription>
-        <ul className="list-disc pl-4 mt-2 space-y-1 text-sm">
-          {overlaps.map(([a, b], idx) => (
+        <ul className="list-disc pl-4 mt-2 space-y-2 text-sm">
+          {overlaps.map((pair, idx) => (
             <li key={idx}>
-              <strong>{formatDate(a.date)}</strong>: {a.taskName} ({a.startTime}-{a.endTime}) 
+              <strong>{formatDate(pair.earlier.date)}</strong>: {pair.earlier.taskName} ({pair.earlier.startTime}-{pair.earlier.endTime})
               {' '}con{' '}
-              {b.taskName} ({b.startTime}-{b.endTime})
+              {pair.later.taskName} ({pair.later.startTime}-{pair.later.endTime})
+              {onApplyFix && (
+                <div className="mt-1.5 flex flex-wrap gap-2">
+                  {buildOverlapFixes(pair).map((fix) => (
+                    <Button
+                      key={fix.kind}
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={() => onApplyFix(fix)}
+                    >
+                      {fix.label}
+                    </Button>
+                  ))}
+                </div>
+              )}
             </li>
           ))}
         </ul>
