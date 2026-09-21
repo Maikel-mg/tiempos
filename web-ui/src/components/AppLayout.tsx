@@ -27,6 +27,7 @@ import { CommandActionsProvider } from "@/components/CommandActionsContext"
 import { CommandPalette } from "@/components/CommandPalette"
 import { useGlobalShortcuts } from "@/hooks/useGlobalShortcuts"
 import { useLiveTabTitle } from "@/hooks/useLiveTabTitle"
+import { WorkReminder } from "@/components/WorkReminder"
 
 const mainNavItems = [
   {
@@ -169,6 +170,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <CommandPalette />
         <GlobalShortcuts />
         <LiveTabTitle />
+        <WorkReminder />
       </CommandActionsProvider>
     </CommandPaletteProvider>
   )

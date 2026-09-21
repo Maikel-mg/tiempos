@@ -9,6 +9,7 @@ import { TimeTrackingService } from '../services/timeTrackingService';
 import type { StopTimerResult } from '../services/timeTrackingService';
 import { indexedDBStorage } from '@/lib/storage/IndexedDBStorage';
 import { runningTimer } from './runningTimer';
+import type { RunningTimerSnapshot } from './runningTimer';
 import { detectCrossing } from './timerCrossingDetector';
 import type { TimeEntry, TimerState } from '../types';
 
@@ -21,6 +22,11 @@ export type StartLastTaskResult =
 export type ToggleTimerResult =
   | StartLastTaskResult
   | { action: 'stopped'; taskName: string }
+  | { action: 'blocked-midnight'; taskName: string };
+
+export type StopRunningResult =
+  | { action: 'stopped'; taskName: string }
+  | { action: 'not-running' }
   | { action: 'blocked-midnight'; taskName: string };
 
 /** Re-reads the persisted timer into the store (used once after a full reload). */
@@ -111,14 +117,17 @@ export async function startLastUsedTask(): Promise<StartLastTaskResult> {
 }
 
 /**
+ * Una parada que cruza medianoche no se puede persistir: el camino normal
+ * escribe un registro cuya duración se calcula entre las dos horas de reloj, y
+ * sale negativa. Resolver el corte es del TimeTracker (MidnightSplitModal).
+ */
+function crossesMidnight(snapshot: RunningTimerSnapshot): boolean {
+  return detectCrossing(new Date(snapshot.startTimeMs), new Date()).crossed;
+}
+
+/**
  * Toggles the timer from anywhere: stops it when running, otherwise starts it
  * on the last used task.
- *
- * A stop that would cross midnight is refused rather than persisted: the plain
- * stop path writes one entry whose duration is computed from the start and end
- * clock times, which comes out negative across midnight. Resolving that split
- * belongs to the TimeTracker (MidnightSplitModal), so the timer is left running
- * and the caller is told.
  */
 export async function toggleTimer(): Promise<ToggleTimerResult> {
   const snapshot = runningTimer.getSnapshot();
@@ -127,8 +136,28 @@ export async function toggleTimer(): Promise<ToggleTimerResult> {
     return startLastUsedTask();
   }
 
-  const crossedMidnight = detectCrossing(new Date(snapshot.startTimeMs), new Date()).crossed;
-  if (crossedMidnight) {
+  if (crossesMidnight(snapshot)) {
+    return { action: 'blocked-midnight', taskName: snapshot.taskName };
+  }
+
+  await stopTimer();
+  return { action: 'stopped', taskName: snapshot.taskName };
+}
+
+/**
+ * Stops a timer that is already running, from any surface (the work reminder).
+ *
+ * Unlike `toggleTimer`, it refuses to start one: if nothing is running it
+ * reports `not-running` instead of falling back to the last task. It shares the
+ * midnight rejection, because a stop across midnight would persist a negative
+ * duration.
+ */
+export async function stopRunningTimer(): Promise<StopRunningResult> {
+  const snapshot = runningTimer.getSnapshot();
+
+  if (!snapshot.isRunning) return { action: 'not-running' };
+
+  if (crossesMidnight(snapshot)) {
     return { action: 'blocked-midnight', taskName: snapshot.taskName };
   }
 

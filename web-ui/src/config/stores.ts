@@ -48,15 +48,32 @@ export const proposalConfig = defineConfig('proposal', {
 
 /**
  * Schedule configuration store
- * Stores work schedule: default daily hours per day and exception date ranges
+ * Stores work schedule: default daily hours per day, the workday start time
+ * and exception date ranges
  */
 export const scheduleConfig = defineConfig('schedule', {
   defaultHours: {
     type: 'object',
     default: { mon: 8.25, tue: 8.25, wed: 8.25, thu: 8.25, fri: 7, sat: 0, sun: 0 } as Record<string, number>
   },
+  startTime: {
+    type: 'string',
+    default: '09:00'
+  },
   exceptions: {
     type: 'object',
     default: [] as Array<{ start: string; end: string; dailyHours: number }>
   }
+});
+
+/**
+ * Reminder configuration store
+ * Stores the two work reminders: a periodic check while the timer runs, and a
+ * nudge when the timer was never started after the workday began.
+ */
+export const remindersConfig = defineConfig('reminders', {
+  runningAlertEnabled: { type: 'boolean', default: true },
+  runningAlertMinutes: { type: 'number', default: 15 },
+  noTimerAlertEnabled: { type: 'boolean', default: true },
+  noTimerAlertMinutes: { type: 'number', default: 30 }
 });

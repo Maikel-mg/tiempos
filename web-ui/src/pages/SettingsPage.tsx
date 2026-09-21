@@ -12,6 +12,8 @@ import {
   XCircle,
   Lightbulb,
   Clock,
+  Bell,
+  AlarmClock,
   Plus,
   Trash2,
 } from 'lucide-react';
@@ -19,9 +21,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { toast } from 'sonner';
-import { dbConfig, wizardConfig, proposalConfig, scheduleConfig } from '@/config/stores';
+import { dbConfig, wizardConfig, proposalConfig, scheduleConfig, remindersConfig } from '@/config/stores';
+import { useNotificationPermission } from '@/hooks/useNotificationPermission';
+import { showReminderNotification } from '@/lib/notifications';
 import { useTestDbConnection } from '@/features/db-connection';
 import type { DbConfig } from '@/lib/types';
 
@@ -43,8 +48,35 @@ interface ScheduleException {
 
 interface ScheduleConfigState {
   defaultHours: Record<string, number>;
+  startTime: string;
   exceptions: ScheduleException[];
 }
+
+interface ReminderConfigState {
+  runningAlertEnabled: boolean;
+  runningAlertMinutes: number;
+  noTimerAlertEnabled: boolean;
+  noTimerAlertMinutes: number;
+}
+
+const DEFAULT_SCHEDULE_HOURS: Record<string, number> = {
+  mon: 8.25,
+  tue: 8.25,
+  wed: 8.25,
+  thu: 8.25,
+  fri: 7,
+  sat: 0,
+  sun: 0,
+};
+
+const DEFAULT_SCHEDULE_START = '09:00';
+
+const DEFAULT_REMINDERS: ReminderConfigState = {
+  runningAlertEnabled: true,
+  runningAlertMinutes: 15,
+  noTimerAlertEnabled: true,
+  noTimerAlertMinutes: 30,
+};
 
 export function SettingsPage() {
   const [config, setConfig] = useState<DbConfig>({
@@ -63,11 +95,14 @@ export function SettingsPage() {
     thresholdHours: 8,
   });
   const [scheduleCfg, setScheduleCfg] = useState<ScheduleConfigState>({
-    defaultHours: { mon: 8.25, tue: 8.25, wed: 8.25, thu: 8.25, fri: 7, sat: 0, sun: 0 },
+    defaultHours: DEFAULT_SCHEDULE_HOURS,
+    startTime: DEFAULT_SCHEDULE_START,
     exceptions: [],
   });
+  const [reminderCfg, setReminderCfg] = useState<ReminderConfigState>(DEFAULT_REMINDERS);
 
   const testMutation = useTestDbConnection();
+  const notifications = useNotificationPermission();
 
   useEffect(() => {
     const saved = dbConfig.get();
@@ -97,8 +132,23 @@ export function SettingsPage() {
     const savedSchedule = scheduleConfig.get();
     if (savedSchedule) {
       setScheduleCfg({
-        defaultHours: savedSchedule.defaultHours ?? { mon: 8.25, tue: 8.25, wed: 8.25, thu: 8.25, fri: 7, sat: 0, sun: 0 },
+        defaultHours: savedSchedule.defaultHours ?? DEFAULT_SCHEDULE_HOURS,
+        startTime: savedSchedule.startTime ?? DEFAULT_SCHEDULE_START,
         exceptions: savedSchedule.exceptions ?? [],
+      });
+    }
+
+    const savedReminders = remindersConfig.get();
+    if (savedReminders) {
+      setReminderCfg({
+        runningAlertEnabled:
+          savedReminders.runningAlertEnabled ?? DEFAULT_REMINDERS.runningAlertEnabled,
+        runningAlertMinutes:
+          savedReminders.runningAlertMinutes ?? DEFAULT_REMINDERS.runningAlertMinutes,
+        noTimerAlertEnabled:
+          savedReminders.noTimerAlertEnabled ?? DEFAULT_REMINDERS.noTimerAlertEnabled,
+        noTimerAlertMinutes:
+          savedReminders.noTimerAlertMinutes ?? DEFAULT_REMINDERS.noTimerAlertMinutes,
       });
     }
   }, []);
@@ -172,6 +222,7 @@ export function SettingsPage() {
   const handleScheduleSave = () => {
     scheduleConfig.set({
       defaultHours: scheduleCfg.defaultHours,
+      startTime: scheduleCfg.startTime,
       exceptions: scheduleCfg.exceptions,
     });
     toast.success('Horario guardado', {
@@ -182,13 +233,83 @@ export function SettingsPage() {
   const handleScheduleReset = () => {
     const saved = scheduleConfig.get();
     setScheduleCfg({
-      defaultHours: saved?.defaultHours ?? { mon: 8.25, tue: 8.25, wed: 8.25, thu: 8.25, fri: 7, sat: 0, sun: 0 },
+      defaultHours: saved?.defaultHours ?? DEFAULT_SCHEDULE_HOURS,
+      startTime: saved?.startTime ?? DEFAULT_SCHEDULE_START,
       exceptions: saved?.exceptions ?? [],
     });
     toast.info('Restablecido', {
       description: 'Se ha restablecido el horario laboral.',
     });
   };
+
+  const handleRemindersSave = () => {
+    remindersConfig.set({
+      runningAlertEnabled: reminderCfg.runningAlertEnabled,
+      runningAlertMinutes: reminderCfg.runningAlertMinutes,
+      noTimerAlertEnabled: reminderCfg.noTimerAlertEnabled,
+      noTimerAlertMinutes: reminderCfg.noTimerAlertMinutes,
+    });
+    toast.success('Recordatorios guardados', {
+      description: 'Los avisos del timer se han guardado correctamente.',
+    });
+  };
+
+  const handleRemindersReset = () => {
+    const saved = remindersConfig.get();
+    setReminderCfg({
+      runningAlertEnabled:
+        saved?.runningAlertEnabled ?? DEFAULT_REMINDERS.runningAlertEnabled,
+      runningAlertMinutes:
+        saved?.runningAlertMinutes ?? DEFAULT_REMINDERS.runningAlertMinutes,
+      noTimerAlertEnabled: saved?.noTimerAlertEnabled ?? DEFAULT_REMINDERS.noTimerAlertEnabled,
+      noTimerAlertMinutes: saved?.noTimerAlertMinutes ?? DEFAULT_REMINDERS.noTimerAlertMinutes,
+    });
+    toast.info('Restablecido', {
+      description: 'Se han restablecido los recordatorios.',
+    });
+  };
+
+  const handleNotificationsEnable = () => {
+    void notifications.request();
+  };
+
+  const handleNotificationsTest = async () => {
+    const shown = await showReminderNotification({
+      title: 'Prueba de recordatorio',
+      body: 'Si ves esto, los avisos del timer van a llegar aunque la app esté de fondo.',
+      tag: 'timer-test',
+    });
+
+    if (shown) {
+      toast.success('Notificación enviada', {
+        description: 'Debería aparecerte ahora, aunque esta pestaña esté de fondo.',
+      });
+      return;
+    }
+
+    toast.error('No se pudo enviar', {
+      description: 'Revisá el permiso de notificaciones de este sitio.',
+    });
+  };
+
+  const notificationsStatus = (() => {
+    switch (notifications.support) {
+      case 'granted':
+        return { label: 'Concedidas', hint: 'Los recordatorios llegan aunque la app esté de fondo.' };
+      case 'denied':
+        return {
+          label: 'Bloqueadas',
+          hint: 'Desbloquealas desde el candado de la barra de direcciones y recargá la página.',
+        };
+      case 'default':
+        return {
+          label: 'Sin pedir',
+          hint: 'Con la app de fondo un toast no se ve: hace falta el permiso para que el aviso te llegue.',
+        };
+      default:
+        return { label: 'No soportadas', hint: 'Este navegador no expone la API de notificaciones.' };
+    }
+  })();
 
   const addException = () => {
     setScheduleCfg({
@@ -473,6 +594,29 @@ export function SettingsPage() {
           </CardHeader>
           <CardContent className="space-y-6">
             <div>
+              <h4 className="text-sm font-medium mb-3">Hora de entrada</h4>
+              <div className="w-32 space-y-1">
+                <Label className="text-xs text-muted-foreground" htmlFor="schedule-start">
+                  Entrada
+                </Label>
+                <Input
+                  id="schedule-start"
+                  type="time"
+                  value={scheduleCfg.startTime}
+                  onChange={(e) => {
+                    // Vaciar el campo dejaría el aviso mudo sin explicación.
+                    if (e.target.value) {
+                      setScheduleCfg({ ...scheduleCfg, startTime: e.target.value });
+                    }
+                  }}
+                />
+              </div>
+              <p className="text-sm text-muted-foreground mt-2">
+                Desde acá se cuenta el aviso de "no arrancaste el timer".
+              </p>
+            </div>
+
+            <div>
               <h4 className="text-sm font-medium mb-3">Horas por día (default)</h4>
               <div className="grid grid-cols-7 gap-2">
                 {[
@@ -576,6 +720,153 @@ export function SettingsPage() {
               </Button>
               <Button variant="ghost" onClick={handleScheduleReset}>
                 Restablecer
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlarmClock className="w-5 h-5" />
+              Recordatorios
+            </CardTitle>
+            <CardDescription>
+              Dos avisos distintos: uno controla que el registro siga siendo cierto
+              mientras el timer corre, y el otro reclama cuando no hay ningún timer
+              corriendo.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <Switch
+                  id="reminder-running-enabled"
+                  checked={reminderCfg.runningAlertEnabled}
+                  onCheckedChange={(checked) =>
+                    setReminderCfg({ ...reminderCfg, runningAlertEnabled: checked })
+                  }
+                />
+                <Label htmlFor="reminder-running-enabled" className="cursor-pointer">
+                  Avisar mientras el timer sigue corriendo
+                </Label>
+              </div>
+              <div className="space-y-2 pl-11">
+                <Label htmlFor="reminder-running-minutes" className="text-sm">
+                  Cada cuántos minutos
+                </Label>
+                <Input
+                  id="reminder-running-minutes"
+                  type="number"
+                  min={1}
+                  max={480}
+                  value={reminderCfg.runningAlertMinutes}
+                  disabled={!reminderCfg.runningAlertEnabled}
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value, 10);
+                    if (!isNaN(value)) {
+                      setReminderCfg({
+                        ...reminderCfg,
+                        runningAlertMinutes: Math.min(480, Math.max(1, value)),
+                      });
+                    }
+                  }}
+                  className="w-32"
+                />
+                <p className="text-sm text-muted-foreground">
+                  Se repite cada vez que se cumple otro múltiplo de este valor.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <Switch
+                  id="reminder-no-timer-enabled"
+                  checked={reminderCfg.noTimerAlertEnabled}
+                  onCheckedChange={(checked) =>
+                    setReminderCfg({ ...reminderCfg, noTimerAlertEnabled: checked })
+                  }
+                />
+                <Label htmlFor="reminder-no-timer-enabled" className="cursor-pointer">
+                  Avisar cuando no hay ningún timer corriendo
+                </Label>
+              </div>
+              <div className="space-y-2 pl-11">
+                <Label htmlFor="reminder-no-timer-minutes" className="text-sm">
+                  Minutos después de la hora de entrada
+                </Label>
+                <Input
+                  id="reminder-no-timer-minutes"
+                  type="number"
+                  min={1}
+                  max={480}
+                  value={reminderCfg.noTimerAlertMinutes}
+                  disabled={!reminderCfg.noTimerAlertEnabled}
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value, 10);
+                    if (!isNaN(value)) {
+                      setReminderCfg({
+                        ...reminderCfg,
+                        noTimerAlertMinutes: Math.min(480, Math.max(1, value)),
+                      });
+                    }
+                  }}
+                  className="w-32"
+                />
+                <p className="text-sm text-muted-foreground">
+                  Sólo avisa en días laborables, y deja de hacerlo cuando ya
+                  registraste las horas del objetivo del día.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <Button variant="outline" onClick={handleRemindersSave}>
+                Guardar
+              </Button>
+              <Button variant="ghost" onClick={handleRemindersReset}>
+                Restablecer
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Bell className="w-5 h-5" />
+              Notificaciones
+            </CardTitle>
+            <CardDescription>
+              Con la app de fondo un aviso dentro de la página no se ve. Para que
+              el recordatorio te llegue igual hace falta el permiso del navegador.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Estado:</span>
+              <span className="text-sm font-medium">{notificationsStatus.label}</span>
+            </div>
+            <p className="text-sm text-muted-foreground">{notificationsStatus.hint}</p>
+
+            <div className="flex gap-2 pt-2">
+              <Button
+                variant="outline"
+                onClick={handleNotificationsEnable}
+                disabled={
+                  notifications.support === 'granted' ||
+                  notifications.support === 'unsupported'
+                }
+              >
+                Activar notificaciones
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => void handleNotificationsTest()}
+                disabled={notifications.support !== 'granted'}
+              >
+                Enviar de prueba
               </Button>
             </div>
           </CardContent>

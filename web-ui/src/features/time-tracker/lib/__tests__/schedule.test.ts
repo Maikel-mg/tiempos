@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { getDailyTarget } from '../schedule';
+import { getDailyTarget, getWorkdayStart } from '../schedule';
 import { scheduleConfig } from '@/config/stores';
 
 describe('getDailyTarget', () => {
@@ -58,5 +58,48 @@ describe('getDailyTarget', () => {
     expect(getDailyTarget('2025-06-09')).toBe(8.25); // Monday
     expect(getDailyTarget('2025-06-13')).toBe(7);    // Friday
     expect(getDailyTarget('2025-06-14')).toBe(0);    // Saturday
+  });
+});
+
+describe('getWorkdayStart', () => {
+  beforeEach(() => {
+    scheduleConfig.set({
+      defaultHours: { mon: 8.25, tue: 8.25, wed: 8.25, thu: 8.25, fri: 7, sat: 0, sun: 0 },
+      startTime: '09:00',
+      exceptions: [],
+    });
+  });
+
+  it('returns the start time in minutes on a weekday', () => {
+    // 2025-06-09 is a Monday
+    expect(getWorkdayStart('2025-06-09')).toBe(9 * 60);
+  });
+
+  it('respects a custom start time', () => {
+    scheduleConfig.set({ startTime: '07:30' });
+
+    expect(getWorkdayStart('2025-06-09')).toBe(7 * 60 + 30);
+  });
+
+  it('returns null on a weekend', () => {
+    // 2025-06-14 is a Saturday, 2025-06-15 a Sunday
+    expect(getWorkdayStart('2025-06-14')).toBeNull();
+    expect(getWorkdayStart('2025-06-15')).toBeNull();
+  });
+
+  it('returns null when an exception sets the day to zero hours', () => {
+    scheduleConfig.set({
+      exceptions: [{ start: '2025-07-01', end: '2025-07-31', dailyHours: 0 }],
+    });
+
+    expect(getWorkdayStart('2025-07-15')).toBeNull();
+  });
+
+  it('returns null when the start time is empty or malformed', () => {
+    scheduleConfig.set({ startTime: '' });
+    expect(getWorkdayStart('2025-06-09')).toBeNull();
+
+    scheduleConfig.set({ startTime: 'nope' });
+    expect(getWorkdayStart('2025-06-09')).toBeNull();
   });
 });
