@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { CheckCircle2, Circle, ChevronDown, ChevronRight, Clock, MoreVertical, Play, Pencil, Trash2, Copy, Database } from 'lucide-react';
+import { CheckCircle2, Circle, ChevronDown, ChevronRight, Clock, MoreVertical, Play, Pencil, Trash2, Copy, Database, Split } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,6 +12,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { groupEntriesByWeek, getWeekKey, getWeekStart, parseDateString, formatDateToString, formatWeekRange, formatShortDate } from '../lib/groupEntriesByWeek';
 import { computeDailyBalance } from '../lib/balance';
+import { splitAffordance } from '../lib/splitEntry';
 import { TimerRow } from './TimerRow';
 import type { TimeEntry, LocalWeekGroup, LocalWeekDay } from '../types';
 
@@ -32,6 +33,7 @@ interface GroupedEntryViewProps {
   onEdit?: (entry: TimeEntry) => void;
   onPlay?: (entry: TimeEntry) => void;
   onDuplicate?: (entry: TimeEntry) => void;
+  onSplit?: (entry: TimeEntry) => void;
   onSync?: (entry: TimeEntry) => void;
   timerEntry?: TimerEntryData | null;
 }
@@ -78,6 +80,7 @@ export function GroupedEntryView({
   onEdit: _onEdit,
   onPlay: _onPlay,
   onDuplicate: _onDuplicate,
+  onSplit: _onSplit,
   onSync: _onSync,
   timerEntry,
 }: GroupedEntryViewProps) {
@@ -217,6 +220,7 @@ export function GroupedEntryView({
             onEdit={_onEdit}
             onPlay={_onPlay}
             onDuplicate={_onDuplicate}
+            onSplit={_onSplit}
             onSync={_onSync}
             selectedIds={selectedIds}
             onSelect={onSelect}
@@ -237,6 +241,7 @@ interface WeekGroupCardProps {
   onEdit?: (entry: TimeEntry) => void;
   onPlay?: (entry: TimeEntry) => void;
   onDuplicate?: (entry: TimeEntry) => void;
+  onSplit?: (entry: TimeEntry) => void;
   onSync?: (entry: TimeEntry) => void;
   selectedIds: Set<string>;
   onSelect?: (ids: Set<string>) => void;
@@ -253,6 +258,7 @@ function WeekGroupCard({
   onEdit,
   onPlay,
   onDuplicate,
+  onSplit,
   onSync,
   selectedIds,
   onSelect,
@@ -297,6 +303,7 @@ function WeekGroupCard({
                 onEdit={onEdit}
                 onPlay={onPlay}
                 onDuplicate={onDuplicate}
+                onSplit={onSplit}
                 onSync={onSync}
                 selectedIds={selectedIds}
                 onSelect={onSelect}
@@ -318,13 +325,14 @@ interface DayRowProps {
   onEdit?: (entry: TimeEntry) => void;
   onPlay?: (entry: TimeEntry) => void;
   onDuplicate?: (entry: TimeEntry) => void;
+  onSplit?: (entry: TimeEntry) => void;
   onSync?: (entry: TimeEntry) => void;
   selectedIds: Set<string>;
   onSelect?: (ids: Set<string>) => void;
   timerEntry?: TimerEntryData | null;
 }
 
-function DayRow({ day, isExpanded, onToggle, onDelete, onEdit, onPlay, onDuplicate, onSync, selectedIds, onSelect, timerEntry }: DayRowProps) {
+function DayRow({ day, isExpanded, onToggle, onDelete, onEdit, onPlay, onDuplicate, onSplit, onSync, selectedIds, onSelect, timerEntry }: DayRowProps) {
   const dailyBalance = computeDailyBalance(day.entries, day.date);
   const hasRecoverable = day.entries.some(e => e.recoverable);
 
@@ -391,7 +399,10 @@ function DayRow({ day, isExpanded, onToggle, onDelete, onEdit, onPlay, onDuplica
                 <table className="w-full"><tbody><TimerRow {...timerEntry} /></tbody></table>
               </div>
             )}
-            {day.entries.map((entry) => (
+            {day.entries.map((entry) => {
+              const split = splitAffordance(entry);
+
+              return (
               <div key={entry.id} className={`group p-3 ${selectedIds.has(entry.id) ? 'bg-green-50' : entry.recoverable ? 'bg-amber-50 dark:bg-amber-950/20' : ''}`}>
                 {/* Row 1: checkbox + time range + task name + duration */}
                 <div className="flex items-center gap-2">
@@ -450,6 +461,12 @@ function DayRow({ day, isExpanded, onToggle, onDelete, onEdit, onPlay, onDuplica
                           <Copy className="h-4 w-4" />
                           Duplicar
                         </DropdownMenuItem>
+                        {split.visible && (
+                          <DropdownMenuItem disabled={!split.enabled} onClick={() => onSplit?.(entry)}>
+                            <Split className="h-4 w-4" />
+                            {split.enabled ? 'Dividir' : split.reason}
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem onClick={() => onDelete?.(entry.id)}>
                           <Trash2 className="h-4 w-4" />
                           Eliminar
@@ -458,7 +475,8 @@ function DayRow({ day, isExpanded, onToggle, onDelete, onEdit, onPlay, onDuplica
                     </DropdownMenu>
                   </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

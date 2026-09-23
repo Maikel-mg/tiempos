@@ -12,6 +12,7 @@ function createMockStorage(): StorageStrategy {
     updateEntry: vi.fn().mockResolvedValue(undefined),
     deleteEntry: vi.fn().mockResolvedValue(undefined),
     markAsSynced: vi.fn().mockResolvedValue(undefined),
+    saveEntries: vi.fn().mockResolvedValue(undefined),
     saveTimerState: vi.fn().mockResolvedValue(undefined),
     getTimerState: vi.fn(),
     clearTimerState: vi.fn().mockResolvedValue(undefined),

@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { StorageStrategy } from '@/lib/storage/StorageStrategy';
+import { buildSplitHalves, planSplit } from '../lib/splitEntry';
 import type { TimeEntry, TimerState, Proceso } from '../types';
 
 function formatTimeHHMM(date: Date): string {
@@ -20,6 +21,11 @@ export interface StopTimerResult {
   taskId: number;
   taskName: string;
 }
+
+/** Resultado de dividir un Registro: las dos mitades o el motivo por el que no se pudo. */
+export type SplitEntryOutcome =
+  | { ok: true; first: TimeEntry; second: TimeEntry }
+  | { ok: false; reason: string };
 
 /**
  * Servicio de lógica de negocio para el TimeTracker.
@@ -94,6 +100,34 @@ export class TimeTrackingService {
    */
   async deleteEntry(id: string): Promise<void> {
     await this.storage.deleteEntry(id);
+  }
+
+  /**
+   * Divide un Registro por una hora concreta y guarda las dos mitades en una sola
+   * transacción. La primera conserva la identidad del original; la segunda es nueva.
+   *
+   * No comprueba si el Registro está sincronizado ni si es un permiso: eso es
+   * alcance de la interfaz, que en esos casos no ofrece la acción.
+   */
+  async splitEntry(id: string, cutTime: string): Promise<SplitEntryOutcome> {
+    const entry = await this.storage.getEntry(id);
+    if (!entry) {
+      return { ok: false, reason: 'No se encontró el Registro a dividir' };
+    }
+
+    const plan = planSplit(entry, cutTime);
+    if (!plan.ok) {
+      return plan;
+    }
+
+    const { first, second } = buildSplitHalves(entry, plan.segments, {
+      newId: uuidv4(),
+      now: new Date().toISOString(),
+    });
+
+    await this.storage.saveEntries([first, second]);
+
+    return { ok: true, first, second };
   }
 
   /**

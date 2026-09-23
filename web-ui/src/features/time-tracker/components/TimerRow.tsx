@@ -1,4 +1,7 @@
+import { Split } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { TableCell, TableRow } from '@/components/ui/table';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface TimerRowProps {
   taskName: string;
@@ -7,6 +10,10 @@ interface TimerRowProps {
   endTime: string;
   duration: number;
   description?: string;
+  /** Divide el timer en curso. El diálogo lo abre quien nos renderiza. */
+  onSplit?: () => void;
+  /** Motivo por el que el timer en curso no se puede dividir a mano. */
+  splitDisabledReason?: string;
 }
 
 function formatDuration(seconds: number): string {
@@ -25,9 +32,9 @@ function formatDate(dateStr: string): string {
 
 /**
  * Fila visual del timer activo en la lista de entries.
- * Solo lectura — sin acciones, sin checkbox, sin sync status.
+ * Solo lectura — sin checkbox, sin sync status.
  */
-export function TimerRow({ taskName, date, startTime, endTime, duration, description }: TimerRowProps) {
+export function TimerRow({ taskName, date, startTime, endTime, duration, description, onSplit, splitDisabledReason }: TimerRowProps) {
   return (
     <TableRow className="bg-blue-50 dark:bg-blue-950/30 border-l-2 border-l-blue-500">
       {/* Checkbox placeholder — aligns with TimeEntryRow checkbox column */}
@@ -74,8 +81,32 @@ export function TimerRow({ taskName, date, startTime, endTime, duration, descrip
         </span>
       </TableCell>
 
-      {/* Actions placeholder — aligns with TimeEntryRow actions column */}
-      <TableCell className="w-24" />
+      {/* Actions — same column as TimeEntryRow */}
+      <TableCell className="w-24">
+        {onSplit && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={onSplit}
+                    disabled={!!splitDisabledReason}
+                    aria-label="Dividir el timer en curso"
+                    className="min-w-[44px] min-h-[44px] text-muted-foreground hover:text-foreground"
+                  >
+                    <Split className="w-4 h-4" />
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                {splitDisabledReason ?? 'Dividir el timer en curso'}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+      </TableCell>
     </TableRow>
   );
 }

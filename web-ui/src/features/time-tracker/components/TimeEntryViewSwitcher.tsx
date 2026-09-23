@@ -26,9 +26,14 @@ interface TimeEntryViewSwitcherProps {
   onEdit?: (entry: TimeEntry) => void;
   onPlay?: (entry: TimeEntry) => void;
   onDuplicate?: (entry: TimeEntry) => void;
+  onSplit?: (entry: TimeEntry) => void;
   onSync?: (entry: TimeEntry) => void;
   activeTab: string;
   timerEntry?: TimerEntryData | null;
+  /** Divide el timer en curso. Solo la vista de tabla lo ofrece en su fila. */
+  onSplitTimer?: () => void;
+  /** Motivo por el que el timer en curso no se puede dividir a mano. */
+  timerSplitDisabledReason?: string;
   tableRef?: RefObject<HTMLTableElement>;
   getRowProps?: (index: number) => Record<string, unknown>;
 }
@@ -41,9 +46,12 @@ export function TimeEntryViewSwitcher({
   onEdit,
   onPlay,
   onDuplicate,
+  onSplit,
   onSync,
   activeTab,
   timerEntry,
+  onSplitTimer,
+  timerSplitDisabledReason,
   tableRef,
   getRowProps,
 }: TimeEntryViewSwitcherProps) {
@@ -198,8 +206,11 @@ export function TimeEntryViewSwitcher({
             onEdit={onEdit}
             onPlay={onPlay}
             onDuplicate={onDuplicate}
+            onSplit={onSplit}
             onSync={onSync}
             timerEntry={timerEntry}
+            onSplitTimer={onSplitTimer}
+            timerSplitDisabledReason={timerSplitDisabledReason}
             tableRef={activeTab === 'table' ? tableRef : undefined}
             getRowProps={activeTab === 'table' ? getRowProps : undefined}
           />
@@ -212,6 +223,7 @@ export function TimeEntryViewSwitcher({
             onEdit={onEdit}
             onPlay={onPlay}
             onDuplicate={onDuplicate}
+            onSplit={onSplit}
             onSync={onSync}
             timerEntry={timerEntry}
           />

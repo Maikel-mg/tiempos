@@ -1,8 +1,9 @@
-import { CheckCircle2, Circle, XCircle, Trash2, Pencil, Play, Copy, Database } from 'lucide-react';
+import { CheckCircle2, Circle, XCircle, Trash2, Pencil, Play, Copy, Database, Split } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 import type { TimeEntry } from '../types';
+import { splitAffordance } from '../lib/splitEntry';
 
 interface TimeEntryRowProps {
   entry: TimeEntry;
@@ -12,6 +13,7 @@ interface TimeEntryRowProps {
   onEdit?: () => void;
   onPlay?: () => void;
   onDuplicate?: () => void;
+  onSplit?: () => void;
   onSync?: () => void;
   /** Información de recuperación para entries recuperables (permisos). */
   recoveryInfo?: { recovered: number; total: number };
@@ -51,8 +53,9 @@ function formatDate(dateStr: string): string {
 /**
  * Fila individual del listado de registros de tiempo.
  */
-export function TimeEntryRow({ entry, selected, onToggle, onDelete, onEdit, onPlay, onDuplicate, onSync, recoveryInfo, rowProps }: TimeEntryRowProps) {
+export function TimeEntryRow({ entry, selected, onToggle, onDelete, onEdit, onPlay, onDuplicate, onSplit, onSync, recoveryInfo, rowProps }: TimeEntryRowProps) {
   const SYNCED_TOOLTIP = 'Ya sincronizado con la BD — no se puede editar desde aquí';
+  const split = splitAffordance(entry);
 
   return (
     <TooltipProvider>
@@ -212,6 +215,25 @@ export function TimeEntryRow({ entry, selected, onToggle, onDelete, onEdit, onPl
               >
                 <Copy className="w-4 h-4" />
               </Button>
+            )}
+            {onSplit && split.visible && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={onSplit}
+                      disabled={!split.enabled}
+                      aria-label="Dividir entrada"
+                      className="min-w-[44px] min-h-[44px] text-muted-foreground hover:text-foreground"
+                    >
+                      <Split className="w-4 h-4" />
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>{split.enabled ? 'Dividir entrada' : split.reason}</TooltipContent>
+              </Tooltip>
             )}
             <Button
               variant="ghost"

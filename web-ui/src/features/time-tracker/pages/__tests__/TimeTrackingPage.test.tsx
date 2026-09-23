@@ -93,6 +93,7 @@ function setupMocks(options: { stopResult?: unknown; crossingResult?: ReturnType
     createEntry: mockCreateEntry.mockResolvedValue({ id: '1' }),
     updateEntry: mockUpdateEntry.mockResolvedValue(null),
     deleteEntry: mockDeleteEntry.mockResolvedValue(undefined),
+    splitEntry: vi.fn(),
     markSynced: vi.fn(),
     refresh: mockRefresh,
     getEntriesByDateRange: vi.fn(),
@@ -189,8 +190,8 @@ describe('TimeTrackingPage undoable delete', () => {
 
     // Table is shown by default
     const entryRow = screen.getByText('Task 1').closest('tr')!;
-    // Buttons: checkbox[0], play[1], sync[2], edit[3], duplicate[4], delete[5]
-    const trashBtn = entryRow.querySelectorAll('button')[5];
+    // Buttons: checkbox[0], play[1], sync[2], edit[3], duplicate[4], split[5], delete[6]
+    const trashBtn = entryRow.querySelectorAll('button')[6];
     await user.click(trashBtn);
 
     // Toast should have been called with "Entrada eliminada"
@@ -216,8 +217,8 @@ describe('TimeTrackingPage undoable delete', () => {
 
     // Table is shown by default
     const entryRow = screen.getByText('Task 1').closest('tr')!;
-    // Buttons: checkbox[0], play[1], sync[2], edit[3], duplicate[4], delete[5]
-    const trashBtn = entryRow.querySelectorAll('button')[5];
+    // Buttons: checkbox[0], play[1], sync[2], edit[3], duplicate[4], split[5], delete[6]
+    const trashBtn = entryRow.querySelectorAll('button')[6];
     await user.click(trashBtn);
 
     // Get the undo callback from the toast call

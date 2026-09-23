@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
-import { Database, Table, LayoutGrid, Pencil, Trash2, Copy, Play, RefreshCw, Lightbulb } from 'lucide-react';
+import { Database, Table, LayoutGrid, Pencil, Trash2, Copy, Play, RefreshCw, Lightbulb, Split } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -8,6 +8,8 @@ import { TimeTrackerBar } from '../components/TimeTrackerBar';
 import type { TimeTrackerBarHandle } from '../components/TimeTrackerBar';
 import { TimeEntryEditorDialog } from '../components/TimeEntryEditorDialog';
 import type { TimeEntryFormData } from '../components/TimeEntryEditorDialog';
+import { SplitEntryDialog } from '../components/SplitEntryDialog';
+import { splitAffordance, splitAvailability } from '../lib/splitEntry';
 import { TimeEntryViewSwitcher } from '../components/TimeEntryViewSwitcher';
 import { OverlapAlert } from '../components/OverlapAlert';
 import type { OverlapFix } from '../lib/overlaps';
@@ -45,11 +47,21 @@ export function TimeTrackingPage() {
   const [customRange, setCustomRange] = useState<DateRange | undefined>(undefined);
   const [activeTab, setActiveTab] = useState('table');
   const [proposalModalOpen, setProposalModalOpen] = useState(false);
+  /** Registro que se está dividiendo. */
+  const [splittingEntry, setSplittingEntry] = useState<TimeEntry | null>(null);
+  /** `true` cuando lo que se divide es el timer en curso y no un Registro guardado. */
+  const [splittingTimer, setSplittingTimer] = useState(false);
 
-  const { entries, createEntry, updateEntry, deleteEntry, markSynced } = useTimeEntries();
+  const { entries, createEntry, updateEntry, deleteEntry, splitEntry, markSynced } = useTimeEntries();
   const timerHook = useTimer();
 
   const undoBuffer = useRef<Map<string, TimeEntry>>(new Map());
+  const splitUndo = useRef<{
+    firstId: string;
+    secondId: string;
+    original: TimeEntry;
+    timerStartTime?: string;
+  } | null>(null);
   const pendingDescription = useRef<string | undefined>(undefined);
   const tableRef = useRef<HTMLTableElement>(null);
   const trackerBarRef = useRef<TimeTrackerBarHandle>(null);
@@ -191,6 +203,138 @@ export function TimeTrackingPage() {
     });
     toast.success('Entrada duplicada');
   }, [createEntry]);
+
+  const handleSplitEntry = useCallback((entry: TimeEntry) => {
+    setSplittingTimer(false);
+    setSplittingEntry(entry);
+  }, []);
+
+  /**
+   * El timer en curso: la fecha y los horarios que se ofrecen son los reales, no
+   * los que muestra la fila virtual (que enseña el reloj destripado a la hora).
+   */
+  const liveTimerEntry = useMemo<TimeEntry | null>(() => {
+    const state = timerHook.timerState;
+    if (!timerHook.isRunning || !state) return null;
+
+    const start = new Date(state.startTime);
+    const end = new Date();
+    const date = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`;
+
+    return {
+      id: 'timer-activo',
+      taskId: state.taskId,
+      taskName: state.taskName,
+      proceso: { proceso: state.taskId, nombre: state.taskName },
+      date,
+      startTime: `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`,
+      endTime: `${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}`,
+      duration: Math.floor((end.getTime() - start.getTime()) / 1000),
+      description: state.description,
+      createdAt: state.startTime,
+      updatedAt: state.startTime,
+      synced: false,
+    };
+  }, [timerHook.isRunning, timerHook.timerState]);
+
+  const todayString = useMemo(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  }, []);
+
+  const timerSplitDisabledReason = useMemo(() => {
+    if (!liveTimerEntry) return undefined;
+    if (liveTimerEntry.date !== todayString) {
+      return 'El timer cruza la medianoche; al pararlo decidirás cómo dividirlo';
+    }
+    if (createVirtualTimerEntry(timerHook.timerState!, new Date()).duration === 0) {
+      return undefined;
+    }
+    const availability = splitAvailability(liveTimerEntry);
+    return availability.splittable ? undefined : availability.reason;
+  }, [liveTimerEntry, todayString, timerHook.timerState]);
+
+  const handleSplitTimer = useCallback(() => {
+    setSplittingTimer(true);
+    setSplittingEntry(liveTimerEntry);
+  }, [liveTimerEntry]);
+
+  /**
+   * Persiste el resultado de dividir. En un Registro guardado las dos mitades van
+   * a la base local; en el timer en curso solo se guarda la primera y el timer se
+   * re-ancla al punto de corte, de modo que la segunda mitad sigue corriendo.
+   */
+  const handleUndoSplit = useCallback(async () => {
+    const undo = splitUndo.current;
+    if (!undo) return;
+
+    await deleteEntry(undo.secondId);
+    await updateEntry(undo.firstId, {
+      endTime: undo.original.endTime,
+      duration: undo.original.duration,
+    });
+
+    if (undo.timerStartTime) {
+      await timerHook.updateStartTime(undo.timerStartTime);
+    }
+
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      next.delete(undo.secondId);
+      return next;
+    });
+
+    splitUndo.current = null;
+    toast.success('División deshecha');
+  }, [deleteEntry, updateEntry, timerHook]);
+
+  const handleSplitConfirm = useCallback(
+    async ({ first, second }: { first: TimeEntry; second: TimeEntry }) => {
+      const restoringTimerStart = splittingTimer ? timerHook.timerState?.startTime : undefined;
+
+      if (splittingTimer) {
+        await createEntry({
+          taskId: first.taskId,
+          taskName: first.taskName,
+          date: first.date,
+          startTime: first.startTime,
+          endTime: first.endTime,
+          description: first.description,
+        });
+        await timerHook.updateStartTime(new Date(`${first.date}T${second.startTime}:00`).toISOString());
+      } else {
+        const outcome = await splitEntry(first.id, first.endTime);
+        if (!outcome.ok) {
+          toast.error(outcome.reason);
+          return;
+        }
+      }
+
+      if (selectedIds.has(first.id)) {
+        setSelectedIds((current) => new Set([...current, second.id]));
+      }
+
+      splitUndo.current = {
+        firstId: first.id,
+        secondId: second.id,
+        original: { ...first, endTime: second.endTime, duration: first.duration + second.duration },
+        timerStartTime: restoringTimerStart,
+      };
+
+      toast('Entrada dividida', {
+        action: {
+          label: 'Deshacer',
+          onClick: () => {
+            void handleUndoSplit();
+          },
+        },
+        onAutoClose: () => {
+          splitUndo.current = null;
+        },
+      });
+    },
+    [splittingTimer, timerHook, createEntry, splitEntry, selectedIds, handleUndoSplit],
+  );
 
   const handlePlayEntry = useCallback(async (entry: TimeEntry) => {
     if (timerHook.isRunning) {
@@ -362,6 +506,22 @@ export function TimeTrackingPage() {
       group: 'Registro activo',
     },
     {
+      id: 'row-split',
+      label: `Dividir${activeItem ? `: ${activeItem.taskName}` : ''}`,
+      icon: <Split className="h-4 w-4" />,
+      action: () => activeItem && handleSplitEntry(activeItem),
+      when: () => !!activeItem && splitAffordance(activeItem).visible,
+      group: 'Registro activo',
+    },
+    {
+      id: 'split-running-timer',
+      label: 'Dividir el timer en curso',
+      icon: <Split className="h-4 w-4" />,
+      action: () => handleSplitTimer(),
+      when: () => !!liveTimerEntry && !timerSplitDisabledReason,
+      group: 'TimeTracker',
+    },
+    {
       id: 'row-play',
       label: `Reproducir${activeItem ? `: ${activeItem.taskName}` : ''}`,
       icon: <Play className="h-4 w-4" />,
@@ -461,6 +621,7 @@ export function TimeTrackingPage() {
             ref={trackerBarRef}
             onSubmit={handleCreateEntry}
             disabled={false}
+            onSplitTimer={liveTimerEntry ? handleSplitTimer : undefined}
             timer={timerHook}
           />
         </div>
@@ -475,6 +636,19 @@ export function TimeTrackingPage() {
           if (!open) setEditingEntry(null);
         }}
         onSubmit={handleEditorSubmit}
+      />
+
+      <SplitEntryDialog
+        open={splittingEntry !== null}
+        entry={splittingEntry}
+        live={splittingTimer}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSplittingEntry(null);
+            setSplittingTimer(false);
+          }
+        }}
+        onConfirm={handleSplitConfirm}
       />
 
       <div className="px-4 sm:px-6 py-5 space-y-5">
@@ -585,9 +759,12 @@ export function TimeTrackingPage() {
           onEdit={handleEditEntry}
           onPlay={handlePlayEntry}
           onDuplicate={handleDuplicateEntry}
+          onSplit={handleSplitEntry}
           onSync={handleSyncEntry}
           activeTab={activeTab}
           timerEntry={virtualTimerEntry}
+          onSplitTimer={liveTimerEntry ? handleSplitTimer : undefined}
+          timerSplitDisabledReason={timerSplitDisabledReason}
           tableRef={tableRef}
           getRowProps={getRowProps}
         />
