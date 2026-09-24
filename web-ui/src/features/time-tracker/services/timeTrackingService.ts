@@ -131,6 +131,37 @@ export class TimeTrackingService {
   }
 
   /**
+   * Divide el Timer activo: persiste la primera mitad (que deja de correr) y deja la
+   * segunda en el propio timer, re-anclado al corte. La mitad persistida sale de
+   * clonar el Registro virtual del timer, no del alta normal, que perdería los campos
+   * de la Tarea (Proceso) que sí leen el Dashboard y el resto de vistas.
+   *
+   * Devuelve la mitad persistida y el nuevo anclaje del timer (ISO).
+   */
+  async splitRunningTimer(
+    timerEntry: TimeEntry,
+    cutTime: string,
+  ): Promise<{ ok: true; first: TimeEntry; timerStartTime: string } | { ok: false; reason: string }> {
+    const plan = planSplit(timerEntry, cutTime);
+    if (!plan.ok) {
+      return plan;
+    }
+
+    const { first, second } = buildSplitHalves(timerEntry, plan.segments, {
+      newId: uuidv4(),
+      now: new Date().toISOString(),
+    });
+
+    await this.storage.saveEntry(first);
+
+    return {
+      ok: true,
+      first,
+      timerStartTime: new Date(`${second.date}T${second.startTime}:00`).toISOString(),
+    };
+  }
+
+  /**
    * Obtiene todos los registros, opcionalmente filtrados por rango de fechas.
    */
   async getEntries(startDate?: string, endDate?: string): Promise<TimeEntry[]> {

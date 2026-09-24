@@ -57,7 +57,7 @@ export function TimeTrackingPage() {
   /** `true` cuando lo que se divide es el timer en curso y no un Registro guardado. */
   const [splittingTimer, setSplittingTimer] = useState(false);
 
-  const { entries, createEntry, updateEntry, deleteEntry, splitEntry, markSynced } = useTimeEntries();
+  const { entries, createEntry, updateEntry, deleteEntry, splitEntry, splitRunningTimer, markSynced } = useTimeEntries();
   const timerHook = useTimer();
 
   const undoBuffer = useRef<Map<string, TimeEntry>>(new Map());
@@ -339,32 +339,31 @@ export function TimeTrackingPage() {
   }, [deleteEntry, updateEntry, timerHook]);
 
   const handleSplitConfirm = useCallback(
-    async ({ first, second }: { first: TimeEntry; second: TimeEntry }) => {
+    async ({ entryId, cutTime }: { entryId: string; cutTime: string }) => {
       const restoringTimerStart = splittingTimer ? timerHook.timerState?.startTime : undefined;
 
       let undo: NonNullable<typeof splitUndo.current>;
 
       if (splittingTimer) {
         // Sólo se persiste la primera mitad; la segunda sigue corriendo en el timer.
-        const created = await createEntry({
-          taskId: first.taskId,
-          taskName: first.taskName,
-          date: first.date,
-          startTime: first.startTime,
-          endTime: first.endTime,
-          description: first.description,
-        });
-        await timerHook.updateStartTime(new Date(`${first.date}T${second.startTime}:00`).toISOString());
+        const target = liveTimerEntry;
+        if (!target) return;
+        const outcome = await splitRunningTimer(target, cutTime);
+        if (!outcome.ok) {
+          toast.error(outcome.reason);
+          return;
+        }
+        await timerHook.updateStartTime(outcome.timerStartTime);
         undo = {
-          firstId: created.id,
+          firstId: outcome.first.id,
           secondId: null,
           fromTimer: true,
-          original: { ...first, endTime: second.endTime, duration: first.duration + second.duration },
+          original: target,
           timerStartTime: restoringTimerStart,
           invalidated: false,
         };
       } else {
-        const outcome = await splitEntry(first.id, first.endTime);
+        const outcome = await splitEntry(entryId, cutTime);
         if (!outcome.ok) {
           toast.error(outcome.reason);
           return;
@@ -374,12 +373,12 @@ export function TimeTrackingPage() {
           firstId: outcome.first.id,
           secondId: outcome.second.id,
           fromTimer: false,
-          original: { ...first, endTime: second.endTime, duration: first.duration + second.duration },
+          original: outcome.first,
           timerStartTime: restoringTimerStart,
           invalidated: false,
         };
 
-        if (selectedIds.has(first.id)) {
+        if (selectedIds.has(entryId)) {
           setSelectedIds((current) => new Set([...current, outcome.second.id]));
         }
       }
@@ -400,7 +399,7 @@ export function TimeTrackingPage() {
         },
       });
     },
-    [splittingTimer, timerHook, createEntry, splitEntry, selectedIds, handleUndoSplit],
+    [splittingTimer, liveTimerEntry, timerHook, splitRunningTimer, splitEntry, selectedIds, handleUndoSplit],
   );
 
   const handlePlayEntry = useCallback(async (entry: TimeEntry) => {

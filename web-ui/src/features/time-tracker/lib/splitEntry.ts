@@ -57,10 +57,42 @@ function toMinutes(time: string): number | null {
   return hours * 60 + minutes;
 }
 
-function toHHMM(minutes: number): string {
+/** `HH:MM` desde minutos del día. Se exporta para que la interfaz no reformatee a mano. */
+export function toHHMM(minutes: number): string {
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;
   return `${String(hours).padStart(2, '0')}:${String(rest).padStart(2, '0')}`;
+}
+
+/** Hora de corte (`HH:MM`) para un instante dado en minutos del día. */
+export function cutTimeFromMinutes(minutes: number): string {
+  return toHHMM(minutes);
+}
+
+/** Geometría del intervalo, sin mirar el corte: es común a `planSplit` y `splitAvailability`. */
+type IntervalCheck =
+  | { ok: true; start: number; end: number }
+  | { ok: false; reason: string };
+
+function checkInterval(target: Pick<TimeEntry, 'startTime' | 'endTime'>): IntervalCheck {
+  const start = toMinutes(target.startTime);
+  const end = toMinutes(target.endTime);
+  if (start === null || end === null) {
+    return { ok: false, reason: 'El Registro no tiene un horario válido' };
+  }
+  if (end <= start) {
+    return {
+      ok: false,
+      reason: 'Un Registro que cruza la medianoche no se puede dividir a mano',
+    };
+  }
+  if (end - start < MIN_SPLIT_MINUTES) {
+    return {
+      ok: false,
+      reason: `Un Registro de menos de ${MIN_SPLIT_MINUTES} minutos no se puede dividir`,
+    };
+  }
+  return { ok: true, start, end };
 }
 
 /**
@@ -77,24 +109,11 @@ function toHHMM(minutes: number): string {
  * comprobación que hay que añadir.
  */
 export function planSplit(target: SplitTarget, cutTime: string): SplitPlan {
-  const start = toMinutes(target.startTime);
-  const end = toMinutes(target.endTime);
-
-  if (start === null || end === null) {
-    return { ok: false, reason: 'El Registro no tiene un horario válido' };
+  const interval = checkInterval(target);
+  if (!interval.ok) {
+    return { ok: false, reason: interval.reason };
   }
-  if (end <= start) {
-    return {
-      ok: false,
-      reason: 'Un Registro que cruza la medianoche no se puede dividir a mano',
-    };
-  }
-  if (end - start < MIN_SPLIT_MINUTES) {
-    return {
-      ok: false,
-      reason: `Un Registro de menos de ${MIN_SPLIT_MINUTES} minutos no se puede dividir`,
-    };
-  }
+  const { start, end } = interval;
 
   const cut = toMinutes(cutTime);
   if (cut === null) {
@@ -135,25 +154,8 @@ export type SplitAvailability =
 export function splitAvailability(
   target: Pick<TimeEntry, 'startTime' | 'endTime'>,
 ): SplitAvailability {
-  const start = toMinutes(target.startTime);
-  const end = toMinutes(target.endTime);
-
-  if (start === null || end === null) {
-    return { splittable: false, reason: 'El Registro no tiene un horario válido' };
-  }
-  if (end <= start) {
-    return {
-      splittable: false,
-      reason: 'Un Registro que cruza la medianoche no se puede dividir a mano',
-    };
-  }
-  if (end - start < MIN_SPLIT_MINUTES) {
-    return {
-      splittable: false,
-      reason: `Un Registro de menos de ${MIN_SPLIT_MINUTES} minutos no se puede dividir`,
-    };
-  }
-  return { splittable: true };
+  const interval = checkInterval(target);
+  return interval.ok ? { splittable: true } : { splittable: false, reason: interval.reason };
 }
 
 export type SplitAffordance =

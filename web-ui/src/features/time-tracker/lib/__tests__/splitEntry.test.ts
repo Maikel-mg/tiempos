@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { MIN_SPLIT_MINUTES, buildSplitHalves, planSplit, splitAffordance, splitAvailability } from '../splitEntry';
+import { MIN_SPLIT_MINUTES, buildSplitHalves, cutTimeFromMinutes, planSplit, splitAffordance, splitAvailability } from '../splitEntry';
 import type { TimeEntry } from '../../types';
 
 function makeEntry(overrides: Partial<TimeEntry> = {}): TimeEntry {
@@ -166,6 +166,14 @@ describe('buildSplitHalves', () => {
     expectHalves(entry, '11:00');
 
     expect(entry).toEqual(snapshot);
+  });
+});
+
+describe('cutTimeFromMinutes', () => {
+  it('formatea minutos del día como HH:MM', () => {
+    expect(cutTimeFromMinutes(0)).toBe('00:00');
+    expect(cutTimeFromMinutes(630)).toBe('10:30');
+    expect(cutTimeFromMinutes(1439)).toBe('23:59');
   });
 });
 

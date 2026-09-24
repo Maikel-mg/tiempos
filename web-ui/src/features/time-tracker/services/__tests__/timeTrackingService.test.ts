@@ -129,3 +129,45 @@ describe('TimeTrackingService.updateEntry', () => {
     );
   });
 });
+
+describe('TimeTrackingService.splitRunningTimer', () => {
+  let storage: StorageStrategy;
+  let service: TimeTrackingService;
+
+  const timerEntry: TimeEntry = {
+    id: 'timer-activo',
+    taskId: 1,
+    taskName: 'Test',
+    proceso: { proceso: 1, nombre: 'Test', proyectoId: 7 },
+    date: '2025-06-11',
+    startTime: '09:00',
+    endTime: '11:00',
+    duration: 7200,
+    createdAt: '2025-06-11T09:00:00Z',
+    updatedAt: '2025-06-11T09:00:00Z',
+    synced: false,
+  };
+
+  beforeEach(() => {
+    storage = createMockStorage();
+    service = new TimeTrackingService(storage);
+  });
+
+  it('persiste sólo la primera mitad y devuelve el nuevo anclaje del timer', async () => {
+    const outcome = await service.splitRunningTimer(timerEntry, '10:00');
+
+    expect(outcome.ok).toBe(true);
+    if (!outcome.ok) return;
+    expect(outcome.first).toMatchObject({ id: 'timer-activo', startTime: '09:00', endTime: '10:00' });
+    expect(storage.saveEntry).toHaveBeenCalledWith(outcome.first);
+    expect(storage.saveEntries).not.toHaveBeenCalled();
+    expect(new Date(outcome.timerStartTime).getHours()).toBe(10);
+  });
+
+  it('rechaza el corte fuera del intervalo sin persistir nada', async () => {
+    const outcome = await service.splitRunningTimer(timerEntry, '11:00');
+
+    expect(outcome.ok).toBe(false);
+    expect(storage.saveEntry).not.toHaveBeenCalled();
+  });
+});

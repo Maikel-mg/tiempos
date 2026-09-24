@@ -95,6 +95,20 @@ export function useTimeEntries() {
   );
 
   /**
+   * Divide el Timer activo: persiste la primera mitad y devuelve el nuevo anclaje.
+   */
+  const splitRunningTimer = useCallback(
+    async (timerEntry: TimeEntry, cutTime: string) => {
+      const outcome = await service.splitRunningTimer(timerEntry, cutTime);
+      if (outcome.ok) {
+        setEntries((prev) => [outcome.first, ...prev]);
+      }
+      return outcome;
+    },
+    []
+  );
+
+  /**
    * Marca registros como sincronizados.
    */
   const markSynced = useCallback(async (ids: string[]): Promise<void> => {
@@ -122,6 +136,7 @@ export function useTimeEntries() {
     updateEntry,
     deleteEntry,
     splitEntry,
+    splitRunningTimer,
     markSynced,
     refresh: loadEntries,
     getEntriesByDateRange

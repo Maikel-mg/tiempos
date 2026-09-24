@@ -94,6 +94,7 @@ function setupMocks(options: { stopResult?: unknown; crossingResult?: ReturnType
     updateEntry: mockUpdateEntry.mockResolvedValue(null),
     deleteEntry: mockDeleteEntry.mockResolvedValue(undefined),
     splitEntry: vi.fn(),
+    splitRunningTimer: vi.fn(),
     markSynced: vi.fn(),
     refresh: mockRefresh,
     getEntriesByDateRange: vi.fn(),

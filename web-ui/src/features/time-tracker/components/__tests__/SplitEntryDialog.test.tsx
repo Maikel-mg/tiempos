@@ -47,17 +47,14 @@ describe('SplitEntryDialog', () => {
     expect(screen.getByRole('slider')).toHaveAttribute('aria-valuetext', '10:30');
   });
 
-  it('confirma las dos mitades con los horarios del corte', async () => {
+  it('confirma el corte elegido, sin construir las mitades', async () => {
     const user = userEvent.setup();
     const { onConfirm } = renderDialog(makeEntry());
 
     await user.click(screen.getByRole('button', { name: 'Dividir' }));
 
     expect(onConfirm).toHaveBeenCalledTimes(1);
-    const { first, second } = onConfirm.mock.calls[0][0];
-    expect(first).toMatchObject({ id: 'entry-1', startTime: '09:00', endTime: '10:30' });
-    expect(second).toMatchObject({ startTime: '10:30', endTime: '12:00' });
-    expect(second.id).not.toBe('entry-1');
+    expect(onConfirm).toHaveBeenCalledWith({ entryId: 'entry-1', cutTime: '10:30' });
   });
 
   it('deshabilita la confirmación y explica el motivo cuando el Registro es demasiado corto', () => {
