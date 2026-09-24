@@ -2,7 +2,19 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { GroupedEntryView } from '../GroupedEntryView';
+import type { SplitEntryDialogProps } from '../SplitEntryDialog';
 import type { TimeEntry } from '../../types';
+
+// El diálogo de división se aísla: lo que se prueba aquí es el cableado de
+// GroupedEntryView, no el diálogo (que tiene su propia suite).
+const splitDialogSpy = vi.hoisted(() => vi.fn());
+
+vi.mock('../SplitEntryDialog', () => ({
+  SplitEntryDialog: (props: SplitEntryDialogProps) => {
+    splitDialogSpy(props);
+    return null;
+  },
+}));
 
 function makeEntry(
   id: string,
@@ -14,8 +26,8 @@ function makeEntry(
     taskName: `Task ${id}`,
     proceso: { proceso: 100, nombre: 'Desarrollo' },
     startTime: '09:00',
-    endTime: '10:00',
-    duration: 3600,
+    endTime: '14:00',
+    duration: 18000,
     description: '',
     createdAt: '2026-06-09T09:00:00Z',
     updatedAt: '2026-06-09T09:00:00Z',

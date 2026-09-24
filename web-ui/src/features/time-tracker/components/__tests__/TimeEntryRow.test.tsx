@@ -85,8 +85,8 @@ describe('TimeEntryRow edit button', () => {
     renderRow(makeEntry({ synced: false }));
 
     const buttons = screen.getAllByRole('button');
-    // only checkbox + delete = 2 buttons
-    expect(buttons.length).toBe(2);
+    // checkbox + play + delete = 3 (no hay botón de editar)
+    expect(buttons.length).toBe(3);
   });
 
   it('hides trash icon for synced entries', () => {
@@ -113,9 +113,9 @@ describe('TimeEntryRow edit button', () => {
     const onEdit = vi.fn();
     renderRow(makeEntry({ synced: false }), { onEdit });
 
-    // buttons: checkbox + edit + delete = 3
+    // buttons: checkbox + play + edit + delete = 4
     const allButtons = screen.getAllByRole('button');
-    const pencilBtn = allButtons[1]; // edit button
+    const pencilBtn = allButtons[2]; // edit button
     await userEvent.click(pencilBtn);
 
     expect(onEdit).toHaveBeenCalledTimes(1);

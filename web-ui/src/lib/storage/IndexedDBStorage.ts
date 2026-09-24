@@ -179,6 +179,20 @@ export class IndexedDBStorage implements StorageStrategy {
     );
   }
 
+  /**
+   * Escribe varias entradas en una sola transacción: todas o ninguna.
+   * Se usa `put` en las dos porque la mitad recortada ya existe y la nueva no.
+   */
+  async saveEntries(entries: TimeEntry[]): Promise<void> {
+    if (entries.length === 0) return;
+
+    await db.transaction('rw', db.timeEntries, async () => {
+      for (const entry of entries) {
+        await db.timeEntries.put(entry);
+      }
+    });
+  }
+
   // Timer State
   // Dexie schema defines timerState with keyPath 'id', but TimerState
   // doesn't have an id field. We inject id:'current' on write and

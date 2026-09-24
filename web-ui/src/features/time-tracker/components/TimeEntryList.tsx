@@ -21,9 +21,14 @@ interface TimeEntryListProps {
   onEdit?: (entry: TimeEntry) => void;
   onPlay?: (entry: TimeEntry) => void;
   onDuplicate?: (entry: TimeEntry) => void;
+  onSplit?: (entry: TimeEntry) => void;
   onSync?: (entry: TimeEntry) => void;
   loading?: boolean;
   timerEntry?: TimerEntryData | null;
+  /** Divide el timer en curso. Sin esto la acción no aparece en su fila. */
+  onSplitTimer?: () => void;
+  /** Motivo por el que el timer en curso no se puede dividir a mano. */
+  timerSplitDisabledReason?: string;
   /** Ref to attach to the <table> element for keyboard navigation. */
   tableRef?: RefObject<HTMLTableElement>;
   /** Returns props to spread on each data row for keyboard navigation. */
@@ -34,7 +39,7 @@ interface TimeEntryListProps {
  * Listado de registros de tiempo con selección.
  * Los filtros son manejados por TimeEntryViewSwitcher.
  */
-export function TimeEntryList({ entries, selectedIds, onSelect, onDelete, onEdit, onPlay, onDuplicate, onSync, loading, timerEntry, tableRef, getRowProps }: TimeEntryListProps) {
+export function TimeEntryList({ entries, selectedIds, onSelect, onDelete, onEdit, onPlay, onDuplicate, onSplit, onSync, loading, timerEntry, onSplitTimer, timerSplitDisabledReason, tableRef, getRowProps }: TimeEntryListProps) {
   const toggleSelect = (id: string) => {
     const newSet = new Set(selectedIds);
     if (newSet.has(id)) {
@@ -74,7 +79,11 @@ export function TimeEntryList({ entries, selectedIds, onSelect, onDelete, onEdit
           </TableHeader>
           <TableBody>
             {timerEntry && (
-              <TimerRow {...timerEntry} />
+              <TimerRow
+                {...timerEntry}
+                onSplit={onSplitTimer}
+                splitDisabledReason={timerSplitDisabledReason}
+              />
             )}
             {entries.map((entry, entryIndex) => (
               <TimeEntryRow
@@ -86,6 +95,7 @@ export function TimeEntryList({ entries, selectedIds, onSelect, onDelete, onEdit
                 onEdit={onEdit ? () => onEdit(entry) : undefined}
                 onPlay={onPlay ? () => onPlay(entry) : undefined}
                 onDuplicate={onDuplicate ? () => onDuplicate(entry) : undefined}
+                onSplit={onSplit ? () => onSplit(entry) : undefined}
                 onSync={onSync ? () => onSync(entry) : undefined}
                 rowProps={getRowProps ? getRowProps(timerEntry ? entryIndex + 1 : entryIndex) : undefined}
               />

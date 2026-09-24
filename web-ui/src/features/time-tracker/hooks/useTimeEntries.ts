@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { TimeTrackingService } from '../services/timeTrackingService';
+import { TimeTrackingService, type SplitEntryOutcome } from '../services/timeTrackingService';
 import { indexedDBStorage } from '@/lib/storage/IndexedDBStorage';
 import type { TimeEntry } from '../types';
 
@@ -72,6 +72,43 @@ export function useTimeEntries() {
   }, []);
 
   /**
+   * Divide un Registro en dos mitades.
+   *
+   * Las mitades se insertan en el lugar del original y **en orden temporal**: el
+   * alta normal las colocaría al principio de la lista, lo que dejaría la segunda
+   * mitad por encima de la primera.
+   */
+  const splitEntry = useCallback(
+    async (id: string, cutTime: string): Promise<SplitEntryOutcome> => {
+      const outcome = await service.splitEntry(id, cutTime);
+      if (outcome.ok) {
+        const { first, second } = outcome;
+        setEntries((prev) => {
+          const index = prev.findIndex((e) => e.id === id);
+          if (index === -1) return [first, second, ...prev];
+          return [...prev.slice(0, index), first, second, ...prev.slice(index + 1)];
+        });
+      }
+      return outcome;
+    },
+    []
+  );
+
+  /**
+   * Divide el Timer activo: persiste la primera mitad y devuelve el nuevo anclaje.
+   */
+  const splitRunningTimer = useCallback(
+    async (timerEntry: TimeEntry, cutTime: string) => {
+      const outcome = await service.splitRunningTimer(timerEntry, cutTime);
+      if (outcome.ok) {
+        setEntries((prev) => [outcome.first, ...prev]);
+      }
+      return outcome;
+    },
+    []
+  );
+
+  /**
    * Marca registros como sincronizados.
    */
   const markSynced = useCallback(async (ids: string[]): Promise<void> => {
@@ -98,6 +135,8 @@ export function useTimeEntries() {
     createEntry,
     updateEntry,
     deleteEntry,
+    splitEntry,
+    splitRunningTimer,
     markSynced,
     refresh: loadEntries,
     getEntriesByDateRange

@@ -118,6 +118,8 @@ function setupMocks(entries: TimeEntry[]) {
     createEntry: vi.fn(),
     updateEntry: mockUpdateEntry,
     deleteEntry: vi.fn(),
+    splitEntry: vi.fn(),
+    splitRunningTimer: vi.fn(),
     markSynced: vi.fn(),
     refresh: vi.fn(),
     getEntriesByDateRange: vi.fn(),

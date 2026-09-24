@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Pencil, ShieldCheck, ShieldOff } from 'lucide-react';
+import { Pencil, ShieldCheck, ShieldOff, Split } from 'lucide-react';
 import { ProcessSelectorButton } from './ProcessSelectorButton';
 import { MidnightSplitModal } from './MidnightSplitModal';
 import { detectCrossing } from '../lib/timerCrossingDetector';
@@ -18,6 +18,10 @@ export interface TimeTrackerBarHandle {
 interface TimeTrackerBarProps {
   onSubmit: (data: TimeEntryFormData) => Promise<void>;
   disabled?: boolean;
+  /** Divide el timer en curso; se deshabilita cuando el toggle "Permiso" está activo. */
+  onSplitTimer?: () => void;
+  /** Motivo por el que el timer en curso no se puede dividir (cruza la medianoche, demasiado corto). */
+  splitDisabledReason?: string;
   timer: {
     isRunning: boolean;
     elapsed: number;
@@ -38,7 +42,7 @@ function formatDuration(seconds: number): string {
 }
 
 export const TimeTrackerBar = forwardRef<TimeTrackerBarHandle, TimeTrackerBarProps>(function TimeTrackerBar(
-  { onSubmit, disabled, timer },
+  { onSubmit, disabled, onSplitTimer, splitDisabledReason, timer },
   ref
 ) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -235,6 +239,22 @@ export const TimeTrackerBar = forwardRef<TimeTrackerBarHandle, TimeTrackerBarPro
 
         {timer.isRunning ? (
           <div className="flex shrink-0 items-center gap-1">
+            {onSplitTimer && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9"
+                onClick={onSplitTimer}
+                disabled={disabled || recoverable || !!splitDisabledReason}
+                title={
+                  splitDisabledReason ??
+                  (recoverable ? 'Un permiso no se puede dividir' : 'Dividir el timer en curso')
+                }
+                aria-label="Dividir el timer en curso"
+              >
+                <Split className="h-4 w-4" />
+              </Button>
+            )}
             <Button variant="destructive" onClick={handleStop} disabled={disabled} className="border border-destructive/50">
               Detener
             </Button>

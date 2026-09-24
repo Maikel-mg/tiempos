@@ -14,6 +14,13 @@ export interface StorageStrategy {
   deleteEntry(id: string): Promise<void>;
   markAsSynced(ids: string[], syncedAt: string): Promise<void>;
 
+  /**
+   * Escribe varias entradas de una vez y de forma atómica: o se escriben todas o
+   * no se escribe ninguna. Lo necesita "Dividir", que recorta una mitad y crea la
+   * otra: un fallo a medias perdería tiempo del usuario.
+   */
+  saveEntries(entries: TimeEntry[]): Promise<void>;
+
   // Timer State
   saveTimerState(state: TimerState): Promise<void>;
   getTimerState(): Promise<TimerState | null>;
