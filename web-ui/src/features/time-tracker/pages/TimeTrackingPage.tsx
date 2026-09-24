@@ -38,6 +38,11 @@ function formatDurationHMS(totalSeconds: number): string {
   return `${h}:${m}:${s}`;
 }
 
+/** Fecha local en `YYYY-MM-DD`, sin pasar por UTC. */
+function localDateString(date: Date = new Date()): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
 export function TimeTrackingPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [syncPanelOpen, setSyncPanelOpen] = useState(false);
@@ -51,14 +56,18 @@ export function TimeTrackingPage() {
   const [splittingEntry, setSplittingEntry] = useState<TimeEntry | null>(null);
   /** `true` cuando lo que se divide es el timer en curso y no un Registro guardado. */
   const [splittingTimer, setSplittingTimer] = useState(false);
+  /** La entrada persistida que se creó al dividir el timer en curso, para poder deshacer. */
+  const [timerSplitEntryId, setTimerSplitEntryId] = useState<string | null>(null);
 
   const { entries, createEntry, updateEntry, deleteEntry, splitEntry, markSynced } = useTimeEntries();
   const timerHook = useTimer();
 
   const undoBuffer = useRef<Map<string, TimeEntry>>(new Map());
   const splitUndo = useRef<{
-    firstId: string;
-    secondId: string;
+    /** Registro persistido a recortar; `null` si la mitad vive solo en el timer. */
+    firstId: string | null;
+    /** Mitad nueva persistida; `null` cuando no se persiste (timer en curso). */
+    secondId: string | null;
     original: TimeEntry;
     timerStartTime?: string;
   } | null>(null);
@@ -237,9 +246,18 @@ export function TimeTrackingPage() {
     };
   }, [timerHook.isRunning, timerHook.timerState]);
 
-  const todayString = useMemo(() => {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  /**
+   * Fecha de hoy mientras la página está montada. Se refresca al volver a la
+   * pestaña para que el chequeo de "el timer arrancó hoy" no se quede congelado
+   * si la página cruza la medianoche.
+   */
+  const [todayString, setTodayString] = useState(localDateString);
+
+  useEffect(() => {
+    const sync = () => setTodayString(localDateString());
+    sync();
+    document.addEventListener('visibilitychange', sync);
+    return () => document.removeEventListener('visibilitychange', sync);
   }, []);
 
   const timerSplitDisabledReason = useMemo(() => {
@@ -268,32 +286,48 @@ export function TimeTrackingPage() {
     const undo = splitUndo.current;
     if (!undo) return;
 
-    await deleteEntry(undo.secondId);
-    await updateEntry(undo.firstId, {
-      endTime: undo.original.endTime,
-      duration: undo.original.duration,
-    });
+    // El id de la mitad nueva no es el que construyó el diálogo: en el camino del
+    // timer en curso lo asigna el alta normal, así que hay que leerlo de la entrada
+    // que realmente se guardó.
+    const secondId = undo.secondId ?? timerSplitEntryId;
+    if (secondId) await deleteEntry(secondId);
+
+    // La mitad que se recortó: la original si existía, o la que se persistió al
+    // dividir el timer en curso.
+    const firstId = undo.firstId ?? timerSplitEntryId;
+    if (firstId) {
+      await updateEntry(firstId, {
+        endTime: undo.original.endTime,
+        duration: undo.original.duration,
+      });
+    }
 
     if (undo.timerStartTime) {
       await timerHook.updateStartTime(undo.timerStartTime);
     }
 
-    setSelectedIds((current) => {
-      const next = new Set(current);
-      next.delete(undo.secondId);
-      return next;
-    });
+    if (secondId) {
+      setSelectedIds((current) => {
+        const next = new Set(current);
+        next.delete(secondId);
+        return next;
+      });
+    }
 
     splitUndo.current = null;
+    setTimerSplitEntryId(null);
     toast.success('División deshecha');
-  }, [deleteEntry, updateEntry, timerHook]);
+  }, [deleteEntry, updateEntry, timerHook, timerSplitEntryId]);
 
   const handleSplitConfirm = useCallback(
     async ({ first, second }: { first: TimeEntry; second: TimeEntry }) => {
       const restoringTimerStart = splittingTimer ? timerHook.timerState?.startTime : undefined;
 
+      let undoIds: { firstId: string | null; secondId: string | null };
+
       if (splittingTimer) {
-        await createEntry({
+        // Sólo se persiste la primera mitad; la segunda sigue corriendo en el timer.
+        const created = await createEntry({
           taskId: first.taskId,
           taskName: first.taskName,
           date: first.date,
@@ -302,12 +336,16 @@ export function TimeTrackingPage() {
           description: first.description,
         });
         await timerHook.updateStartTime(new Date(`${first.date}T${second.startTime}:00`).toISOString());
+        setTimerSplitEntryId(created.id);
+        undoIds = { firstId: created.id, secondId: null };
       } else {
         const outcome = await splitEntry(first.id, first.endTime);
         if (!outcome.ok) {
           toast.error(outcome.reason);
           return;
         }
+        // El alta decide el id de la mitad nueva: el que vino del diálogo se descarta.
+        undoIds = { firstId: outcome.first.id, secondId: outcome.second.id };
       }
 
       if (selectedIds.has(first.id)) {
@@ -315,8 +353,7 @@ export function TimeTrackingPage() {
       }
 
       splitUndo.current = {
-        firstId: first.id,
-        secondId: second.id,
+        ...undoIds,
         original: { ...first, endTime: second.endTime, duration: first.duration + second.duration },
         timerStartTime: restoringTimerStart,
       };
@@ -622,6 +659,7 @@ export function TimeTrackingPage() {
             onSubmit={handleCreateEntry}
             disabled={false}
             onSplitTimer={liveTimerEntry ? handleSplitTimer : undefined}
+            splitDisabledReason={timerSplitDisabledReason}
             timer={timerHook}
           />
         </div>

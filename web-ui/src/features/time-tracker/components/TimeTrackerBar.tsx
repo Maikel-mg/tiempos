@@ -20,6 +20,8 @@ interface TimeTrackerBarProps {
   disabled?: boolean;
   /** Divide el timer en curso; se deshabilita cuando el toggle "Permiso" está activo. */
   onSplitTimer?: () => void;
+  /** Motivo por el que el timer en curso no se puede dividir (cruza la medianoche, demasiado corto). */
+  splitDisabledReason?: string;
   timer: {
     isRunning: boolean;
     elapsed: number;
@@ -40,7 +42,7 @@ function formatDuration(seconds: number): string {
 }
 
 export const TimeTrackerBar = forwardRef<TimeTrackerBarHandle, TimeTrackerBarProps>(function TimeTrackerBar(
-  { onSubmit, disabled, onSplitTimer, timer },
+  { onSubmit, disabled, onSplitTimer, splitDisabledReason, timer },
   ref
 ) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -243,11 +245,10 @@ export const TimeTrackerBar = forwardRef<TimeTrackerBarHandle, TimeTrackerBarPro
                 size="icon"
                 className="h-9 w-9"
                 onClick={onSplitTimer}
-                disabled={disabled || recoverable}
+                disabled={disabled || recoverable || !!splitDisabledReason}
                 title={
-                  recoverable
-                    ? 'Un permiso no se puede dividir'
-                    : 'Dividir el timer en curso'
+                  splitDisabledReason ??
+                  (recoverable ? 'Un permiso no se puede dividir' : 'Dividir el timer en curso')
                 }
                 aria-label="Dividir el timer en curso"
               >
