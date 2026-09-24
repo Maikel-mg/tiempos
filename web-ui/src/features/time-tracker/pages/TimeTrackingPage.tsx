@@ -9,7 +9,7 @@ import type { TimeTrackerBarHandle } from '../components/TimeTrackerBar';
 import { TimeEntryEditorDialog } from '../components/TimeEntryEditorDialog';
 import type { TimeEntryFormData } from '../components/TimeEntryEditorDialog';
 import { SplitEntryDialog } from '../components/SplitEntryDialog';
-import { splitAffordance, splitAvailability } from '../lib/splitEntry';
+import { splitAffordance, splitAvailability, MIN_SPLIT_MINUTES } from '../lib/splitEntry';
 import { TimeEntryViewSwitcher } from '../components/TimeEntryViewSwitcher';
 import { OverlapAlert } from '../components/OverlapAlert';
 import type { OverlapFix } from '../lib/overlaps';
@@ -56,8 +56,6 @@ export function TimeTrackingPage() {
   const [splittingEntry, setSplittingEntry] = useState<TimeEntry | null>(null);
   /** `true` cuando lo que se divide es el timer en curso y no un Registro guardado. */
   const [splittingTimer, setSplittingTimer] = useState(false);
-  /** La entrada persistida que se creó al dividir el timer en curso, para poder deshacer. */
-  const [timerSplitEntryId, setTimerSplitEntryId] = useState<string | null>(null);
 
   const { entries, createEntry, updateEntry, deleteEntry, splitEntry, markSynced } = useTimeEntries();
   const timerHook = useTimer();
@@ -68,8 +66,16 @@ export function TimeTrackingPage() {
     firstId: string | null;
     /** Mitad nueva persistida; `null` cuando no se persiste (timer en curso). */
     secondId: string | null;
+    /**
+     * `true` cuando lo que se dividió fue el timer en curso. En ese caso la primera
+     * mitad se persistió con un id nuevo y la segunda sigue corriendo: deshacer
+     * borra la primera y re-ancla el timer.
+     */
+    fromTimer: boolean;
     original: TimeEntry;
     timerStartTime?: string;
+    /** Se marca cuando alguna de las dos mitades ya se sincronizó: invalida el deshacer. */
+    invalidated: boolean;
   } | null>(null);
   const pendingDescription = useRef<string | undefined>(undefined);
   const tableRef = useRef<HTMLTableElement>(null);
@@ -184,6 +190,14 @@ export function TimeTrackingPage() {
     if (outcome.success && outcome.results.some(r => r.success)) {
       const succeededIds = outcome.results.filter(r => r.success).map(r => r.entryId);
       await markSynced(succeededIds);
+
+      // Sincronizar una mitad invalida el deshacer de su división: revertirla
+      // dejaría en la base un Registro que ya no existe.
+      const undo = splitUndo.current;
+      if (undo && succeededIds.some((id) => id === undo.firstId || id === undo.secondId)) {
+        undo.invalidated = true;
+      }
+
       toast.success(`Sincronizado: ${entry.taskName}`);
     } else {
       const error = outcome.results[0]?.error ?? 'Error desconocido';
@@ -265,8 +279,9 @@ export function TimeTrackingPage() {
     if (liveTimerEntry.date !== todayString) {
       return 'El timer cruza la medianoche; al pararlo decidirás cómo dividirlo';
     }
+    // Recién arrancado: el timer aún no llega al mínimo de dos minutos.
     if (createVirtualTimerEntry(timerHook.timerState!, new Date()).duration === 0) {
-      return undefined;
+      return `Un Registro de menos de ${MIN_SPLIT_MINUTES} minutos no se puede dividir`;
     }
     const availability = splitAvailability(liveTimerEntry);
     return availability.splittable ? undefined : availability.reason;
@@ -286,17 +301,22 @@ export function TimeTrackingPage() {
     const undo = splitUndo.current;
     if (!undo) return;
 
-    // El id de la mitad nueva no es el que construyó el diálogo: en el camino del
-    // timer en curso lo asigna el alta normal, así que hay que leerlo de la entrada
-    // que realmente se guardó.
-    const secondId = undo.secondId ?? timerSplitEntryId;
-    if (secondId) await deleteEntry(secondId);
+    if (undo.invalidated) {
+      splitUndo.current = null;
+      toast.error('No se puede deshacer: una de las mitades ya se sincronizó');
+      return;
+    }
 
-    // La mitad que se recortó: la original si existía, o la que se persistió al
-    // dividir el timer en curso.
-    const firstId = undo.firstId ?? timerSplitEntryId;
-    if (firstId) {
-      await updateEntry(firstId, {
+    // Los ids se guardan tal como los asignó la capa que persistió: el diálogo
+    // construye mitades con ids propios que nunca llegan a la base.
+    if (undo.secondId) await deleteEntry(undo.secondId);
+
+    // En el timer en curso la primera mitad se persistió como Registro nuevo, así
+    // que se borra; en un Registro guardado sólo se recorta la original.
+    if (undo.fromTimer) {
+      if (undo.firstId) await deleteEntry(undo.firstId);
+    } else if (undo.firstId) {
+      await updateEntry(undo.firstId, {
         endTime: undo.original.endTime,
         duration: undo.original.duration,
       });
@@ -306,24 +326,23 @@ export function TimeTrackingPage() {
       await timerHook.updateStartTime(undo.timerStartTime);
     }
 
-    if (secondId) {
+    if (undo.secondId) {
       setSelectedIds((current) => {
         const next = new Set(current);
-        next.delete(secondId);
+        next.delete(undo.secondId!);
         return next;
       });
     }
 
     splitUndo.current = null;
-    setTimerSplitEntryId(null);
     toast.success('División deshecha');
-  }, [deleteEntry, updateEntry, timerHook, timerSplitEntryId]);
+  }, [deleteEntry, updateEntry, timerHook]);
 
   const handleSplitConfirm = useCallback(
     async ({ first, second }: { first: TimeEntry; second: TimeEntry }) => {
       const restoringTimerStart = splittingTimer ? timerHook.timerState?.startTime : undefined;
 
-      let undoIds: { firstId: string | null; secondId: string | null };
+      let undo: NonNullable<typeof splitUndo.current>;
 
       if (splittingTimer) {
         // Sólo se persiste la primera mitad; la segunda sigue corriendo en el timer.
@@ -336,27 +355,38 @@ export function TimeTrackingPage() {
           description: first.description,
         });
         await timerHook.updateStartTime(new Date(`${first.date}T${second.startTime}:00`).toISOString());
-        setTimerSplitEntryId(created.id);
-        undoIds = { firstId: created.id, secondId: null };
+        undo = {
+          firstId: created.id,
+          secondId: null,
+          fromTimer: true,
+          original: { ...first, endTime: second.endTime, duration: first.duration + second.duration },
+          timerStartTime: restoringTimerStart,
+          invalidated: false,
+        };
       } else {
         const outcome = await splitEntry(first.id, first.endTime);
         if (!outcome.ok) {
           toast.error(outcome.reason);
           return;
         }
-        // El alta decide el id de la mitad nueva: el que vino del diálogo se descarta.
-        undoIds = { firstId: outcome.first.id, secondId: outcome.second.id };
+        // El id de la mitad nueva lo asigna la capa que persiste, no el diálogo.
+        undo = {
+          firstId: outcome.first.id,
+          secondId: outcome.second.id,
+          fromTimer: false,
+          original: { ...first, endTime: second.endTime, duration: first.duration + second.duration },
+          timerStartTime: restoringTimerStart,
+          invalidated: false,
+        };
+
+        if (selectedIds.has(first.id)) {
+          setSelectedIds((current) => new Set([...current, outcome.second.id]));
+        }
       }
 
-      if (selectedIds.has(first.id)) {
-        setSelectedIds((current) => new Set([...current, second.id]));
-      }
-
-      splitUndo.current = {
-        ...undoIds,
-        original: { ...first, endTime: second.endTime, duration: first.duration + second.duration },
-        timerStartTime: restoringTimerStart,
-      };
+      // Se registra antes de mostrar el aviso: el `onClick` del toast captura el
+      // buffer actual, no el que existirá en un render posterior.
+      splitUndo.current = undo;
 
       toast('Entrada dividida', {
         action: {
@@ -547,7 +577,11 @@ export function TimeTrackingPage() {
       label: `Dividir${activeItem ? `: ${activeItem.taskName}` : ''}`,
       icon: <Split className="h-4 w-4" />,
       action: () => activeItem && handleSplitEntry(activeItem),
-      when: () => !!activeItem && splitAffordance(activeItem).visible,
+      when: () => {
+        if (!activeItem) return false;
+        const affordance = splitAffordance(activeItem);
+        return affordance.visible && affordance.enabled;
+      },
       group: 'Registro activo',
     },
     {
