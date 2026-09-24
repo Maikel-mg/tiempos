@@ -52,6 +52,12 @@ export function useTableRowShortcuts<T>({
       if (!item) return;
       if (!shouldInterceptTableKeys()) return;
 
+      // Modifier combinations belong to global shortcuts (Alt+letter navigation,
+      // Ctrl/Cmd+... actions). Row shortcuts are bare letters only, so bail out
+      // when any modifier is held — otherwise Alt+D would also match 'd' here
+      // and duplicate the active entry, and Ctrl+Shift+S would also sync it.
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
+
       const key = e.key;
 
       if (key === 'Enter' || key === 'e' || key === 'E') {

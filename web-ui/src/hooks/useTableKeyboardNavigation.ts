@@ -205,6 +205,10 @@ export function useTableKeyboardNavigation<TData>({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!shouldInterceptTableKeys()) return;
 
+      // Never swallow modifier combinations: Alt+ArrowLeft/Right are the
+      // browser's back/forward, and Ctrl/Cmd+Arrow belongs to the OS/browser.
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
+
       const total = itemsRef.current.length;
       if (total === 0) return;
 

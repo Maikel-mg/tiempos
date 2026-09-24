@@ -592,4 +592,55 @@ describe('useTableKeyboardNavigation', () => {
     });
     expect(result.current.activeIndex).toBe(0);
   });
+
+  it('ignores Alt+ArrowRight (browser forward) instead of expanding', () => {
+    container = createMockContainer(3);
+    const containerRef = { current: container } as RefObject<HTMLElement>;
+    const onExpand = vi.fn();
+
+    const { result } = renderHook(() =>
+      useTableKeyboardNavigation({
+        containerRef,
+        items: defaultItems,
+        getRowId,
+        onExpand,
+      })
+    );
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+    });
+    expect(result.current.activeIndex).toBe(0);
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', altKey: true }));
+    });
+
+    expect(onExpand).not.toHaveBeenCalled();
+    expect(result.current.activeIndex).toBe(0);
+  });
+
+  it('ignores Ctrl+ArrowDown so it does not move the active row', () => {
+    container = createMockContainer(3);
+    const containerRef = { current: container } as RefObject<HTMLElement>;
+
+    const { result } = renderHook(() =>
+      useTableKeyboardNavigation({
+        containerRef,
+        items: defaultItems,
+        getRowId,
+      })
+    );
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+    });
+    expect(result.current.activeIndex).toBe(0);
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', ctrlKey: true }));
+    });
+
+    expect(result.current.activeIndex).toBe(0);
+  });
 });
