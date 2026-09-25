@@ -153,15 +153,28 @@ describe('TimeTrackingService.splitRunningTimer', () => {
     service = new TimeTrackingService(storage);
   });
 
-  it('persiste sólo la primera mitad y devuelve el nuevo anclaje del timer', async () => {
+  it('persiste sólo la primera mitad, con id propio, y devuelve el nuevo anclaje del timer', async () => {
     const outcome = await service.splitRunningTimer(timerEntry, '10:00');
 
     expect(outcome.ok).toBe(true);
     if (!outcome.ok) return;
-    expect(outcome.first).toMatchObject({ id: 'timer-activo', startTime: '09:00', endTime: '10:00' });
+    expect(outcome.first).toMatchObject({ startTime: '09:00', endTime: '10:00' });
+    // El id del ancla no se puede reutilizar: es un Registro nuevo en el almacén.
+    expect(outcome.first.id).not.toBe('timer-activo');
+    expect(outcome.first.id).toBeTruthy();
     expect(storage.saveEntry).toHaveBeenCalledWith(outcome.first);
     expect(storage.saveEntries).not.toHaveBeenCalled();
     expect(new Date(outcome.timerStartTime).getHours()).toBe(10);
+  });
+
+  it('dos divisiones seguidas del mismo ancla no reutilizan el id', async () => {
+    const first = await service.splitRunningTimer(timerEntry, '10:00');
+    const second = await service.splitRunningTimer(timerEntry, '10:30');
+
+    expect(first.ok).toBe(true);
+    expect(second.ok).toBe(true);
+    if (!first.ok || !second.ok) return;
+    expect(first.first.id).not.toBe(second.first.id);
   });
 
   it('rechaza el corte fuera del intervalo sin persistir nada', async () => {

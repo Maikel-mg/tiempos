@@ -152,11 +152,16 @@ export class TimeTrackingService {
       now: new Date().toISOString(),
     });
 
-    await this.storage.saveEntry(first);
+    // La mitad persistida es un Registro nuevo: el ancla del timer ('timer-activo')
+    // no vive en el almacén, así que no puede heredar su id. Reutilizarlo chocaba
+    // con la clave de la división anterior (ConstraintError al hacer `add`).
+    const persistedFirst: TimeEntry = { ...first, id: uuidv4() };
+
+    await this.storage.saveEntry(persistedFirst);
 
     return {
       ok: true,
-      first,
+      first: persistedFirst,
       timerStartTime: new Date(`${second.date}T${second.startTime}:00`).toISOString(),
     };
   }

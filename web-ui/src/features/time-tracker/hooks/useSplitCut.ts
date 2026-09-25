@@ -99,10 +99,14 @@ export function useSplitCut({ open, entry, onConfirm, onOpenChange }: UseSplitCu
     setIsSubmitting(true);
     try {
       await onConfirm({ entryId: entry.id, cutTime: toHHMM(cutMinutes) });
-      onOpenChange(false);
+    } catch {
+      // Quien confirma ya avisa del fallo; dejamos el diálogo abierto para no
+      // perder el corte elegido y evitamos una promesa rechazada sin capturar.
+      return;
     } finally {
       setIsSubmitting(false);
     }
+    onOpenChange(false);
   }, [isValid, isSubmitting, entry, draft, cutMinutes, onConfirm, onOpenChange]);
 
   /** Atajos del diálogo: las flechas mueven el corte, M lo centra, E lo escribe. */
