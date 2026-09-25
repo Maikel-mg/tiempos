@@ -167,6 +167,48 @@ describe('buildSplitHalves', () => {
 
     expect(entry).toEqual(snapshot);
   });
+
+  it('aplica una descripción distinta a cada mitad cuando se indica', () => {
+    const entry = makeEntry();
+    const plan = planSplit(entry, '11:00');
+    if (!plan.ok) throw new Error(plan.reason);
+
+    const { first, second } = buildSplitHalves(entry, plan.segments, {
+      ...DEPS,
+      descriptions: { first: 'Revisión de endpoints', second: 'Maquetación' },
+    });
+
+    expect(first.description).toBe('Revisión de endpoints');
+    expect(second.description).toBe('Maquetación');
+  });
+
+  it('hereda la descripción original en la mitad que no recibe una nueva', () => {
+    const entry = makeEntry({ description: 'Original' });
+    const plan = planSplit(entry, '11:00');
+    if (!plan.ok) throw new Error(plan.reason);
+
+    const { first, second } = buildSplitHalves(entry, plan.segments, {
+      ...DEPS,
+      descriptions: { first: 'Solo la primera' },
+    });
+
+    expect(first.description).toBe('Solo la primera');
+    expect(second.description).toBe('Original');
+  });
+
+  it('permite vaciar la descripción de una mitad', () => {
+    const entry = makeEntry({ description: 'Original' });
+    const plan = planSplit(entry, '11:00');
+    if (!plan.ok) throw new Error(plan.reason);
+
+    const { first, second } = buildSplitHalves(entry, plan.segments, {
+      ...DEPS,
+      descriptions: { first: '' },
+    });
+
+    expect(first.description).toBe('');
+    expect(second.description).toBe('Original');
+  });
 });
 
 describe('cutTimeFromMinutes', () => {

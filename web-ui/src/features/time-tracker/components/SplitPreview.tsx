@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { cutTimeFromMinutes } from '../lib/splitEntry';
 
 /**
@@ -33,6 +34,11 @@ export interface SplitPreviewProps {
   firstMinutes: number | null;
   secondMinutes: number | null;
   live: boolean;
+  /** Descripción editable de cada mitad. */
+  firstDescription: string;
+  secondDescription: string;
+  onFirstDescriptionChange: (value: string) => void;
+  onSecondDescriptionChange: (value: string) => void;
   onQuickCut: (ratio: number) => void;
   onNudge: (delta: number) => void;
 }
@@ -44,6 +50,10 @@ export function SplitPreview({
   firstMinutes,
   secondMinutes,
   live,
+  firstDescription,
+  secondDescription,
+  onFirstDescriptionChange,
+  onSecondDescriptionChange,
   onQuickCut,
   onNudge,
 }: SplitPreviewProps) {
@@ -62,6 +72,13 @@ export function SplitPreview({
           <div className="text-sm text-muted-foreground">
             {firstMinutes === null ? '—' : formatMinutes(firstMinutes)}
           </div>
+          <Input
+            value={firstDescription}
+            onChange={(event) => onFirstDescriptionChange(event.target.value)}
+            aria-label="Descripción de la primera mitad"
+            placeholder="Descripción de la primera mitad"
+            className="mt-2 h-8 text-sm"
+          />
         </div>
         <div className="rounded-lg border bg-muted/40 p-3">
           <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -73,6 +90,13 @@ export function SplitPreview({
           <div className="text-sm text-muted-foreground">
             {secondMinutes === null ? '—' : formatMinutes(secondMinutes)}
           </div>
+          <Input
+            value={secondDescription}
+            onChange={(event) => onSecondDescriptionChange(event.target.value)}
+            aria-label="Descripción de la segunda mitad"
+            placeholder="Descripción de la segunda mitad"
+            className="mt-2 h-8 text-sm"
+          />
         </div>
       </div>
 

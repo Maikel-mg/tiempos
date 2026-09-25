@@ -2,6 +2,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter } from '@/components/ui/dialog';
 import { useSplitCut } from '../hooks/useSplitCut';
+import type { SplitCut } from '../hooks/useSplitCut';
 import type { TimeEntry } from '../types';
 import { SplitCutHeader } from './SplitCutHeader';
 import { SplitPreview, formatMinutes } from './SplitPreview';
@@ -32,8 +33,8 @@ export interface SplitEntryDialogProps {
    */
   live?: boolean;
   onOpenChange: (open: boolean) => void;
-  /** El corte elegido, sin construir: `{ entryId, cutTime }`. */
-  onConfirm: (cut: { entryId: string; cutTime: string }) => Promise<void>;
+  /** El corte elegido y las descripciones, sin construir. */
+  onConfirm: (cut: SplitCut) => Promise<void>;
 }
 
 export function SplitEntryDialog({ open, entry, live = false, onOpenChange, onConfirm }: SplitEntryDialogProps) {
@@ -96,6 +97,10 @@ export function SplitEntryDialog({ open, entry, live = false, onOpenChange, onCo
             firstMinutes={cut.segments ? cut.segments[0].minutes : null}
             secondMinutes={cut.segments ? cut.segments[1].minutes : null}
             live={live}
+            firstDescription={cut.firstDescription}
+            secondDescription={cut.secondDescription}
+            onFirstDescriptionChange={cut.setFirstDescription}
+            onSecondDescriptionChange={cut.setSecondDescription}
             onQuickCut={(presetRatio) => cut.setCutMinutes(cut.clamp(cut.startMinutes + cut.span * presetRatio))}
             onNudge={cut.nudge}
           />

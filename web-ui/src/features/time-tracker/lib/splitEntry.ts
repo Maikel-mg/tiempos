@@ -38,11 +38,22 @@ export interface SplitHalves {
 /** Lo mínimo que hace falta saber de un Registro —o del Timer activo— para dividirlo. */
 export type SplitTarget = Pick<TimeEntry, 'date' | 'startTime' | 'endTime'>;
 
+/** Descripción elegida para cada mitad; la que falte hereda la del Registro. */
+export interface SplitDescriptions {
+  first?: string;
+  second?: string;
+}
+
 export interface SplitDeps {
   /** Identificador de la mitad nueva. */
   newId: string;
   /** Marca de tiempo para `createdAt`/`updatedAt` de las mitades. */
   now: string;
+  /**
+   * Descripción de cada mitad. Se admite cadena vacía para dejarla en blanco a
+   * propósito; sólo `undefined` significa "hereda la del Registro".
+   */
+  descriptions?: SplitDescriptions;
 }
 
 /** Se aceptan `HH:MM` y `HH:MM:SS`; lo que sobre de precisión se descarta. */
@@ -203,6 +214,7 @@ export function buildSplitHalves(
     startTime: firstSegment.startTime,
     endTime: firstSegment.endTime,
     duration: firstSegment.minutes * 60,
+    description: deps.descriptions?.first ?? entry.description,
     proceso: { ...entry.proceso },
     updatedAt: deps.now,
     synced: false,
@@ -217,6 +229,7 @@ export function buildSplitHalves(
     startTime: secondSegment.startTime,
     endTime: secondSegment.endTime,
     duration: secondSegment.minutes * 60,
+    description: deps.descriptions?.second ?? entry.description,
     createdAt: deps.now,
   };
 

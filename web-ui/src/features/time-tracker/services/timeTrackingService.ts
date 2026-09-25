@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { StorageStrategy } from '@/lib/storage/StorageStrategy';
 import { buildSplitHalves, planSplit } from '../lib/splitEntry';
+import type { SplitDescriptions } from '../lib/splitEntry';
 import type { TimeEntry, TimerState, Proceso } from '../types';
 
 function formatTimeHHMM(date: Date): string {
@@ -109,7 +110,11 @@ export class TimeTrackingService {
    * No comprueba si el Registro está sincronizado ni si es un permiso: eso es
    * alcance de la interfaz, que en esos casos no ofrece la acción.
    */
-  async splitEntry(id: string, cutTime: string): Promise<SplitEntryOutcome> {
+  async splitEntry(
+    id: string,
+    cutTime: string,
+    descriptions?: SplitDescriptions,
+  ): Promise<SplitEntryOutcome> {
     const entry = await this.storage.getEntry(id);
     if (!entry) {
       return { ok: false, reason: 'No se encontró el Registro a dividir' };
@@ -123,6 +128,7 @@ export class TimeTrackingService {
     const { first, second } = buildSplitHalves(entry, plan.segments, {
       newId: uuidv4(),
       now: new Date().toISOString(),
+      descriptions,
     });
 
     await this.storage.saveEntries([first, second]);
@@ -141,6 +147,7 @@ export class TimeTrackingService {
   async splitRunningTimer(
     timerEntry: TimeEntry,
     cutTime: string,
+    firstDescription?: string,
   ): Promise<{ ok: true; first: TimeEntry; timerStartTime: string } | { ok: false; reason: string }> {
     const plan = planSplit(timerEntry, cutTime);
     if (!plan.ok) {
@@ -150,6 +157,9 @@ export class TimeTrackingService {
     const { first, second } = buildSplitHalves(timerEntry, plan.segments, {
       newId: uuidv4(),
       now: new Date().toISOString(),
+      // La segunda mitad sigue corriendo en el timer: su descripción se edita
+      // sobre el propio timer, no aquí.
+      descriptions: { first: firstDescription },
     });
 
     // La mitad persistida es un Registro nuevo: el ancla del timer ('timer-activo')

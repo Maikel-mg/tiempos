@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { TimeTrackingService, type SplitEntryOutcome } from '../services/timeTrackingService';
+import type { SplitDescriptions } from '../lib/splitEntry';
 import { indexedDBStorage } from '@/lib/storage/IndexedDBStorage';
 import type { TimeEntry } from '../types';
 
@@ -79,8 +80,12 @@ export function useTimeEntries() {
    * mitad por encima de la primera.
    */
   const splitEntry = useCallback(
-    async (id: string, cutTime: string): Promise<SplitEntryOutcome> => {
-      const outcome = await service.splitEntry(id, cutTime);
+    async (
+      id: string,
+      cutTime: string,
+      descriptions?: SplitDescriptions,
+    ): Promise<SplitEntryOutcome> => {
+      const outcome = await service.splitEntry(id, cutTime, descriptions);
       if (outcome.ok) {
         const { first, second } = outcome;
         setEntries((prev) => {
@@ -98,8 +103,8 @@ export function useTimeEntries() {
    * Divide el Timer activo: persiste la primera mitad y devuelve el nuevo anclaje.
    */
   const splitRunningTimer = useCallback(
-    async (timerEntry: TimeEntry, cutTime: string) => {
-      const outcome = await service.splitRunningTimer(timerEntry, cutTime);
+    async (timerEntry: TimeEntry, cutTime: string, firstDescription?: string) => {
+      const outcome = await service.splitRunningTimer(timerEntry, cutTime, firstDescription);
       if (outcome.ok) {
         setEntries((prev) => [outcome.first, ...prev]);
       }

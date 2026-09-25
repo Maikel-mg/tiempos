@@ -9,6 +9,7 @@ import type { TimeTrackerBarHandle } from '../components/TimeTrackerBar';
 import { TimeEntryEditorDialog } from '../components/TimeEntryEditorDialog';
 import type { TimeEntryFormData } from '../components/TimeEntryEditorDialog';
 import { SplitEntryDialog } from '../components/SplitEntryDialog';
+import type { SplitCut } from '../hooks/useSplitCut';
 import { splitAffordance, splitAvailability, MIN_SPLIT_MINUTES } from '../lib/splitEntry';
 import { TimeEntryViewSwitcher } from '../components/TimeEntryViewSwitcher';
 import { OverlapAlert } from '../components/OverlapAlert';
@@ -316,13 +317,18 @@ export function TimeTrackingPage() {
     if (undo.secondId) await deleteEntry(undo.secondId);
 
     // En el timer en curso la primera mitad se persistió como Registro nuevo, así
-    // que se borra; en un Registro guardado sólo se recorta la original.
+    // que se borra y el timer recupera su descripción previa; en un Registro
+    // guardado se restaura la original entera (horario, duración y descripción).
     if (undo.fromTimer) {
       if (undo.firstId) await deleteEntry(undo.firstId);
+      if ((timerHook.timerState?.description ?? '') !== (undo.original.description ?? '')) {
+        await timerHook.updateDescription(undo.original.description ?? '');
+      }
     } else if (undo.firstId) {
       await updateEntry(undo.firstId, {
         endTime: undo.original.endTime,
         duration: undo.original.duration,
+        description: undo.original.description,
       });
     }
 
@@ -343,7 +349,7 @@ export function TimeTrackingPage() {
   }, [deleteEntry, updateEntry, timerHook]);
 
   const handleSplitConfirm = useCallback(
-    async ({ entryId, cutTime }: { entryId: string; cutTime: string }) => {
+    async ({ entryId, cutTime, firstDescription, secondDescription }: SplitCut) => {
       const restoringTimerStart = splittingTimer ? timerHook.timerState?.startTime : undefined;
 
       let undo: NonNullable<typeof splitUndo.current>;
@@ -352,12 +358,16 @@ export function TimeTrackingPage() {
         // Sólo se persiste la primera mitad; la segunda sigue corriendo en el timer.
         const target = liveTimerEntry;
         if (!target) return;
-        const outcome = await splitRunningTimer(target, cutTime);
+        const outcome = await splitRunningTimer(target, cutTime, firstDescription);
         if (!outcome.ok) {
           toast.error(outcome.reason);
           return;
         }
         await timerHook.updateStartTime(outcome.timerStartTime);
+        // La segunda mitad ES el timer: su descripción se edita sobre él.
+        if (secondDescription !== (target.description ?? '')) {
+          await timerHook.updateDescription(secondDescription);
+        }
         undo = {
           firstId: outcome.first.id,
           secondId: null,
@@ -367,7 +377,13 @@ export function TimeTrackingPage() {
           invalidated: false,
         };
       } else {
-        const outcome = await splitEntry(entryId, cutTime);
+        // El diálogo sólo se abre con un Registro en la mano: sin él no habría
+        // forma de deshacer, así que no se divide.
+        if (!splittingEntry) return;
+        const outcome = await splitEntry(entryId, cutTime, {
+          first: firstDescription,
+          second: secondDescription,
+        });
         if (!outcome.ok) {
           toast.error(outcome.reason);
           return;
@@ -377,7 +393,9 @@ export function TimeTrackingPage() {
           firstId: outcome.first.id,
           secondId: outcome.second.id,
           fromTimer: false,
-          original: outcome.first,
+          // El estado previo a dividir: sin él "deshacer" no puede revertir el
+          // recorte ni las descripciones.
+          original: splittingEntry,
           timerStartTime: restoringTimerStart,
           invalidated: false,
         };
@@ -403,7 +421,7 @@ export function TimeTrackingPage() {
         },
       });
     },
-    [splittingTimer, liveTimerEntry, timerHook, splitRunningTimer, splitEntry, selectedIds, handleUndoSplit],
+    [splittingTimer, splittingEntry, liveTimerEntry, timerHook, splitRunningTimer, splitEntry, selectedIds, handleUndoSplit],
   );
 
   const handlePlayEntry = useCallback(async (entry: TimeEntry) => {

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { cutTimeFromMinutes, planSplit, splitAvailability, toHHMM } from '../lib/splitEntry';
+import { useSplitDescriptions } from './useSplitDescriptions';
 import type { TimeEntry } from '../types';
 
 /**
@@ -16,10 +17,18 @@ function approximateMinutes(time: string): number {
   return (hours || 0) * 60 + (minutes || 0);
 }
 
+/** Lo que el diálogo confirma: dónde cortar y cómo se describe cada mitad. */
+export interface SplitCut {
+  entryId: string;
+  cutTime: string;
+  firstDescription: string;
+  secondDescription: string;
+}
+
 export interface UseSplitCutParams {
   open: boolean;
   entry: TimeEntry | null;
-  onConfirm: (cut: { entryId: string; cutTime: string }) => Promise<void>;
+  onConfirm: (cut: SplitCut) => Promise<void>;
   onOpenChange: (open: boolean) => void;
 }
 
@@ -28,6 +37,7 @@ export function useSplitCut({ open, entry, onConfirm, onOpenChange }: UseSplitCu
   const [dragging, setDragging] = useState(false);
   const [draft, setDraft] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const descriptions = useSplitDescriptions(open, entry?.description);
   const cancelEditRef = useRef(false);
   const barRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -98,7 +108,12 @@ export function useSplitCut({ open, entry, onConfirm, onOpenChange }: UseSplitCu
 
     setIsSubmitting(true);
     try {
-      await onConfirm({ entryId: entry.id, cutTime: toHHMM(cutMinutes) });
+      await onConfirm({
+        entryId: entry.id,
+        cutTime: toHHMM(cutMinutes),
+        firstDescription: descriptions.first,
+        secondDescription: descriptions.second,
+      });
     } catch {
       // Quien confirma ya avisa del fallo; dejamos el diálogo abierto para no
       // perder el corte elegido y evitamos una promesa rechazada sin capturar.
@@ -107,12 +122,22 @@ export function useSplitCut({ open, entry, onConfirm, onOpenChange }: UseSplitCu
       setIsSubmitting(false);
     }
     onOpenChange(false);
-  }, [isValid, isSubmitting, entry, draft, cutMinutes, onConfirm, onOpenChange]);
+  }, [isValid, isSubmitting, entry, draft, cutMinutes, descriptions.first, descriptions.second, onConfirm, onOpenChange]);
 
   /** Atajos del diálogo: las flechas mueven el corte, M lo centra, E lo escribe. */
   const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     // Mientras se escribe la hora, el teclado es del campo.
     if (draft !== null) return;
+
+    // Los campos de texto (las descripciones) tienen el teclado para ellos: si no,
+    // escribir una "m" o una "e" dispararía los atajos del diálogo.
+    const target = event.target as HTMLElement | null;
+    if (
+      target &&
+      (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)
+    ) {
+      return;
+    }
 
     switch (event.key) {
       case 'ArrowLeft':
@@ -152,6 +177,10 @@ export function useSplitCut({ open, entry, onConfirm, onOpenChange }: UseSplitCu
     draft,
     setDraft,
     isSubmitting,
+    firstDescription: descriptions.first,
+    setFirstDescription: descriptions.setFirst,
+    secondDescription: descriptions.second,
+    setSecondDescription: descriptions.setSecond,
     startMinutes,
     endMinutes,
     span,

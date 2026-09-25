@@ -54,7 +54,68 @@ describe('SplitEntryDialog', () => {
     await user.click(screen.getByRole('button', { name: 'Dividir' }));
 
     expect(onConfirm).toHaveBeenCalledTimes(1);
-    expect(onConfirm).toHaveBeenCalledWith({ entryId: 'entry-1', cutTime: '10:30' });
+    expect(onConfirm).toHaveBeenCalledWith({
+      entryId: 'entry-1',
+      cutTime: '10:30',
+      // Sin tocar nada, ambas mitades heredan la descripción del Registro.
+      firstDescription: 'Revisión',
+      secondDescription: 'Revisión',
+    });
+  });
+
+  it('arranca con la descripción del Registro en las dos mitades', () => {
+    renderDialog(makeEntry());
+
+    expect(screen.getByLabelText('Descripción de la primera mitad')).toHaveValue('Revisión');
+    expect(screen.getByLabelText('Descripción de la segunda mitad')).toHaveValue('Revisión');
+  });
+
+  it('envía una descripción distinta para cada mitad', async () => {
+    const user = userEvent.setup();
+    const { onConfirm } = renderDialog(makeEntry());
+
+    const first = screen.getByLabelText('Descripción de la primera mitad');
+    await user.clear(first);
+    await user.type(first, 'Revisión de endpoints');
+
+    const second = screen.getByLabelText('Descripción de la segunda mitad');
+    await user.clear(second);
+    await user.type(second, 'Maquetación');
+
+    await user.click(screen.getByRole('button', { name: 'Dividir' }));
+
+    expect(onConfirm).toHaveBeenCalledWith(
+      expect.objectContaining({
+        firstDescription: 'Revisión de endpoints',
+        secondDescription: 'Maquetación',
+      }),
+    );
+  });
+
+  it('no dispara los atajos al escribir en una descripción', async () => {
+    const user = userEvent.setup();
+    const { onConfirm } = renderDialog(makeEntry());
+
+    // "m" centraría el corte, "e" abriría el campo de la hora y Enter confirmaría
+    // si los atajos escucharan a los campos de texto.
+    await user.type(screen.getByLabelText('Descripción de la primera mitad'), 'me');
+    await user.keyboard('{Enter}');
+
+    expect(screen.getByRole('slider')).toHaveAttribute('aria-valuetext', '10:30');
+    expect(screen.queryByLabelText('Hora del corte')).not.toBeInTheDocument();
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  it('persiste una descripción vacía si se borra el campo', async () => {
+    const user = userEvent.setup();
+    const { onConfirm } = renderDialog(makeEntry());
+
+    await user.clear(screen.getByLabelText('Descripción de la primera mitad'));
+    await user.click(screen.getByRole('button', { name: 'Dividir' }));
+
+    expect(onConfirm).toHaveBeenCalledWith(
+      expect.objectContaining({ firstDescription: '', secondDescription: 'Revisión' }),
+    );
   });
 
   it('deshabilita la confirmación y explica el motivo cuando el Registro es demasiado corto', () => {

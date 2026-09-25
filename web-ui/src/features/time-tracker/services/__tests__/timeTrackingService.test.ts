@@ -130,6 +130,56 @@ describe('TimeTrackingService.updateEntry', () => {
   });
 });
 
+describe('TimeTrackingService.splitEntry', () => {
+  let storage: StorageStrategy;
+  let service: TimeTrackingService;
+
+  const entry: TimeEntry = {
+    id: 'entry-1',
+    taskId: 100,
+    taskName: 'Desarrollo',
+    proceso: { proceso: 100, nombre: 'Desarrollo' },
+    date: '2025-06-11',
+    startTime: '09:00',
+    endTime: '12:00',
+    duration: 10800,
+    description: 'Original',
+    createdAt: '2025-06-11T09:00:00Z',
+    updatedAt: '2025-06-11T09:00:00Z',
+    synced: false,
+  };
+
+  beforeEach(() => {
+    storage = createMockStorage();
+    service = new TimeTrackingService(storage);
+  });
+
+  it('aplica la descripción indicada a cada mitad', async () => {
+    vi.mocked(storage.getEntry).mockResolvedValue(entry);
+
+    const outcome = await service.splitEntry('entry-1', '11:00', {
+      first: 'Revisión de endpoints',
+      second: 'Maquetación',
+    });
+
+    expect(outcome.ok).toBe(true);
+    if (!outcome.ok) return;
+    expect(outcome.first.description).toBe('Revisión de endpoints');
+    expect(outcome.second.description).toBe('Maquetación');
+  });
+
+  it('hereda la descripción original cuando no se indica otra', async () => {
+    vi.mocked(storage.getEntry).mockResolvedValue(entry);
+
+    const outcome = await service.splitEntry('entry-1', '11:00');
+
+    expect(outcome.ok).toBe(true);
+    if (!outcome.ok) return;
+    expect(outcome.first.description).toBe('Original');
+    expect(outcome.second.description).toBe('Original');
+  });
+});
+
 describe('TimeTrackingService.splitRunningTimer', () => {
   let storage: StorageStrategy;
   let service: TimeTrackingService;
@@ -165,6 +215,14 @@ describe('TimeTrackingService.splitRunningTimer', () => {
     expect(storage.saveEntry).toHaveBeenCalledWith(outcome.first);
     expect(storage.saveEntries).not.toHaveBeenCalled();
     expect(new Date(outcome.timerStartTime).getHours()).toBe(10);
+  });
+
+  it('usa la descripción indicada en la primera mitad persistida', async () => {
+    const outcome = await service.splitRunningTimer(timerEntry, '10:00', 'Foco hasta el corte');
+
+    expect(outcome.ok).toBe(true);
+    if (!outcome.ok) return;
+    expect(outcome.first.description).toBe('Foco hasta el corte');
   });
 
   it('dos divisiones seguidas del mismo ancla no reutilizan el id', async () => {
