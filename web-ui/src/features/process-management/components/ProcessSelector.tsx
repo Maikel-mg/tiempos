@@ -10,6 +10,10 @@ import type { ProjectTreeDisciplina, ProjectTreeFase, ProjectTreeProceso } from 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loader2, AlertCircle, X } from 'lucide-react';
 import type { Project } from '@/features/projects/types';
+import {
+  SHORTCUT_PRIORITY,
+  registerShortcut,
+} from '@/lib/keyboard/shortcutDispatcher';
 
 export interface ProcessSelectorProps {
   open: boolean;
@@ -163,71 +167,74 @@ export function ProcessSelector({ open, onOpenChange, onSelect, onCreateNew, usu
       }
     }, [selectedProject, onSelect]);
 
-// Keyboard navigation handler
-   useEffect(() => {
-     const handleKeyDown = (e: KeyboardEvent) => {
-       if (!open) return;
-       
-       // Handle Escape in input fields
-       if (e.target instanceof HTMLInputElement) {
-         if (e.key === 'Escape') {
-           e.preventDefault();
-           e.stopPropagation();
-           
-           // Get the input value
-           const inputValue = (e.target as HTMLInputElement).value;
-           
-           if (inputValue) {
-             // Has value - ask for confirmation before clearing
-             if (window.confirm('¿Limpiar valor?')) {
-               // Clear the appropriate search state based on input id
-               if (e.target.id === 'project-search') {
-                 setProjectSearchTerm('');
-               } else if (e.target.id === 'process-search') {
-                 setProcessSearchTerm('');
-               }
-             }
-           } else {
-             // Empty input - close dialog
-             handleEscape();
-           }
-         }
-         return;
-       }
+  // Keyboard navigation handler, registered in the central dispatcher.
+  // The dialog scope wins over the table underneath it.
+  useEffect(() => {
+    if (!open) return;
 
-       if (e.key === 'ArrowDown') {
-         e.preventDefault();
-         if (view === 'projects') {
-           setProjectSelectedIndex(prev => Math.min(prev + 1, Math.max(0, filteredProjects.length - 1)));
-         } else {
-           setProcessSelectedIndex(prev => Math.min(prev + 1, Math.max(0, filteredProcesses.length - 1)));
-         }
-       } else if (e.key === 'ArrowUp') {
-         e.preventDefault();
-         if (view === 'projects') {
-           setProjectSelectedIndex(prev => Math.max(prev - 1, 0));
-         } else {
-           setProcessSelectedIndex(prev => Math.max(prev - 1, 0));
-         }
-       } else if (e.key === 'Enter') {
-         e.preventDefault();
-         if (view === 'projects' && filteredProjects.length > 0) {
-           const project = filteredProjects[projectSelectedIndex];
-           setSelectedProject(project);
-           setView('processes');
-           setProcessSelectedIndex(0);
-         } else if (view === 'processes' && filteredProcesses.length > 0) {
-           const proc = filteredProcesses[processSelectedIndex];
-           handleProcessSelect(proc);
-         }
-       } else if (e.key === 'Escape') {
-         handleEscape();
-       }
-     };
+    const isSearchInput = (event: KeyboardEvent) =>
+      event.target instanceof HTMLInputElement;
 
-     window.addEventListener('keydown', handleKeyDown);
-     return () => window.removeEventListener('keydown', handleKeyDown);
-   }, [open, view, filteredProjects, filteredProcesses, projectSelectedIndex, processSelectedIndex, handleProcessSelect, handleEscape]);
+    return registerShortcut({
+      id: 'process-selector',
+      priority: SHORTCUT_PRIORITY.dialog,
+      match: (event) => {
+        if (isSearchInput(event)) return event.key === 'Escape';
+        return (
+          event.key === 'ArrowDown' ||
+          event.key === 'ArrowUp' ||
+          event.key === 'Enter' ||
+          event.key === 'Escape'
+        );
+      },
+      run: (event) => {
+        // Escape inside a search input clears it (with confirmation) or closes
+        // the dialog when the input is empty.
+        if (isSearchInput(event)) {
+          const input = event.target as HTMLInputElement;
+
+          if (input.value) {
+            if (window.confirm('¿Limpiar valor?')) {
+              if (input.id === 'project-search') {
+                setProjectSearchTerm('');
+              } else if (input.id === 'process-search') {
+                setProcessSearchTerm('');
+              }
+            }
+          } else {
+            handleEscape();
+          }
+          return;
+        }
+
+        if (event.key === 'ArrowDown') {
+          if (view === 'projects') {
+            setProjectSelectedIndex(prev => Math.min(prev + 1, Math.max(0, filteredProjects.length - 1)));
+          } else {
+            setProcessSelectedIndex(prev => Math.min(prev + 1, Math.max(0, filteredProcesses.length - 1)));
+          }
+        } else if (event.key === 'ArrowUp') {
+          if (view === 'projects') {
+            setProjectSelectedIndex(prev => Math.max(prev - 1, 0));
+          } else {
+            setProcessSelectedIndex(prev => Math.max(prev - 1, 0));
+          }
+        } else if (event.key === 'Enter') {
+          if (view === 'projects' && filteredProjects.length > 0) {
+            const project = filteredProjects[projectSelectedIndex];
+            setSelectedProject(project);
+            setView('processes');
+            setProcessSelectedIndex(0);
+          } else if (view === 'processes' && filteredProcesses.length > 0) {
+            const proc = filteredProcesses[processSelectedIndex];
+            handleProcessSelect(proc);
+          }
+        } else if (event.key === 'Escape') {
+          handleEscape();
+        }
+      },
+    });
+  }, [open, view, filteredProjects, filteredProcesses, projectSelectedIndex, processSelectedIndex, handleProcessSelect, handleEscape]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

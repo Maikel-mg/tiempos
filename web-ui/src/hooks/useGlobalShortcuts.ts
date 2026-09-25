@@ -4,9 +4,23 @@ import { useCommandPalette } from '@/components/CommandPaletteContext';
 import { useTheme } from '@/hooks/useTheme';
 import { useTimerToggle } from '@/hooks/useTimerToggle';
 import { isEditableElement } from '@/lib/keyboard-utils';
+import {
+  SHORTCUT_PRIORITY,
+  altKey,
+  commandKey,
+  registerShortcut,
+} from '@/lib/keyboard/shortcutDispatcher';
+
+const navigationShortcuts = [
+  { key: 'd', url: '/dashboard' },
+  { key: 't', url: '/time-tracker' },
+  { key: 'p', url: '/projects' },
+  { key: 'm', url: '/my-tasks' },
+  { key: ',', url: '/settings' },
+];
 
 /**
- * Global keyboard shortcuts hook.
+ * Global keyboard shortcuts, registered in the central dispatcher.
  * - Cmd/Ctrl+K: Always opens command palette (works even in inputs)
  * - Cmd/Ctrl+Shift+T: Toggle theme (works even in inputs)
  * - Cmd/Ctrl+Shift+S: Start/stop the timer with the last used task (works even in inputs)
@@ -19,60 +33,45 @@ export function useGlobalShortcuts() {
   const { toggle: toggleTimerToggle } = useTimerToggle();
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const isTyping = isEditableElement(document.activeElement);
-      
-      // Cmd/Ctrl+K: Always open command palette
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        open();
-        return;
-      }
+    const unregister = [
+      // Cmd/Ctrl+K: always open the command palette.
+      registerShortcut({
+        id: 'global.command-palette',
+        priority: SHORTCUT_PRIORITY.global,
+        match: commandKey('k'),
+        run: () => open(),
+      }),
 
-      // Ctrl+Shift+T: Toggle theme (always works, even in inputs)
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 't') {
-        e.preventDefault();
-        toggleTheme();
-        return;
-      }
+      // Cmd/Ctrl+Shift+T: toggle theme.
+      registerShortcut({
+        id: 'global.toggle-theme',
+        priority: SHORTCUT_PRIORITY.global,
+        match: commandKey('t', { shift: true }),
+        run: () => toggleTheme(),
+      }),
 
-      // Cmd/Ctrl+Shift+S: Toggle the timer with the last used task (always works)
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 's') {
-        e.preventDefault();
-        void toggleTimerToggle();
-        return;
-      }
-      
-      // Alt+letter shortcuts: Only if not typing
-      if (isTyping) return;
-      
-      if (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
-        switch (e.key.toLowerCase()) {
-          case 'd':
-            e.preventDefault();
-            navigate('/dashboard');
-            break;
-          case 't':
-            e.preventDefault();
-            navigate('/time-tracker');
-            break;
-          case 'p':
-            e.preventDefault();
-            navigate('/projects');
-            break;
-          case 'm':
-            e.preventDefault();
-            navigate('/my-tasks');
-            break;
-          case ',':
-            e.preventDefault();
-            navigate('/settings');
-            break;
-        }
-      }
-    };
+      // Cmd/Ctrl+Shift+S: toggle the timer with the last used task.
+      registerShortcut({
+        id: 'global.toggle-timer',
+        priority: SHORTCUT_PRIORITY.global,
+        match: commandKey('s', { shift: true }),
+        run: () => {
+          void toggleTimerToggle();
+        },
+      }),
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+      // Alt+letter: navigation, only outside inputs.
+      ...navigationShortcuts.map(({ key, url }) =>
+        registerShortcut({
+          id: `global.nav-${url}`,
+          priority: SHORTCUT_PRIORITY.global,
+          when: () => !isEditableElement(document.activeElement),
+          match: altKey(key),
+          run: () => navigate(url),
+        })
+      ),
+    ];
+
+    return () => unregister.forEach((off) => off());
   }, [navigate, open, toggleTheme, toggleTimerToggle]);
 }

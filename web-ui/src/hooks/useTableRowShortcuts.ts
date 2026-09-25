@@ -1,5 +1,11 @@
 import { useEffect, useRef } from 'react';
 import { shouldInterceptTableKeys } from '@/lib/keyboard-utils';
+import {
+  SHORTCUT_PRIORITY,
+  bareKey,
+  normalizeKey,
+  registerShortcut,
+} from '@/lib/keyboard/shortcutDispatcher';
 
 interface UseTableRowShortcutsOptions<T> {
   activeItem: T | null;
@@ -11,6 +17,18 @@ interface UseTableRowShortcutsOptions<T> {
   isEnabled?: boolean | (() => boolean);
 }
 
+/**
+ * Bare-letter shortcuts for the active table row, registered in the central
+ * dispatcher:
+ * - Enter / E → edit
+ * - D → duplicate
+ * - R → play
+ * - S → sync
+ * - Delete → delete
+ *
+ * Only fires for bare keys (no Ctrl/Cmd/Alt): combinations belong to the global
+ * shortcuts, so `Alt+D` navigates instead of duplicating the row.
+ */
 export function useTableRowShortcuts<T>({
   activeItem,
   onEdit,
@@ -42,56 +60,47 @@ export function useTableRowShortcuts<T>({
   isEnabledRef.current = isEnabled;
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const enabled = typeof isEnabledRef.current === 'function'
-        ? isEnabledRef.current()
-        : isEnabledRef.current;
-      if (!enabled) return;
+    return registerShortcut({
+      id: 'table.row-shortcuts',
+      priority: SHORTCUT_PRIORITY.table,
+      when: () => {
+        const enabled =
+          typeof isEnabledRef.current === 'function'
+            ? isEnabledRef.current()
+            : isEnabledRef.current;
+        return enabled && activeItemRef.current != null && shouldInterceptTableKeys();
+      },
+      match: bareKey('enter', 'e', 'd', 'r', 's', 'delete'),
+      run: (e) => {
+        const item = activeItemRef.current;
+        if (!item) return;
 
-      const item = activeItemRef.current;
-      if (!item) return;
-      if (!shouldInterceptTableKeys()) return;
+        const key = normalizeKey(e);
 
-      // Modifier combinations belong to global shortcuts (Alt+letter navigation,
-      // Ctrl/Cmd+... actions). Row shortcuts are bare letters only, so bail out
-      // when any modifier is held — otherwise Alt+D would also match 'd' here
-      // and duplicate the active entry, and Ctrl+Shift+S would also sync it.
-      if (e.altKey || e.ctrlKey || e.metaKey) return;
+        if (key === 'enter' || key === 'e') {
+          onEditRef.current(item);
+          return;
+        }
 
-      const key = e.key;
+        if (key === 'd') {
+          onDuplicateRef.current(item);
+          return;
+        }
 
-      if (key === 'Enter' || key === 'e' || key === 'E') {
-        e.preventDefault();
-        onEditRef.current(item);
-        return;
-      }
+        if (key === 'r') {
+          onPlayRef.current(item);
+          return;
+        }
 
-      if (key === 'd' || key === 'D') {
-        e.preventDefault();
-        onDuplicateRef.current(item);
-        return;
-      }
+        if (key === 's') {
+          onSyncRef.current(item);
+          return;
+        }
 
-      if (key === 'r' || key === 'R') {
-        e.preventDefault();
-        onPlayRef.current(item);
-        return;
-      }
-
-      if (key === 's' || key === 'S') {
-        e.preventDefault();
-        onSyncRef.current(item);
-        return;
-      }
-
-      if (key === 'Delete') {
-        e.preventDefault();
-        onDeleteRef.current(item);
-        return;
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+        if (key === 'delete') {
+          onDeleteRef.current(item);
+        }
+      },
+    });
   }, []);
 }

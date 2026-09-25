@@ -1,5 +1,23 @@
 import { useState, useEffect, useCallback, useRef, type RefObject, type RefCallback } from 'react';
 import { shouldInterceptTableKeys } from '@/lib/keyboard-utils';
+import {
+  SHORTCUT_PRIORITY,
+  registerShortcut,
+} from '@/lib/keyboard/shortcutDispatcher';
+
+/** Keys owned by table navigation, handled when no modifier is held. */
+const TABLE_NAVIGATION_KEYS = new Set([
+  'ArrowDown',
+  'ArrowUp',
+  'Home',
+  'End',
+  'Enter',
+  'Escape',
+  'PageUp',
+  'PageDown',
+  'ArrowRight',
+  'ArrowLeft',
+]);
 
 /**
  * Options for the `useTableKeyboardNavigation` hook.
@@ -197,132 +215,129 @@ export function useTableKeyboardNavigation<TData>({
   );
 
   /**
-   * Window keydown handler.
+   * Table navigation shortcuts, registered in the central dispatcher.
+   *
+   * Only bare keys are intercepted (no Ctrl/Cmd/Alt), so Alt+ArrowLeft/Right
+   * stay the browser's back/forward. `Enter` is only claimed when an
+   * `onActivate` handler exists, so pages that delegate Enter to a row shortcut
+   * (e.g. edit) are not swallowed here.
    */
   useEffect(() => {
     if (!isEnabled) return;
 
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!shouldInterceptTableKeys()) return;
+    return registerShortcut({
+      id: 'table.navigation',
+      priority: SHORTCUT_PRIORITY.table,
+      when: () => shouldInterceptTableKeys(),
+      match: (e) => {
+        if (e.altKey || e.ctrlKey || e.metaKey) return false;
+        if (!TABLE_NAVIGATION_KEYS.has(e.key)) return false;
+        if (e.key === 'Enter' && !onActivateRef.current) return false;
+        return true;
+      },
+      run: (e) => {
+        const total = itemsRef.current.length;
+        if (total === 0) return;
 
-      // Never swallow modifier combinations: Alt+ArrowLeft/Right are the
-      // browser's back/forward, and Ctrl/Cmd+Arrow belongs to the OS/browser.
-      if (e.altKey || e.ctrlKey || e.metaKey) return;
+        const current = activeIndexRef.current;
 
-      const total = itemsRef.current.length;
-      if (total === 0) return;
+        switch (e.key) {
+          case 'ArrowDown': {
+            if (current === -1) {
+              // Focus first non-disabled row
+              const first = findNextEnabled(-1, 1);
+              if (first !== -1) {
+                setActiveIndex(first);
+                scrollIntoView(first);
+              }
+            } else {
+              const next = findNextEnabled(current, 1);
+              if (next !== -1 && next !== current) {
+                setActiveIndex(next);
+                scrollIntoView(next);
+              }
+            }
+            break;
+          }
 
-      const current = activeIndexRef.current;
+          case 'ArrowUp': {
+            if (current === -1) {
+              // Focus last non-disabled row
+              const last = findNextEnabled(total, -1);
+              if (last !== -1) {
+                setActiveIndex(last);
+                scrollIntoView(last);
+              }
+            } else {
+              const prev = findNextEnabled(current, -1);
+              if (prev !== -1 && prev !== current) {
+                setActiveIndex(prev);
+                scrollIntoView(prev);
+              }
+            }
+            break;
+          }
 
-      switch (e.key) {
-        case 'ArrowDown': {
-          e.preventDefault();
-          if (current === -1) {
-            // Focus first non-disabled row
+          case 'Home': {
             const first = findNextEnabled(-1, 1);
             if (first !== -1) {
               setActiveIndex(first);
               scrollIntoView(first);
             }
-          } else {
-            const next = findNextEnabled(current, 1);
-            if (next !== -1 && next !== current) {
-              setActiveIndex(next);
-              scrollIntoView(next);
-            }
+            break;
           }
-          break;
-        }
 
-        case 'ArrowUp': {
-          e.preventDefault();
-          if (current === -1) {
-            // Focus last non-disabled row
+          case 'End': {
             const last = findNextEnabled(total, -1);
             if (last !== -1) {
               setActiveIndex(last);
               scrollIntoView(last);
             }
-          } else {
-            const prev = findNextEnabled(current, -1);
-            if (prev !== -1 && prev !== current) {
-              setActiveIndex(prev);
-              scrollIntoView(prev);
+            break;
+          }
+
+          case 'Enter': {
+            if (current >= 0 && current < total) {
+              onActivateRef.current?.(itemsRef.current[current], current);
             }
+            break;
           }
-          break;
-        }
 
-        case 'Home': {
-          e.preventDefault();
-          const first = findNextEnabled(-1, 1);
-          if (first !== -1) {
-            setActiveIndex(first);
-            scrollIntoView(first);
+          case 'Escape': {
+            setActiveIndex(-1);
+            onEscapeRef.current?.();
+            break;
           }
-          break;
-        }
 
-        case 'End': {
-          e.preventDefault();
-          const last = findNextEnabled(total, -1);
-          if (last !== -1) {
-            setActiveIndex(last);
-            scrollIntoView(last);
+          case 'PageUp': {
+            onPageUpRef.current?.();
+            break;
           }
-          break;
-        }
 
-        case 'Enter': {
-          if (current >= 0 && current < total) {
-            e.preventDefault();
-            onActivateRef.current?.(itemsRef.current[current], current);
+          case 'PageDown': {
+            onPageDownRef.current?.();
+            break;
           }
-          break;
-        }
 
-        case 'Escape': {
-          e.preventDefault();
-          setActiveIndex(-1);
-          onEscapeRef.current?.();
-          break;
-        }
-
-        case 'PageUp': {
-          e.preventDefault();
-          onPageUpRef.current?.();
-          break;
-        }
-
-        case 'PageDown': {
-          e.preventDefault();
-          onPageDownRef.current?.();
-          break;
-        }
-
-        case 'ArrowRight': {
-          if (current >= 0 && current < total) {
-            e.preventDefault();
-            onExpandRef.current?.(current);
+          case 'ArrowRight': {
+            if (current >= 0 && current < total) {
+              onExpandRef.current?.(current);
+            }
+            break;
           }
-          break;
-        }
 
-        case 'ArrowLeft': {
-          if (current >= 0 && current < total) {
-            e.preventDefault();
-            onCollapseRef.current?.(current);
+          case 'ArrowLeft': {
+            if (current >= 0 && current < total) {
+              onCollapseRef.current?.(current);
+            }
+            break;
           }
-          break;
+
+          default:
+            break;
         }
-
-        default:
-          break;
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+      },
+    });
   }, [isEnabled, findNextEnabled, scrollIntoView]);
 
   const activeRowId =
