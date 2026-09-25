@@ -235,6 +235,10 @@ export function TimeTrackingPage() {
   /**
    * El timer en curso: la fecha y los horarios que se ofrecen son los reales, no
    * los que muestra la fila virtual (que enseña el reloj destripado a la hora).
+   *
+   * Depende de `elapsed` a propósito: `timerState` conserva su identidad mientras
+   * el timer corre, así que sin esa dependencia la hora de fin se congelaría en el
+   * instante de arranque y la división se ofrecería como no disponible.
    */
   const liveTimerEntry = useMemo<TimeEntry | null>(() => {
     const state = timerHook.timerState;
@@ -258,7 +262,7 @@ export function TimeTrackingPage() {
       updatedAt: state.startTime,
       synced: false,
     };
-  }, [timerHook.isRunning, timerHook.timerState]);
+  }, [timerHook.isRunning, timerHook.timerState, timerHook.elapsed]);
 
   /**
    * Fecha de hoy mientras la página está montada. Se refresca al volver a la
