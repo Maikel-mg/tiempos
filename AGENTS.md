@@ -16,19 +16,23 @@ Importador de tiempos: herramienta con temporizador interno para registrar tiemp
 ## Estructura
 
 ```
-server.ts          Backend Express (endpoints: /api/test-connection, /api/execute-sql, /api/projects, /api/processes, /api/sync-time-entries, /api/execute-time-entries)
+server.ts          Backend Express. Endpoints: ver `server.ts` (fuente de verdad)
 src/
-  domain/models/   Modelos de dominio (vacío actualmente)
-  application/     Lógica de aplicación (vacío actualmente)
-web-ui/            Frontend React (temporizador interno, dashboard, proyectos, sincronización con SQL Server)
-  src/components/  Componentes UI
-  src/hooks/       Custom hooks
-  src/lib/         Utilidades
-  src/pages/       Páginas
-  src/styles/      Estilos
-  src/features/    Features organizadas por dominio (time-tracker, dashboard, projects, process-management)
-  src/lib/api/     ApiClient centralizado (axios wrapper)
+  application/     Lógica de aplicación: sp-builder, entry-classifier, sql-executor
+  domain/          Dominio puro: date-parser, db-config, tree-transformer, year-month-pairs
+  shared/          Utilidades compartidas: date-helpers
+web-ui/            Frontend React (temporizador interno, dashboard, proyectos, sincronización SQL)
+  src/features/    Features por dominio: time-tracker, dashboard, projects, process-management,
+                   proposal-ui, db-connection, sync-validator
+  src/pages/       Páginas de composición: Home, Settings, Projects, ProjectDetail
+  src/components/  UI: components/ui (shadcn) y components/shared (compartidos)
+  src/hooks/       Hooks transversales (timer, atajos de teclado, tema)
+  src/lib/         Utilidades: api/ (ApiClient), storage/, config-storage/, keyboard/, format, notifications
+  src/domain/      Dominio del frontend: proposals/
+  src/config/      Stores de configuración
 ```
+
+**Para ir de un concepto (timer, split, balance, atajos, sync...) al archivo concreto, ver [`docs/MAP.md`](./docs/MAP.md).**
 
 ## Comandos
 
@@ -49,7 +53,7 @@ web-ui/            Frontend React (temporizador interno, dashboard, proyectos, s
 
 - TypeScript estricto (`strict: true`)
 - Backend usa `tsx` para desarrollo, compila a `dist/` para producción
-- **Ver [WEB_ARCHITECTURE.md](./WEB_ARCHITECTURE.md) para estándares de desarrollo frontend
+- **Ver [WEB_ARCHITECTURE.md](./WEB_ARCHITECTURE.md) para estándares de desarrollo frontend**
 
 ### SQL Server — Fechas y lenguaje de sesión (CRÍTICO)
 
@@ -68,7 +72,23 @@ SET DATEFORMAT dmy;
 
 **Archivos afectados:**
 - `server.ts` — configuraciones de conexión (se mantiene `language: 'Spanish'` por claridad, pero no es suficiente)
-- `web-ui/src/lib/sql-generator/index.ts` — todo SQL generado debe incluir `SET LANGUAGE Spanish;`
+- `src/application/sp-builder.ts` — todo SQL generado debe incluir `SET LANGUAGE Spanish;`
+- `src/application/sql-executor.ts` — ejecución de los batches contra SQL Server
+
+## Documentación
+
+| Documento | Contenido |
+|-----------|-----------|
+| `docs/MAP.md` | Índice concepto → archivo para navegar el código |
+| `CONTEXT.md` | Glosario de dominio: términos canónicos y los que hay que evitar |
+| `WEB_ARCHITECTURE.md` | Estándares de frontend: estructura, ApiClient, React Query, errores |
+| `docs/adr/` | Decisiones de arquitectura (ADR numerados) |
+| `docs/PRD-TimeTracking.md` | Requisitos del sistema de registro de tiempos |
+| `docs/prd/` | PRDs de features concretas |
+| `docs/TECH-DESIGN-TimeTracker.md` | Diseño técnico del tracker (abr 2026) |
+| `DESIGN.md` | Tokens y sistema visual (Linear). No es arquitectura |
+| `plans/` | Planes de implementación (skill improve) |
+| `openspec/changes/` | Cambios del flujo SDD/OpenSpec (archivados) |
 
 ## Agent skills
 

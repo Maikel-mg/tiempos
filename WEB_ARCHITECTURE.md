@@ -21,27 +21,35 @@ Documento de referencia para el desarrollo de nuevas features en la capa fronten
 
 ## Estructura de proyecto
 
+Estructura real del frontend. No toda feature usa todas las carpetas; solo las que necesita.
+
 ```
 src/
   lib/
     api/client.ts          # ApiClient centralizado (axios wrapper)
-    types.ts              # Tipos globales compartidos
-    sql-generator/        # Generador de SQL
-    task-mapping-storage.ts
-    utils.ts
+    storage/               # Estrategia de almacenamiento (IndexedDB)
+    config-storage/        # ConfigStore (dbConfig, wizardConfig)
+    keyboard/              # Despachador de atajos
+    format.ts, utils.ts    # Utilidades
   features/               # Features organizadas por dominio
     [feature-name]/
-      components/         # Componentes UI específicos de la feature
-      hooks/              # Hooks de lógica de negocio
-      queries/            # Definición de queries (React Query)
-      mutations/          # Definición de mutations (React Query)
-      ports.ts            # Interfaces (contratos)
-      adapters.ts         # Implementaciones concretas
-      index.ts            # Export público
-  components/ui/          # Componentes shadcn/ui genéricos
-  pages/                 # Páginas (composición de features)
-  styles/                 # CSS global y variables Tailwind
+      components/          # Componentes UI específicos de la feature
+      hooks/               # Hooks de lógica de negocio
+      services/            # Lógica de negocio (pura, sin React)
+      lib/                 # Helpers puros de la feature
+      mutations/           # Mutations de React Query (solo si usa API)
+      repositories/        # Acceso a datos (ej: caché de procesos)
+      types.ts / types/    # Tipos de la feature
+      index.ts             # Export público
+  components/ui/           # Componentes shadcn/ui genéricos
+  components/shared/       # Componentes compartidos entre features
+  pages/                   # Páginas (composición de features)
+  styles/                  # CSS global y variables Tailwind
 ```
+
+**Patrón objetivo (aplicar donde aporte):** `queries/` y `mutations/` para React Query;
+`ports.ts` + `adapters.ts` para aislar lógica que no necesita red. Hoy solo algunas features
+lo usan (`db-connection`, `process-management`); no es obligatorio en todas.
 
 ---
 
@@ -227,8 +235,6 @@ import { AlertCircle, CheckCircle, AlertTriangle } from 'lucide-react';
 ```
 
 ### Toast con Sonner (notificaciones transitorias)
-
-Instalar: `npm install sonner`
 
 Usar para feedback de acciones que no requieren interacción:
 
