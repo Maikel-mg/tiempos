@@ -93,7 +93,6 @@ describe('TimeEntryRow edit button', () => {
     renderRow(makeEntry({ synced: true }));
 
     // No delete button visible — synced rows hide actions
-    const buttons = screen.getAllByRole('button');
     // synced row only has disabled edit button, no delete
     const deleteBtn = screen.queryByRole('button', { name: /trash/i });
     expect(deleteBtn).not.toBeInTheDocument();

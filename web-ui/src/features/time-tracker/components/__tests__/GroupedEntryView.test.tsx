@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { GroupedEntryView } from '../GroupedEntryView';
@@ -52,6 +52,14 @@ const ALL_ENTRIES = [...WEEK24_ENTRIES, ...WEEK23_ENTRIES];
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // GroupedEntryView derives the "current week" (expanded by default) from the
+  // system clock. Freeze only Date (not timers, so userEvent keeps working)
+  // inside week 24 (Jun 8-14, 2026) to keep the fixtures deterministic.
+  vi.setSystemTime(new Date('2026-06-09T12:00:00'));
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe('GroupedEntryView', () => {
@@ -410,7 +418,6 @@ describe('GroupedEntryView', () => {
       );
 
       // Find all circle buttons (selection checkboxes)
-      const entryRows = screen.getAllByText(/Task \d/);
       // Click the checkbox button next to Task 1
       const checkboxButtons = document.querySelectorAll('button.rounded-md.hover\\:bg-accent');
       await user.click(checkboxButtons[0]);
@@ -459,7 +466,9 @@ describe('GroupedEntryView', () => {
       );
 
       const permisoBadges = screen.getAllByText('Permiso');
-      expect(permisoBadges.length).toBe(1);
+      // One aggregate badge in the day header (has recoverable entries) plus
+      // one on the recoverable entry itself. The non-recoverable entry has none.
+      expect(permisoBadges.length).toBe(2);
     });
 
     it('applies amber background to recoverable entries', () => {

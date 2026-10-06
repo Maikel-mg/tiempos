@@ -6,7 +6,6 @@ import { TimeTrackingPage } from '../TimeTrackingPage';
 import { useTimer } from '../../hooks/useTimer';
 import { useTimeEntries } from '../../hooks/useTimeEntries';
 import { detectCrossing } from '../../lib/timerCrossingDetector';
-import { toast } from 'sonner';
 import type { TimeEntry } from '../../types';
 
 Element.prototype.hasPointerCapture = vi.fn(() => false);
@@ -33,38 +32,6 @@ function renderWithProviders(ui: React.ReactElement) {
   return render(
     <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
   );
-}
-
-function toLocalDateString(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
-function makeEntry(id: string, dateOverride?: string): TimeEntry {
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const dayOfWeek = today.getDay();
-  const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-  const monday = new Date(today);
-  monday.setDate(today.getDate() - diffToMonday);
-  const entryDate = dateOverride || toLocalDateString(monday);
-
-  return {
-    id,
-    taskId: 100,
-    taskName: `Task ${id}`,
-    proceso: { proceso: 100, nombre: 'Desarrollo' },
-    date: entryDate,
-    startTime: '09:00',
-    endTime: '10:00',
-    duration: 3600,
-    description: `Description ${id}`,
-    createdAt: `${entryDate}T09:00:00Z`,
-    updatedAt: `${entryDate}T09:00:00Z`,
-    synced: false,
-  };
 }
 
 function setupTimerRunning(elapsed = 2557) {

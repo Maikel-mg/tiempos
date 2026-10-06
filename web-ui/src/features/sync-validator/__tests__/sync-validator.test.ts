@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { validateSync } from '../index';
-import type { SyncValidationRequest, SyncValidationResult } from '../types';
+import type { SyncValidationRequest } from '../types';
 import type { TimeEntry } from '@/lib/types';
 
 vi.mock('@/lib/api/client', () => ({

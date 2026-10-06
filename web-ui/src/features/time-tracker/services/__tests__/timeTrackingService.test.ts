@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TimeTrackingService } from '../timeTrackingService';
 import type { StorageStrategy } from '@/lib/storage/StorageStrategy';
-import type { TimeEntry, TimerState } from '../types';
+import type { TimeEntry, TimerState } from '../../types';
 
 function createMockStorage(): StorageStrategy {
   return {
@@ -41,10 +41,13 @@ describe('TimeTrackingService.stopTimer', () => {
     const result = await service.stopTimer({ persist: false });
 
     expect(result).not.toBeNull();
-    expect(result!.taskId).toBe(42);
-    expect(result!.taskName).toBe('Test Task');
-    expect(result!.start).toBeInstanceOf(Date);
-    expect(result!.end).toBeInstanceOf(Date);
+    if (!result || !('start' in result)) {
+      throw new Error('Expected stopTimer to return a StopTimerResult');
+    }
+    expect(result.taskId).toBe(42);
+    expect(result.taskName).toBe('Test Task');
+    expect(result.start).toBeInstanceOf(Date);
+    expect(result.end).toBeInstanceOf(Date);
     expect(storage.saveEntry).not.toHaveBeenCalled();
     expect(storage.clearTimerState).toHaveBeenCalled();
   });
@@ -110,6 +113,7 @@ describe('TimeTrackingService.updateEntry', () => {
       id: '1',
       taskId: 1,
       taskName: 'Test',
+      proceso: { proceso: 1, nombre: 'Test' },
       date: '2025-06-11',
       startTime: '09:00',
       endTime: '10:00',

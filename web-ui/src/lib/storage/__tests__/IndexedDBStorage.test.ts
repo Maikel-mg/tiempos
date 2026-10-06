@@ -33,14 +33,6 @@ async function seedV1Data(entries: Array<{ id: string; taskId: string | number; 
   v1.close();
 }
 
-/** Import migrateToV2 from the module — but we'll call it inside our own Dexie upgrade handlers. */
-async function importMigrateToV2() {
-  // We need to call migrateToV2 inside a Dexie upgrade callback.
-  // Since it's now exported, we can import it. But to avoid the singleton side-effect
-  // of the module importing db, we define our own migration inline using the same logic.
-  return (tx: Transaction) => migrateToV2Logic(tx);
-}
-
 /** Inline copy of migrateToV2 logic to avoid importing the module singleton. */
 async function migrateToV2Logic(tx: Transaction) {
   const table = tx.table<{ id: string; taskId: string | number; taskName: string; proceso?: { proceso: number; nombre: string } }, string>('timeEntries');

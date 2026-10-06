@@ -23,7 +23,7 @@ vi.mock('@/config/stores', () => ({
     get: () => ({ usuario: 'MG01', fase: '1', tipoHora: '11' }),
   },
   dbConfig: {
-    get: (...args: unknown[]) => mockDbConfigGet(...args),
+    get: () => mockDbConfigGet(),
     subscribe: vi.fn(() => vi.fn()),
   },
   scheduleConfig: {
@@ -215,8 +215,6 @@ describe('SyncPanel', () => {
     });
 
     it('does not call syncTimeEntries when config is incomplete', async () => {
-      const user = userEvent.setup();
-
       render(
         <MemoryRouter>
           <SyncPanel

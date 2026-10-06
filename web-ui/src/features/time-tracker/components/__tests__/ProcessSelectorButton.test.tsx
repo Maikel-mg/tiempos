@@ -17,10 +17,10 @@ vi.mock('../../hooks/useProcessCache', () => ({
 // ── Test data ────────────────────────────────────────────────────────────────
 
 const SEED_PROCESSES: Proceso[] = [
-  { proceso: 101, nombre: 'Desarrollo Frontend', faseNombre: 'Fase Construcción', proyectoNombre: 'Proyecto Alpha', clienteNombre: 'Acme Corp' },
-  { proceso: 102, nombre: 'Desarrollo Backend', faseNombre: 'Fase Construcción', proyectoNombre: 'Proyecto Alpha', clienteNombre: 'Acme Corp' },
-  { proceso: 201, nombre: 'Testing Unitario', faseNombre: 'Fase Testing', proyectoNombre: 'Proyecto Alpha', clienteNombre: 'Acme Corp' },
-  { proceso: 301, nombre: 'Diseño UX', faseNombre: 'Fase Diseño', proyectoNombre: 'Proyecto Beta', clienteNombre: 'Beta Inc' },
+  { proceso: 101, departamentoId: 5, nombre: 'Desarrollo Frontend', faseNombre: 'Fase Construcción', proyectoNombre: 'Proyecto Alpha', clienteNombre: 'Acme Corp' },
+  { proceso: 102, departamentoId: 5, nombre: 'Desarrollo Backend', faseNombre: 'Fase Construcción', proyectoNombre: 'Proyecto Alpha', clienteNombre: 'Acme Corp' },
+  { proceso: 201, departamentoId: 5, nombre: 'Testing Unitario', faseNombre: 'Fase Testing', proyectoNombre: 'Proyecto Alpha', clienteNombre: 'Acme Corp' },
+  { proceso: 301, departamentoId: 5, nombre: 'Diseño UX', faseNombre: 'Fase Diseño', proyectoNombre: 'Proyecto Beta', clienteNombre: 'Beta Inc' },
 ];
 
 function setupMockProcesses(processes: Proceso[] = SEED_PROCESSES, loading = false, error: string | null = null) {

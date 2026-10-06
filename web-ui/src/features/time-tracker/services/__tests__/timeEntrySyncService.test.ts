@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { syncTimeEntries } from '../timeEntrySyncService';
-import type { TimeEntry } from '../types';
+import type { TimeEntry } from '../../types';
 import type { DbConfig } from '@/lib/types';
 
 vi.mock('@/lib/api/client', () => ({

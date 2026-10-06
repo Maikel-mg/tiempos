@@ -114,10 +114,12 @@ describe('useCreateProcess', () => {
     const { result } = renderHook(() => useCreateProcess(), { wrapper });
 
     const mutationPromise = result.current.mutateAsync(validDTO);
+    // Attach the rejection handler synchronously so the rejection is never unhandled
+    const rejectsAssertion = expect(mutationPromise).rejects.toThrow('Error al crear el proceso');
 
     await waitFor(() => expect(result.current.isError).toBe(true));
 
-    await expect(mutationPromise).rejects.toThrow('Error al crear el proceso');
+    await rejectsAssertion;
 
     expect(result.current.error?.message).toBe('Error al crear el proceso');
   });

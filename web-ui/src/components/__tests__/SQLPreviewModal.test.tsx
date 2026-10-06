@@ -170,7 +170,7 @@ describe('SQLPreviewModal', () => {
                 config: { usuario: 'PROJ01', fase: '100' },
             });
 
-            const proyectoInput = screen.getByPlaceholderText('Código de proyecto') as HTMLInputElement;
+            const proyectoInput = screen.getByPlaceholderText('Código de proyecto sin espacios') as HTMLInputElement;
             expect(proyectoInput).toBeDefined();
             expect(proyectoInput.value).toBe('PROJ01');
         });
@@ -294,7 +294,7 @@ describe('SQLPreviewModal', () => {
             });
 
             // Proyecto input should show the usuario code
-            const proyectoInput = screen.getByPlaceholderText('Código de proyecto') as HTMLInputElement;
+            const proyectoInput = screen.getByPlaceholderText('Código de proyecto sin espacios') as HTMLInputElement;
             expect(proyectoInput.value).toBe('USER01');
 
             // Phase input should show '200'
@@ -426,17 +426,18 @@ describe('SQLPreviewModal', () => {
             expect(executeButton).toBeDisabled();
         });
 
-        it('enables execute button when all fields are valid', () => {
+        it('enables execute button when all fields are valid', async () => {
             const taskData = {
                 name: 'Task',
                 fechaInicio: '01/06/2026',
                 fechaFin: '08/06/2026',
+                fechaEstimacion: '01/06/2026',
                 totalMinutes: 120,
             };
             renderModal({ taskData, onExecute: mockOnExecute });
 
             const executeButton = screen.getByRole('button', { name: /Ejecutar en BD/i });
-            expect(executeButton).toBeEnabled();
+            await waitFor(() => expect(executeButton).toBeEnabled());
         });
     });
 
@@ -447,6 +448,7 @@ describe('SQLPreviewModal', () => {
                     name: 'My Task',
                     fechaInicio: '01/06/2026',
                     fechaFin: '08/06/2026',
+                    fechaEstimacion: '01/06/2026',
                     totalMinutes: 120,
                 },
                 config: { usuario: 'MG01', fase: '100' },
@@ -459,6 +461,7 @@ describe('SQLPreviewModal', () => {
             });
 
             const executeButton = screen.getByRole('button', { name: /Ejecutar en BD/i });
+            await waitFor(() => expect(executeButton).toBeEnabled());
             fireEvent.click(executeButton);
 
             expect(mockOnExecute).toHaveBeenCalledWith({
@@ -562,6 +565,7 @@ describe('SQLPreviewModal', () => {
                     name: 'Task',
                     fechaInicio: '01/06/2026',
                     fechaFin: '08/06/2026',
+                    fechaEstimacion: '01/06/2026',
                     totalMinutes: 120,
                 },
                 fases: undefined as any,
@@ -579,7 +583,7 @@ describe('SQLPreviewModal', () => {
             fireEvent.click(screen.getByText('Diseño / Fase 1'));
 
             const executeButton = screen.getByRole('button', { name: /Ejecutar en BD/i });
-            expect(executeButton).toBeEnabled();
+            await waitFor(() => expect(executeButton).toBeEnabled());
         });
     });
 
@@ -601,12 +605,13 @@ describe('SQLPreviewModal', () => {
             expect(executeButton).toBeDisabled();
         });
 
-        it('enables execute button after selecting a fase from dropdown in Select mode', () => {
+        it('enables execute button after selecting a fase from dropdown in Select mode', async () => {
             renderModal({
                 taskData: {
                     name: 'Task',
                     fechaInicio: '01/06/2026',
                     fechaFin: '08/06/2026',
+                    fechaEstimacion: '01/06/2026',
                     totalMinutes: 120,
                 },
                 fases: [{ id: '100', label: 'Fase 100' }],
@@ -620,17 +625,18 @@ describe('SQLPreviewModal', () => {
             fireEvent.click(screen.getByText('Fase 100'));
 
             const executeButton = screen.getByRole('button', { name: /Ejecutar en BD/i });
-            expect(executeButton).toBeEnabled();
+            await waitFor(() => expect(executeButton).toBeEnabled());
         });
     });
 
     describe('Integration with Step2Tasks', () => {
-        it('renders text input mode when fases is an empty array (as used by Step2Tasks)', () => {
+        it('renders text input mode when fases is an empty array (as used by Step2Tasks)', async () => {
             // This is a smoke test that the modal renders without fases and with taskData as used by Step2Tasks
             const taskData = {
                 name: 'Some Task',
                 fechaInicio: '01/06/2026',
                 fechaFin: '08/06/2026',
+                fechaEstimacion: '01/06/2026',
                 totalMinutes: 90,
             };
             renderModal({
@@ -648,7 +654,7 @@ describe('SQLPreviewModal', () => {
             // Execute button should be visible and enabled
             const executeButton = screen.getByRole('button', { name: /Ejecutar en BD/i });
             expect(executeButton).toBeInTheDocument();
-            expect(executeButton).toBeEnabled();
+            await waitFor(() => expect(executeButton).toBeEnabled());
         });
     });
 
@@ -681,7 +687,7 @@ describe('SQLPreviewModal', () => {
     // Should show project info as formatted text: NomCliente / NomProy (Proyecto)
     expect(screen.getByText('Client One / Project Alpha (PA)')).toBeDefined();
     // Should NOT show editable input for proyecto
-    expect(screen.queryByPlaceholderText('Código de proyecto')).toBeNull();
+    expect(screen.queryByPlaceholderText('Código de proyecto sin espacios')).toBeNull();
   });
 
   it('still shows editable input when fases are provided but selectedProject is undefined', () => {
@@ -697,7 +703,7 @@ describe('SQLPreviewModal', () => {
     });
 
     // Should show editable input
-    const proyectoInput = screen.getByPlaceholderText('Código de proyecto') as HTMLInputElement;
+    const proyectoInput = screen.getByPlaceholderText('Código de proyecto sin espacios') as HTMLInputElement;
     expect(proyectoInput).toBeDefined();
     // Should NOT show read-only div
     expect(screen.queryByText(/Client One \/ Project Alpha \(PA\)/)).toBeNull();
@@ -715,7 +721,7 @@ describe('SQLPreviewModal', () => {
       selectedProject: null,
     });
 
-    const proyectoInput = screen.getByPlaceholderText('Código de proyecto') as HTMLInputElement;
+    const proyectoInput = screen.getByPlaceholderText('Código de proyecto sin espacios') as HTMLInputElement;
     expect(proyectoInput).toBeDefined();
   });
 });
@@ -743,7 +749,7 @@ describe('SinFasesSelector Integration', () => {
             // SinFasesSelector should appear instead of the traditional row
             expect(screen.getByTestId('sin-fases-selector')).toBeInTheDocument();
             // The traditional proyecto input should NOT be present
-            expect(screen.queryByPlaceholderText('Código de proyecto')).toBeNull();
+            expect(screen.queryByPlaceholderText('Código de proyecto sin espacios')).toBeNull();
         });
 
         it('SinFasesSelector shows loading state when projects are loading (no fases)', () => {

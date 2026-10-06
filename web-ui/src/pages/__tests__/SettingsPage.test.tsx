@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { toast } from 'sonner';
 import { BrowserRouter } from 'react-router-dom';
@@ -39,6 +39,15 @@ const renderPage = () => {
       </BrowserRouter>
     </QueryClientProvider>
   );
+};
+
+// Scopes queries to a section's card so its Guardar/Restablecer buttons can be
+// targeted unambiguously (the page has several of each).
+const getSection = (heading: RegExp) => {
+  const headingEl = screen.getByText(heading);
+  const card = headingEl.closest('.rounded-xl');
+  if (!card) throw new Error(`Card not found for heading ${heading}`);
+  return within(card as HTMLElement);
 };
 
 // Helpers to get specific inputs by id
@@ -277,9 +286,10 @@ describe('SettingsPage - Wizard Config Section', () => {
       fireEvent.change(getWizardUsuarioInput(), { target: { value: 'MG02' } });
       fireEvent.change(getWizardTipoHoraInput(), { target: { value: '20' } });
 
-      // Click second Guardar button (wizard section)
-      const saveButtons = screen.getAllByRole('button', { name: /guardar/i });
-      fireEvent.click(saveButtons[saveButtons.length - 1]);
+      // Click Guardar in the wizard section
+      fireEvent.click(
+        getSection(/preferencias de importación/i).getByRole('button', { name: /guardar/i })
+      );
 
       const saved = wizardConfig.get();
       expect(saved?.usuario).toBe('MG02');
@@ -299,9 +309,10 @@ describe('SettingsPage - Wizard Config Section', () => {
 
       fireEvent.change(getWizardUsuarioInput(), { target: { value: 'CHANGED' } });
 
-      // Click second Restablecer button (wizard section)
-      const resetButtons = screen.getAllByRole('button', { name: /restablecer/i });
-      fireEvent.click(resetButtons[resetButtons.length - 1]);
+      // Click Restablecer in the wizard section
+      fireEvent.click(
+        getSection(/preferencias de importación/i).getByRole('button', { name: /restablecer/i })
+      );
 
       expect(getWizardUsuarioInput().value).toBe('SAVED');
     });
@@ -311,8 +322,9 @@ describe('SettingsPage - Wizard Config Section', () => {
     it('should show success toast when wizard Guardar is clicked', () => {
       renderPage();
 
-      const saveButtons = screen.getAllByRole('button', { name: /guardar/i });
-      fireEvent.click(saveButtons[saveButtons.length - 1]);
+      fireEvent.click(
+        getSection(/preferencias de importación/i).getByRole('button', { name: /guardar/i })
+      );
 
       expect(toast.success).toHaveBeenCalled();
     });
@@ -372,8 +384,9 @@ describe('SettingsPage - Proposal Config Section', () => {
 
       fireEvent.change(getProposalThresholdInput(), { target: { value: '25' } });
 
-      const saveButtons = screen.getAllByRole('button', { name: /guardar/i });
-      fireEvent.click(saveButtons[saveButtons.length - 1]);
+      fireEvent.click(
+        getSection(/detección de propuestas/i).getByRole('button', { name: /guardar/i })
+      );
 
       const saved = proposalConfig.get();
       expect(saved?.thresholdHours).toBe(25);
@@ -387,8 +400,9 @@ describe('SettingsPage - Proposal Config Section', () => {
 
       fireEvent.change(getProposalThresholdInput(), { target: { value: '50' } });
 
-      const resetButtons = screen.getAllByRole('button', { name: /restablecer/i });
-      fireEvent.click(resetButtons[resetButtons.length - 1]);
+      fireEvent.click(
+        getSection(/detección de propuestas/i).getByRole('button', { name: /restablecer/i })
+      );
 
       expect(getProposalThresholdInput().value).toBe('12');
     });
@@ -416,8 +430,9 @@ describe('SettingsPage - Proposal Config Section', () => {
     it('should show success toast when Guardar is clicked', () => {
       renderPage();
 
-      const saveButtons = screen.getAllByRole('button', { name: /guardar/i });
-      fireEvent.click(saveButtons[saveButtons.length - 1]);
+      fireEvent.click(
+        getSection(/detección de propuestas/i).getByRole('button', { name: /guardar/i })
+      );
 
       expect(toast.success).toHaveBeenCalledWith(
         'Umbral guardado',

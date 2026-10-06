@@ -7,6 +7,7 @@ function makeEntry(overrides: Partial<TimeEntry> = {}): TimeEntry {
     id: '1',
     taskId: 1,
     taskName: 'Test',
+    proceso: { proceso: 1, nombre: 'Test' },
     date: '2026-06-11',
     startTime: '09:00',
     endTime: '10:00',

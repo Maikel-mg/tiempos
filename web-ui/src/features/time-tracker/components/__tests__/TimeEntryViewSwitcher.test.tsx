@@ -117,7 +117,7 @@ describe('TimeEntryViewSwitcher', () => {
     );
 
     // Type in task filter
-    const taskFilter = screen.getByPlaceholderText('Buscar tarea...');
+    const taskFilter = screen.getByPlaceholderText(/tarea o descripci/i);
     await user.type(taskFilter, 'Frontend');
 
     // Should show only frontend entries in table

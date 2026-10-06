@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { TimeTrackingPage } from '../TimeTrackingPage';
 import { useTimer } from '../../hooks/useTimer';
 import { useTimeEntries } from '../../hooks/useTimeEntries';
+import type { TimeEntry } from '../../types';
 
 vi.mock('../../hooks/useTimer');
 vi.mock('../../hooks/useTimeEntries');
@@ -30,7 +31,7 @@ const queryClient = new QueryClient({
 
 const mockMarkSynced = vi.fn().mockResolvedValue(undefined);
 
-function setupMocks(entries: unknown[] = []) {
+function setupMocks(entries: TimeEntry[] = []) {
   vi.mocked(useTimer).mockReturnValue({
     timerState: null,
     isRunning: false,
@@ -39,6 +40,7 @@ function setupMocks(entries: unknown[] = []) {
     stop: vi.fn(),
     cancel: vi.fn(),
     updateStartTime: vi.fn(),
+    updateDescription: vi.fn(),
   });
 
   vi.mocked(useTimeEntries).mockReturnValue({
@@ -47,6 +49,8 @@ function setupMocks(entries: unknown[] = []) {
     createEntry: vi.fn(),
     updateEntry: vi.fn(),
     deleteEntry: vi.fn(),
+    splitEntry: vi.fn(),
+    splitRunningTimer: vi.fn(),
     markSynced: mockMarkSynced,
     refresh: vi.fn(),
     getEntriesByDateRange: vi.fn(),
@@ -60,7 +64,7 @@ function toLocalDateString(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-function makeEntry(id: string, synced = false, syncError?: string) {
+function makeEntry(id: string, synced = false, syncError?: string): TimeEntry {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const dayOfWeek = today.getDay();

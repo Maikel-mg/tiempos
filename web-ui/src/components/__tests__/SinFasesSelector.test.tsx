@@ -173,7 +173,7 @@ describe('SinFasesSelector', () => {
       fireEvent.click(screen.getByText('Client A / Project A (PA)'));
 
       expect(mockOnTaskChange).toHaveBeenCalledWith({
-        usuario: 'PA',
+        proyecto: 'PA',
         fase: '',
       });
     });
@@ -485,7 +485,7 @@ describe('SinFasesSelector', () => {
 
       // First call was for project selection
       expect(mockOnTaskChange).toHaveBeenCalledWith({
-        usuario: 'PA',
+        proyecto: 'PA',
         fase: '',
       });
 

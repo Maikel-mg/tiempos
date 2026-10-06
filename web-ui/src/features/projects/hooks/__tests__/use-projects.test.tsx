@@ -2,6 +2,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { useProjects } from '../use-projects';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
+import { dbConfig } from '@/config/stores';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import React from 'react';
 
@@ -12,6 +13,12 @@ vi.mock('@/lib/api/client', () => ({
   default: {
     post: vi.fn(),
   }
+}));
+
+vi.mock('@/config/stores', () => ({
+  dbConfig: {
+    get: vi.fn(),
+  },
 }));
 
 const queryClient = new QueryClient({
@@ -31,6 +38,7 @@ describe('useProjects', () => {
     vi.clearAllMocks();
     localStorage.clear();
     queryClient.clear();
+    vi.mocked(dbConfig.get).mockReturnValue(null);
   });
 
   it('should fetch projects successfully', async () => {
@@ -40,23 +48,17 @@ describe('useProjects', () => {
       username: 'sa',
       password: 'password123',
     };
-    
-    // Encrypt password as done in DBConnection
-    const encryptedConfig = {
-      ...mockDbConfig,
-      password: btoa(mockDbConfig.password),
-    };
-    
-    localStorage.setItem('db_connection_config', JSON.stringify(encryptedConfig));
+
+    vi.mocked(dbConfig.get).mockReturnValue(mockDbConfig);
 
     const mockProjects = [
-      { 
-        CodCli: '1', 
-        NomCliente: 'Client 1', 
-        NomProy: 'Project 1', 
-        Proyecto: 'P1', 
-        NomDpto: 'D1', 
-        Abierto: true, 
+      {
+        CodCli: '1',
+        NomCliente: 'Client 1',
+        NomProy: 'Project 1',
+        Proyecto: 'P1',
+        NomDpto: 'D1',
+        Abierto: true,
         UsuredRespRev: 'User 1',
         Cliente: 'Client 1',
         IdDpto: 'D1',
@@ -64,9 +66,11 @@ describe('useProjects', () => {
       },
     ];
 
+    // apiClient wraps the server body: { success, data: <serverBody> }, and the
+    // /projects endpoint answers { success, data: Project[] }.
     vi.mocked(apiClient.post).mockResolvedValue({
       success: true,
-      data: mockProjects,
+      data: { success: true, data: mockProjects },
     });
 
     const { result } = renderHook(() => useProjects(), { wrapper });
@@ -83,12 +87,12 @@ describe('useProjects', () => {
   });
 
   it('should handle error when API fails', async () => {
-    localStorage.setItem('db_connection_config', JSON.stringify({
+    vi.mocked(dbConfig.get).mockReturnValue({
       server: 'localhost',
       database: 'test-db',
       username: 'sa',
-      password: btoa('pass')
-    }));
+      password: 'pass',
+    });
 
     vi.mocked(apiClient.post).mockResolvedValue({
       success: false,
@@ -103,6 +107,7 @@ describe('useProjects', () => {
   });
 
   it('should return error if no DB config is found', async () => {
+    // dbConfig.get() returns null (set in beforeEach)
     const { result } = renderHook(() => useProjects(), { wrapper });
 
     await waitFor(() => expect(result.current.isError).toBe(true));
@@ -110,16 +115,16 @@ describe('useProjects', () => {
   });
 
   it('should pass custom params to the API', async () => {
-    localStorage.setItem('db_connection_config', JSON.stringify({
+    vi.mocked(dbConfig.get).mockReturnValue({
       server: 'localhost',
       database: 'test-db',
       username: 'sa',
-      password: btoa('pass')
-    }));
+      password: 'pass',
+    });
 
     vi.mocked(apiClient.post).mockResolvedValue({
       success: true,
-      data: [],
+      data: { success: true, data: [] },
     });
 
     const customParams = {

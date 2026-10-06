@@ -375,7 +375,6 @@ describe('AvailableTasksPage', () => {
     });
 
     it('ArrowDown moves active row highlight to first row', async () => {
-      const user = userEvent.setup();
       vi.mocked(useProcessCache).mockReturnValue({
         processes: mockProcesses,
         loading: false,
