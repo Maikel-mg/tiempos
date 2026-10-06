@@ -1,5 +1,5 @@
-import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
-import { Database, Table, LayoutGrid, Pencil, Trash2, Copy, Play, RefreshCw, Lightbulb, Split } from 'lucide-react';
+import { useCallback } from 'react';
+import { Database, Table, LayoutGrid, Lightbulb } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -7,7 +7,6 @@ import { PeriodSelector } from '@/components/shared/PeriodSelector';
 import { TimeTrackerBar } from '../components/TimeTrackerBar';
 import { TimeEntryEditorDialog } from '../components/TimeEntryEditorDialog';
 import { SplitEntryDialog } from '../components/SplitEntryDialog';
-import { splitAffordance } from '../lib/splitEntry';
 import { TimeEntryViewSwitcher } from '../components/TimeEntryViewSwitcher';
 import { OverlapAlert } from '../components/OverlapAlert';
 import type { OverlapFix } from '../lib/overlaps';
@@ -20,17 +19,15 @@ import { useEntryEditor } from '../hooks/useEntryEditor';
 import { useEntrySync } from '../hooks/useEntrySync';
 import { useSplitFlow } from '../hooks/useSplitFlow';
 import { useProposals } from '../hooks/useProposals';
-import { useCommandActions } from '@/components/CommandActionsContext';
-import { useTableKeyboardNavigation } from '@/hooks/useTableKeyboardNavigation';
-import { useTableRowShortcuts } from '@/hooks/useTableRowShortcuts';
+import { useEntrySelection } from '../hooks/useEntrySelection';
+import { useEntryTableNavigation } from '../hooks/useEntryTableNavigation';
+import { useTimeTrackerCommandActions } from '../hooks/useTimeTrackerCommandActions';
 import { wizardConfig } from '@/config/stores';
 import { TaskProposalModal } from '@/features/proposal-ui/components/TaskProposalModal';
 
 export function TimeTrackingPage() {
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-
   const { entries, createEntry, updateEntry, deleteEntry, splitEntry, splitRunningTimer, markSynced } = useTimeEntries();
-  const timerView = useTimerView({ createEntry });
+
   const {
     timer,
     trackerBarRef,
@@ -40,16 +37,9 @@ export function TimeTrackingPage() {
     throttledElapsed,
     timerSplitDisabledReason,
     handlePlayEntry,
-  } = timerView;
+  } = useTimerView({ createEntry });
 
-  /** Limpia de la selección el Registro eliminado; la selección vive en la página. */
-  const handleEntryDeleted = useCallback((id: string) => {
-    setSelectedIds((current) => {
-      const next = new Set(current);
-      next.delete(id);
-      return next;
-    });
-  }, []);
+  const { selectedIds, setSelectedIds, tableRef, handleEntryDeleted } = useEntrySelection();
 
   const {
     isEditorOpen,
@@ -100,20 +90,11 @@ export function TimeTrackingPage() {
     setSelectedIds,
   });
 
-  const tableRef = useRef<HTMLTableElement>(null);
-
   const { syncPanelOpen, setSyncPanelOpen, pendingEntries, entriesToSync, handleSyncEntry } =
     useEntrySync({ entries, selectedIds, markSynced, onEntriesSynced: handleEntriesSynced });
 
   const { proposalModalOpen, setProposalModalOpen, proposals, handleAcceptProposal } =
     useProposals({ entries, updateEntry });
-
-  const { getRowProps, focusFirst, activeItem } = useTableKeyboardNavigation({
-    containerRef: tableRef,
-    items: filteredByPeriod,
-    getRowId: (entry) => entry.id,
-    isEnabled: activeTab === 'table' && !editingEntry,
-  });
 
   const handleApplyOverlapFix = useCallback(async (fix: OverlapFix) => {
     try {
@@ -125,169 +106,40 @@ export function TimeTrackingPage() {
     }
   }, [updateEntry]);
 
-  useTableRowShortcuts({
-    activeItem,
+  const { getRowProps, activeItem } = useEntryTableNavigation({
+    tableRef,
+    items: filteredByPeriod,
+    activeTab,
+    editingEntry,
+    trackerBarRef,
     onEdit: handleEditEntry,
     onDuplicate: handleDuplicateEntry,
     onPlay: handlePlayEntry,
     onSync: handleSyncEntry,
-    onDelete: (entry) => {
-      if (window.confirm(`¿Eliminar "${entry.taskName}"?`)) {
-        handleDeleteEntry(entry.id);
-      }
-    },
-    isEnabled: () => activeTab === 'table' && !editingEntry && !trackerBarRef.current?.isEditingStartTime,
+    onDelete: handleDeleteEntry,
   });
 
-  // Auto-focus first table row on mount (table view only)
-  useEffect(() => {
-    if (activeTab !== 'table') return;
-    if (filteredByPeriod.length === 0) return;
-    if (document.activeElement && (
-      document.activeElement.tagName === 'INPUT' ||
-      document.activeElement.tagName === 'TEXTAREA' ||
-      document.activeElement.tagName === 'SELECT' ||
-      document.activeElement.getAttribute('contenteditable') === 'true'
-    )) return;
-    if (document.querySelector('[role="dialog"][data-state="open"]')) return;
-    if (document.querySelector('[cmdk-dialog]')) return;
-    focusFirst();
-  }, [activeTab, filteredByPeriod.length, focusFirst]);
-
   // Register command palette actions for this page
-  const commandActions = useMemo(() => [
-    // ── Row-level actions (active row) ────────────────────────────
-    {
-      id: 'row-edit',
-      label: `Editar${activeItem ? `: ${activeItem.taskName}` : ''}`,
-      icon: <Pencil className="h-4 w-4" />,
-      action: () => activeItem && handleEditEntry(activeItem),
-      when: () => !!activeItem,
-      group: 'Registro activo',
-    },
-    {
-      id: 'row-delete',
-      label: `Eliminar${activeItem ? `: ${activeItem.taskName}` : ''}`,
-      icon: <Trash2 className="h-4 w-4" />,
-      action: () => activeItem && handleDeleteEntry(activeItem.id),
-      when: () => !!activeItem,
-      group: 'Registro activo',
-    },
-    {
-      id: 'row-duplicate',
-      label: `Duplicar${activeItem ? `: ${activeItem.taskName}` : ''}`,
-      icon: <Copy className="h-4 w-4" />,
-      action: () => activeItem && handleDuplicateEntry(activeItem),
-      when: () => !!activeItem,
-      group: 'Registro activo',
-    },
-    {
-      id: 'row-split',
-      label: `Dividir${activeItem ? `: ${activeItem.taskName}` : ''}`,
-      icon: <Split className="h-4 w-4" />,
-      action: () => activeItem && handleSplitEntry(activeItem),
-      when: () => {
-        if (!activeItem) return false;
-        const affordance = splitAffordance(activeItem);
-        return affordance.visible && affordance.enabled;
-      },
-      group: 'Registro activo',
-    },
-    {
-      id: 'split-running-timer',
-      label: 'Dividir el timer en curso',
-      icon: <Split className="h-4 w-4" />,
-      action: () => handleSplitTimer(),
-      when: () => !!liveTimerEntry && !timerSplitDisabledReason,
-      group: 'TimeTracker',
-    },
-    {
-      id: 'row-play',
-      label: `Reproducir${activeItem ? `: ${activeItem.taskName}` : ''}`,
-      icon: <Play className="h-4 w-4" />,
-      action: () => activeItem && handlePlayEntry(activeItem),
-      when: () => !!activeItem && !timer.isRunning,
-      group: 'Registro activo',
-    },
-    {
-      id: 'row-sync',
-      label: `Sincronizar${activeItem ? `: ${activeItem.taskName}` : ''}`,
-      icon: <RefreshCw className="h-4 w-4" />,
-      action: () => activeItem && handleSyncEntry(activeItem),
-      when: () => !!activeItem && !activeItem.synced,
-      group: 'Registro activo',
-    },
-    {
-      id: 'start-timer',
-      label: 'Iniciar timer',
-      icon: <span className="flex items-center"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><polygon points="6 3 20 12 6 21 6 3"/></svg></span>,
-      action: () => {
-        // Start timer with the first pending entry or show a message
-        if (pendingEntries.length > 0) {
-          const entry = pendingEntries[0];
-          handlePlayEntry(entry);
-        } else {
-          toast.info('No hay entradas para iniciar');
-        }
-      },
-      when: () => !timer.isRunning,
-      group: 'TimeTracker',
-    },
-    {
-      id: 'stop-timer',
-      label: 'Detener timer',
-      icon: <span className="flex items-center"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><rect x="6" y="6" width="12" height="12" rx="2"/></svg></span>,
-      action: () => {
-        timer.stop({ persist: true }).then((result) => {
-          if (result && 'start' in result) {
-            createEntry({
-              taskId: result.taskId,
-              taskName: result.taskName,
-              date: result.end.toLocaleDateString('sv-SE'),
-              startTime: result.start.toTimeString().slice(0, 5),
-              endTime: result.end.toTimeString().slice(0, 5),
-              description: pendingDescription.current,
-            });
-            toast.success('Timer detenido y guardado');
-          }
-        });
-      },
-      when: () => timer.isRunning,
-      group: 'TimeTracker',
-    },
-    {
-      id: 'sync-entries',
-      label: 'Sincronizar entradas con BD',
-      icon: <Database className="h-4 w-4" />,
-      action: () => setSyncPanelOpen(true),
-      group: 'TimeTracker',
-    },
-    {
-      id: 'manual-entry',
-      label: 'Crear entrada manual',
-      icon: <span className="flex items-center"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>,
-      action: () => openCreate(),
-      group: 'TimeTracker',
-    },
-    {
-      id: 'switch-table',
-      label: 'Cambiar a vista tabla',
-      icon: <Table className="h-4 w-4" />,
-      action: () => setActiveTab('table'),
-      when: () => activeTab !== 'table',
-      group: 'TimeTracker',
-    },
-    {
-      id: 'switch-grouped',
-      label: 'Cambiar a vista agrupado',
-      icon: <LayoutGrid className="h-4 w-4" />,
-      action: () => setActiveTab('grouped'),
-      when: () => activeTab !== 'grouped',
-      group: 'TimeTracker',
-    },
-  ], [pendingEntries, handlePlayEntry, timer.isRunning, timer.stop, createEntry, activeTab, activeItem, handleEditEntry, handleDeleteEntry, handleDuplicateEntry, handleSyncEntry, openCreate]);
-
-  useCommandActions('time-tracker', commandActions);
+  useTimeTrackerCommandActions({
+    pendingEntries,
+    handlePlayEntry,
+    timer,
+    createEntry,
+    activeTab,
+    setActiveTab,
+    activeItem,
+    handleEditEntry,
+    handleDeleteEntry,
+    handleDuplicateEntry,
+    handleSyncEntry,
+    handleSplitEntry,
+    handleSplitTimer,
+    liveTimerEntry,
+    timerSplitDisabledReason,
+    openCreate,
+    setSyncPanelOpen,
+    pendingDescription,
+  });
 
   return (
     <main className="w-full">

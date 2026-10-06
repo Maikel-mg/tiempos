@@ -21,7 +21,16 @@ inventario exhaustivo. Rutas relativas a la raíz del repo.
 
 | Concepto | Archivo |
 |----------|---------|
-| Página del time tracker (hotspot, 800+ líneas) | `web-ui/src/features/time-tracker/pages/TimeTrackingPage.tsx` |
+| Página del time tracker (composición de hooks y componentes) | `web-ui/src/features/time-tracker/pages/TimeTrackingPage.tsx` |
+| Filtro de período (hook) | `web-ui/src/features/time-tracker/hooks/usePeriodFilter.ts` |
+| Editor de registros y CRUD (hook) | `web-ui/src/features/time-tracker/hooks/useEntryEditor.ts` |
+| Vista del Timer activo (hook) | `web-ui/src/features/time-tracker/hooks/useTimerView.ts` |
+| Flujo de dividir un Registro y el timer (hook) | `web-ui/src/features/time-tracker/hooks/useSplitFlow.ts` |
+| Sincronización de Registros (hook) | `web-ui/src/features/time-tracker/hooks/useEntrySync.ts` |
+| Propuestas de tarea (hook) | `web-ui/src/features/time-tracker/hooks/useProposals.ts` |
+| Selección de filas (hook) | `web-ui/src/features/time-tracker/hooks/useEntrySelection.ts` |
+| Navegación por teclado de la tabla (hook) | `web-ui/src/features/time-tracker/hooks/useEntryTableNavigation.ts` |
+| Acciones del command palette (hook) | `web-ui/src/features/time-tracker/hooks/useTimeTrackerCommandActions.tsx` |
 | Timer activo (estado y ciclo de vida) | `web-ui/src/features/time-tracker/hooks/useTimer.ts` |
 | Lógica pura del timer en curso | `web-ui/src/features/time-tracker/lib/runningTimer.ts` |
 | Barra del timer / fila del timer | `web-ui/src/features/time-tracker/components/TimeTrackerBar.tsx`, `TimerRow.tsx` |
