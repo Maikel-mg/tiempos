@@ -5,18 +5,17 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PeriodSelector } from '@/components/shared/PeriodSelector';
 import { TimeTrackerBar } from '../components/TimeTrackerBar';
-import type { TimeTrackerBarHandle } from '../components/TimeTrackerBar';
 import { TimeEntryEditorDialog } from '../components/TimeEntryEditorDialog';
 import { SplitEntryDialog } from '../components/SplitEntryDialog';
 import type { SplitCut } from '../hooks/useSplitCut';
-import { splitAffordance, splitAvailability, MIN_SPLIT_MINUTES } from '../lib/splitEntry';
+import { splitAffordance } from '../lib/splitEntry';
 import { TimeEntryViewSwitcher } from '../components/TimeEntryViewSwitcher';
 import { OverlapAlert } from '../components/OverlapAlert';
 import type { OverlapFix } from '../lib/overlaps';
 import { SyncPanel } from '../components/SyncPanel';
 import { PeriodProgressPanel } from '../components/PeriodProgressPanel';
 import { useTimeEntries } from '../hooks/useTimeEntries';
-import { useTimer } from '../hooks/useTimer';
+import { useTimerView } from '../hooks/useTimerView';
 import { usePeriodFilter } from '../hooks/usePeriodFilter';
 import { useEntryEditor } from '../hooks/useEntryEditor';
 import { useEntrySync } from '../hooks/useEntrySync';
@@ -24,15 +23,9 @@ import { useProposals } from '../hooks/useProposals';
 import { useCommandActions } from '@/components/CommandActionsContext';
 import { useTableKeyboardNavigation } from '@/hooks/useTableKeyboardNavigation';
 import { useTableRowShortcuts } from '@/hooks/useTableRowShortcuts';
-import { createVirtualTimerEntry } from '../lib/timerVirtualEntry';
 import { wizardConfig } from '@/config/stores';
 import { TaskProposalModal } from '@/features/proposal-ui/components/TaskProposalModal';
 import type { TimeEntry } from '../types';
-
-/** Fecha local en `YYYY-MM-DD`, sin pasar por UTC. */
-function localDateString(date: Date = new Date()): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-}
 
 export function TimeTrackingPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -42,7 +35,17 @@ export function TimeTrackingPage() {
   const [splittingTimer, setSplittingTimer] = useState(false);
 
   const { entries, createEntry, updateEntry, deleteEntry, splitEntry, splitRunningTimer, markSynced } = useTimeEntries();
-  const timerHook = useTimer();
+  const timerView = useTimerView({ createEntry });
+  const {
+    timer,
+    trackerBarRef,
+    pendingDescription,
+    liveTimerEntry,
+    virtualTimerEntry,
+    throttledElapsed,
+    timerSplitDisabledReason,
+    handlePlayEntry,
+  } = timerView;
 
   /** Limpia de la selección el Registro eliminado; la selección vive en la página. */
   const handleEntryDeleted = useCallback((id: string) => {
@@ -81,7 +84,7 @@ export function TimeTrackingPage() {
     todayInRange,
     periodTotalDisplay,
     handlePeriodChange,
-  } = usePeriodFilter({ entries, timerElapsed: timerHook.elapsed });
+  } = usePeriodFilter({ entries, timerElapsed: timer.elapsed });
 
   const splitUndo = useRef<{
     /** Registro persistido a recortar; `null` si la mitad vive solo en el timer. */
@@ -99,9 +102,7 @@ export function TimeTrackingPage() {
     /** Se marca cuando alguna de las dos mitades ya se sincronizó: invalida el deshacer. */
     invalidated: boolean;
   } | null>(null);
-  const pendingDescription = useRef<string | undefined>(undefined);
   const tableRef = useRef<HTMLTableElement>(null);
-  const trackerBarRef = useRef<TimeTrackerBarHandle>(null);
 
   /** Sincronizar una mitad invalida el deshacer de su división: revertirla
    * dejaría en la base un Registro que ya no existe. */
@@ -140,65 +141,6 @@ export function TimeTrackingPage() {
     setSplittingEntry(entry);
   }, []);
 
-  /**
-   * El timer en curso: la fecha y los horarios que se ofrecen son los reales, no
-   * los que muestra la fila virtual (que enseña el reloj destripado a la hora).
-   *
-   * Depende de `elapsed` a propósito: `timerState` conserva su identidad mientras
-   * el timer corre, así que sin esa dependencia la hora de fin se congelaría en el
-   * instante de arranque y la división se ofrecería como no disponible.
-   */
-  const liveTimerEntry = useMemo<TimeEntry | null>(() => {
-    const state = timerHook.timerState;
-    if (!timerHook.isRunning || !state) return null;
-
-    const start = new Date(state.startTime);
-    const end = new Date();
-    const date = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`;
-
-    return {
-      id: 'timer-activo',
-      taskId: state.taskId,
-      taskName: state.taskName,
-      proceso: { proceso: state.taskId, nombre: state.taskName },
-      date,
-      startTime: `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`,
-      endTime: `${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}`,
-      duration: Math.floor((end.getTime() - start.getTime()) / 1000),
-      description: state.description,
-      createdAt: state.startTime,
-      updatedAt: state.startTime,
-      synced: false,
-    };
-  }, [timerHook.isRunning, timerHook.timerState, timerHook.elapsed]);
-
-  /**
-   * Fecha de hoy mientras la página está montada. Se refresca al volver a la
-   * pestaña para que el chequeo de "el timer arrancó hoy" no se quede congelado
-   * si la página cruza la medianoche.
-   */
-  const [todayString, setTodayString] = useState(localDateString);
-
-  useEffect(() => {
-    const sync = () => setTodayString(localDateString());
-    sync();
-    document.addEventListener('visibilitychange', sync);
-    return () => document.removeEventListener('visibilitychange', sync);
-  }, []);
-
-  const timerSplitDisabledReason = useMemo(() => {
-    if (!liveTimerEntry) return undefined;
-    if (liveTimerEntry.date !== todayString) {
-      return 'El timer cruza la medianoche; al pararlo decidirás cómo dividirlo';
-    }
-    // Recién arrancado: el timer aún no llega al mínimo de dos minutos.
-    if (createVirtualTimerEntry(timerHook.timerState!, new Date()).duration === 0) {
-      return `Un Registro de menos de ${MIN_SPLIT_MINUTES} minutos no se puede dividir`;
-    }
-    const availability = splitAvailability(liveTimerEntry);
-    return availability.splittable ? undefined : availability.reason;
-  }, [liveTimerEntry, todayString, timerHook.timerState]);
-
   const handleSplitTimer = useCallback(() => {
     setSplittingTimer(true);
     setSplittingEntry(liveTimerEntry);
@@ -228,8 +170,8 @@ export function TimeTrackingPage() {
     // guardado se restaura la original entera (horario, duración y descripción).
     if (undo.fromTimer) {
       if (undo.firstId) await deleteEntry(undo.firstId);
-      if ((timerHook.timerState?.description ?? '') !== (undo.original.description ?? '')) {
-        await timerHook.updateDescription(undo.original.description ?? '');
+      if ((timer.timerState?.description ?? '') !== (undo.original.description ?? '')) {
+        await timer.updateDescription(undo.original.description ?? '');
       }
     } else if (undo.firstId) {
       await updateEntry(undo.firstId, {
@@ -240,7 +182,7 @@ export function TimeTrackingPage() {
     }
 
     if (undo.timerStartTime) {
-      await timerHook.updateStartTime(undo.timerStartTime);
+      await timer.updateStartTime(undo.timerStartTime);
     }
 
     if (undo.secondId) {
@@ -253,11 +195,11 @@ export function TimeTrackingPage() {
 
     splitUndo.current = null;
     toast.success('División deshecha');
-  }, [deleteEntry, updateEntry, timerHook]);
+  }, [deleteEntry, updateEntry, timer]);
 
   const handleSplitConfirm = useCallback(
     async ({ entryId, cutTime, firstDescription, secondDescription }: SplitCut) => {
-      const restoringTimerStart = splittingTimer ? timerHook.timerState?.startTime : undefined;
+      const restoringTimerStart = splittingTimer ? timer.timerState?.startTime : undefined;
 
       let undo: NonNullable<typeof splitUndo.current>;
 
@@ -270,10 +212,10 @@ export function TimeTrackingPage() {
           toast.error(outcome.reason);
           return;
         }
-        await timerHook.updateStartTime(outcome.timerStartTime);
+        await timer.updateStartTime(outcome.timerStartTime);
         // La segunda mitad ES el timer: su descripción se edita sobre él.
         if (secondDescription !== (target.description ?? '')) {
-          await timerHook.updateDescription(secondDescription);
+          await timer.updateDescription(secondDescription);
         }
         undo = {
           firstId: outcome.first.id,
@@ -328,27 +270,8 @@ export function TimeTrackingPage() {
         },
       });
     },
-    [splittingTimer, splittingEntry, liveTimerEntry, timerHook, splitRunningTimer, splitEntry, selectedIds, handleUndoSplit],
+    [splittingTimer, splittingEntry, liveTimerEntry, timer, splitRunningTimer, splitEntry, selectedIds, handleUndoSplit],
   );
-
-  const handlePlayEntry = useCallback(async (entry: TimeEntry) => {
-    if (timerHook.isRunning) {
-      const result = await timerHook.stop({ persist: false });
-      if (result && 'start' in result) {
-        await createEntry({
-          taskId: result.taskId,
-          taskName: result.taskName,
-          date: result.end.toLocaleDateString('sv-SE'),
-          startTime: result.start.toTimeString().slice(0, 5),
-          endTime: result.end.toTimeString().slice(0, 5),
-          description: pendingDescription.current,
-        });
-        toast('Timer de ' + result.taskName + ' detenido. Iniciando ' + entry.taskName + '.');
-      }
-    }
-    pendingDescription.current = entry.description;
-    await timerHook.start(entry.taskId, entry.taskName, entry.description);
-  }, [timerHook, createEntry]);
 
   useTableRowShortcuts({
     activeItem,
@@ -378,38 +301,6 @@ export function TimeTrackingPage() {
     if (document.querySelector('[cmdk-dialog]')) return;
     focusFirst();
   }, [activeTab, filteredByPeriod.length, focusFirst]);
-
-  const virtualTimerEntry = useMemo(() => {
-    if (!timerHook.isRunning || !timerHook.timerState) return null;
-    if (!todayInRange) return null;
-    return createVirtualTimerEntry(timerHook.timerState, new Date());
-  }, [timerHook.isRunning, timerHook.timerState, timerHook.elapsed, todayInRange]);
-
-  // Throttled elapsed for stats cards — updates every 5s to avoid re-rendering 4 cards every second
-  const [throttledElapsed, setThrottledElapsed] = useState(0);
-  const throttleRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  useEffect(() => {
-    if (timerHook.isRunning) {
-      // Sync immediately, then every 5 seconds
-      setThrottledElapsed(timerHook.elapsed);
-      throttleRef.current = setInterval(() => {
-        setThrottledElapsed(timerHook.elapsed);
-      }, 5000);
-    } else {
-      if (throttleRef.current) {
-        clearInterval(throttleRef.current);
-        throttleRef.current = null;
-      }
-      setThrottledElapsed(0);
-    }
-    return () => {
-      if (throttleRef.current) {
-        clearInterval(throttleRef.current);
-        throttleRef.current = null;
-      }
-    };
-  }, [timerHook.isRunning, timerHook.elapsed]);
 
   // Register command palette actions for this page
   const commandActions = useMemo(() => [
@@ -463,7 +354,7 @@ export function TimeTrackingPage() {
       label: `Reproducir${activeItem ? `: ${activeItem.taskName}` : ''}`,
       icon: <Play className="h-4 w-4" />,
       action: () => activeItem && handlePlayEntry(activeItem),
-      when: () => !!activeItem && !timerHook.isRunning,
+      when: () => !!activeItem && !timer.isRunning,
       group: 'Registro activo',
     },
     {
@@ -487,7 +378,7 @@ export function TimeTrackingPage() {
           toast.info('No hay entradas para iniciar');
         }
       },
-      when: () => !timerHook.isRunning,
+      when: () => !timer.isRunning,
       group: 'TimeTracker',
     },
     {
@@ -495,7 +386,7 @@ export function TimeTrackingPage() {
       label: 'Detener timer',
       icon: <span className="flex items-center"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><rect x="6" y="6" width="12" height="12" rx="2"/></svg></span>,
       action: () => {
-        timerHook.stop({ persist: true }).then((result) => {
+        timer.stop({ persist: true }).then((result) => {
           if (result && 'start' in result) {
             createEntry({
               taskId: result.taskId,
@@ -509,7 +400,7 @@ export function TimeTrackingPage() {
           }
         });
       },
-      when: () => timerHook.isRunning,
+      when: () => timer.isRunning,
       group: 'TimeTracker',
     },
     {
@@ -542,7 +433,7 @@ export function TimeTrackingPage() {
       when: () => activeTab !== 'grouped',
       group: 'TimeTracker',
     },
-  ], [pendingEntries, handlePlayEntry, timerHook.isRunning, timerHook.stop, createEntry, activeTab, activeItem, handleEditEntry, handleDeleteEntry, handleDuplicateEntry, handleSyncEntry, openCreate]);
+  ], [pendingEntries, handlePlayEntry, timer.isRunning, timer.stop, createEntry, activeTab, activeItem, handleEditEntry, handleDeleteEntry, handleDuplicateEntry, handleSyncEntry, openCreate]);
 
   useCommandActions('time-tracker', commandActions);
 
@@ -557,7 +448,7 @@ export function TimeTrackingPage() {
             disabled={false}
             onSplitTimer={liveTimerEntry ? handleSplitTimer : undefined}
             splitDisabledReason={timerSplitDisabledReason}
-            timer={timerHook}
+            timer={timer}
           />
         </div>
       </div>
@@ -589,7 +480,7 @@ export function TimeTrackingPage() {
           entries={entries}
           period={period}
           periodRange={periodRange}
-          timerElapsed={timerHook.isRunning ? throttledElapsed : 0}
+          timerElapsed={timer.isRunning ? throttledElapsed : 0}
           todayInRange={todayInRange}
         />
 
@@ -694,7 +585,7 @@ export function TimeTrackingPage() {
           onSplit={handleSplitEntry}
           onSync={handleSyncEntry}
           activeTab={activeTab}
-          timerEntry={virtualTimerEntry}
+          timerEntry={todayInRange ? virtualTimerEntry : null}
           onSplitTimer={liveTimerEntry ? handleSplitTimer : undefined}
           timerSplitDisabledReason={timerSplitDisabledReason}
           tableRef={tableRef}
