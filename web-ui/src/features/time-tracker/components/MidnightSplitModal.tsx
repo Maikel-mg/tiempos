@@ -16,9 +16,20 @@ export function MidnightSplitModal({ open, onOpenChange, proposal, onSplit, onKe
     onOpenChange(false);
   };
 
+  // Radix reports user-initiated closes (X button, Escape, overlay click) through
+  // onOpenChange. Route them through handleClose so closing always keeps the
+  // stopped time as a single entry instead of discarding it.
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (nextOpen) {
+      onOpenChange(true);
+      return;
+    }
+    handleClose();
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent onClose={handleClose}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>Cruza la medianoche</DialogTitle>
           <DialogDescription>

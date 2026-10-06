@@ -37,7 +37,7 @@ export function ColumnToggle({ columns, onToggle }: ColumnToggleProps) {
           <DropdownMenuCheckboxItem
             key={column.id}
             checked={column.visible}
-            onCheckedChange={(checked) => onToggle(column.id, checked)}
+            onCheckedChange={(checked: boolean) => onToggle(column.id, checked)}
           >
             {column.label}
           </DropdownMenuCheckboxItem>

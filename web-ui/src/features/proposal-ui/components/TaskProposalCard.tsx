@@ -1,7 +1,5 @@
-import { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Lightbulb, ChevronDown, ChevronUp } from 'lucide-react';
 import type { TaskProposal } from '@/domain/proposals/task-proposal';
 
@@ -13,7 +11,7 @@ export interface TaskProposalCardProps {
 export function TaskProposalCard({ proposals, onOpenModal }: TaskProposalCardProps) {
   const count = proposals.length;
   const totalHours = Math.round(proposals.reduce((sum, p) => sum + p.totalHours, 0));
-  const [isExpanded, setIsExpanded] = useState(count > 0);
+  const isExpanded = count > 0;
 
   const description = count > 0
     ? `${count} descripción(es) con ${totalHours}h acumuladas`

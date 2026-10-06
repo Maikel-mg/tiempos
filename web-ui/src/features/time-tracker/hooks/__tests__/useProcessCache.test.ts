@@ -48,7 +48,8 @@ describe('useProcessCache', () => {
 
   it('fetches processes on mount when usuario is set', async () => {
     mockWizardGet.mockReturnValue({ usuario: 'MG01' });
-    mockApiClientPost.mockResolvedValue({ success: true, data: PROCESOS });
+    // apiClient.post returns ApiClient-wrapped body: { success, data: <server body> }
+    mockApiClientPost.mockResolvedValue({ success: true, data: { success: true, data: PROCESOS } });
 
     const { result } = renderHook(() => useProcessCache());
 
@@ -128,7 +129,7 @@ describe('useProcessCache', () => {
 
   it('refresh re-fetches and updates processes', async () => {
     mockWizardGet.mockReturnValue({ usuario: 'MG01' });
-    mockApiClientPost.mockResolvedValueOnce({ success: true, data: PROCESOS });
+    mockApiClientPost.mockResolvedValueOnce({ success: true, data: { success: true, data: PROCESOS } });
 
     const { result } = renderHook(() => useProcessCache());
 
@@ -142,7 +143,7 @@ describe('useProcessCache', () => {
       ...PROCESOS,
       { proceso: 103, nombre: 'Code Review' },
     ];
-    mockApiClientPost.mockResolvedValueOnce({ success: true, data: moreProcesos });
+    mockApiClientPost.mockResolvedValueOnce({ success: true, data: { success: true, data: moreProcesos } });
 
     await act(async () => {
       await result.current.refresh();

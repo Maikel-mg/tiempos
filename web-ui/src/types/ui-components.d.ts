@@ -45,3 +45,27 @@ declare module '@/components/ui/sheet' {
   export const SheetTitle: React.ComponentType<any>
   export const SheetDescription: React.ComponentType<any>
 }
+
+declare module '@/components/ui/tooltip' {
+  import * as React from 'react'
+  export const Tooltip: React.ComponentType<any>
+  export const TooltipTrigger: React.ComponentType<any>
+  export const TooltipContent: React.ComponentType<any>
+  export const TooltipProvider: React.ComponentType<any>
+}
+
+declare module '@/components/ui/sidebar' {
+  import * as React from 'react'
+  export const SidebarProvider: React.ComponentType<any>
+  export const Sidebar: React.ComponentType<any>
+  export const SidebarContent: React.ComponentType<any>
+  export const SidebarHeader: React.ComponentType<any>
+  export const SidebarFooter: React.ComponentType<any>
+  export const SidebarGroup: React.ComponentType<any>
+  export const SidebarGroupContent: React.ComponentType<any>
+  export const SidebarMenu: React.ComponentType<any>
+  export const SidebarMenuItem: React.ComponentType<any>
+  export const SidebarMenuButton: React.ComponentType<any>
+  export const SidebarTrigger: React.ComponentType<any>
+  export const useSidebar: () => any
+}

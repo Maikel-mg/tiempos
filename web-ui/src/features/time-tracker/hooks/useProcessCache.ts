@@ -26,7 +26,7 @@ export function useProcessCache() {
       setError(null);
 
       const dbConf = dbConfig.get();
-      const response = await apiClient.post<Proceso[]>(
+      const response = await apiClient.post<{ success: boolean; data: Proceso[] }>(
         '/processes',
         {
           usured: usuario,

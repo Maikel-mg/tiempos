@@ -51,8 +51,7 @@ export async function syncTimeEntries(
     }
 
     return { success: false, results: [] };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Error desconocido';
+  } catch {
     return { success: false, results: [] };
   }
 }

@@ -15,6 +15,11 @@ const mockProposals: TaskProposal[] = [
     fechaFin: '2024-01-31',
     entryCount: 3,
     entryIds: ['1', '2', '3'],
+    entries: [
+      { id: '1', start: '2024-01-01T09:00' },
+      { id: '2', start: '2024-01-02T09:00' },
+      { id: '3', start: '2024-01-03T09:00' },
+    ],
   },
   {
     description: 'Code review',
@@ -27,6 +32,10 @@ const mockProposals: TaskProposal[] = [
     fechaFin: '2024-01-31',
     entryCount: 2,
     entryIds: ['4', '5'],
+    entries: [
+      { id: '4', start: '2024-01-04T09:00' },
+      { id: '5', start: '2024-01-05T09:00' },
+    ],
   },
 ];
 

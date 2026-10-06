@@ -61,6 +61,10 @@ describe('TaskProposalModal', () => {
       fechaFin: '2025-01-15',
       entryCount: 5,
       entryIds: ['1', '2'],
+      entries: [
+        { id: '1', start: '2025-01-02T09:00' },
+        { id: '2', start: '2025-01-03T09:00' },
+      ],
     },
     {
       description: 'Desarrollo features',
@@ -73,6 +77,10 @@ describe('TaskProposalModal', () => {
       fechaFin: '2025-01-16',
       entryCount: 8,
       entryIds: ['3', '4'],
+      entries: [
+        { id: '3', start: '2025-01-03T09:00' },
+        { id: '4', start: '2025-01-04T09:00' },
+      ],
     },
   ];
 
@@ -300,6 +308,9 @@ describe('TaskProposalModal', () => {
         fechaFin: '2025-02-10',
         entryCount: 2,
         entryIds: ['10'],
+        entries: [
+          { id: '10', start: '2025-02-03T09:00' },
+        ],
       },
     ];
 

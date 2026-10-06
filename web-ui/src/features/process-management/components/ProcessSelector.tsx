@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useProjects } from '@/features/projects/hooks/use-projects';
 import { useProjectTree } from '@/features/projects/hooks/use-project-tree';
-import type { ProjectTreeDisciplina, ProjectTreeFase, ProjectTreeProceso } from '@/features/projects/types';
+import type { ProjectTreeDisciplina, ProjectTreeFase, ProjectTreeProceso, ProjectTreeResponse } from '@/features/projects/types';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loader2, AlertCircle, X } from 'lucide-react';
 import type { Project } from '@/features/projects/types';
@@ -24,7 +24,18 @@ export interface ProcessSelectorProps {
   value?: string;
 }
 
-export function ProcessSelector({ open, onOpenChange, onSelect, onCreateNew, usuario, value }: ProcessSelectorProps) {
+/**
+ * The `/projects-tree` endpoint returns `{ success, data: ProjectTreeResponse }`,
+ * but `useProjectTree`'s declared response type nests `data` one level too deep.
+ * Narrow with a runtime guard instead of trusting the (incorrect) declared type.
+ */
+function isProjectTreeResponse(value: unknown): value is ProjectTreeResponse {
+  if (typeof value !== 'object' || value === null) return false;
+  if (!('disciplinas' in value)) return false;
+  return Array.isArray(value.disciplinas);
+}
+
+export function ProcessSelector({ open, onOpenChange, onSelect, onCreateNew, usuario }: ProcessSelectorProps) {
   const [view, setView] = useState<'projects' | 'processes'>('projects');
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [projectSearchTerm, setProjectSearchTerm] = useState('');
@@ -48,7 +59,10 @@ export function ProcessSelector({ open, onOpenChange, onSelect, onCreateNew, usu
   });
 
   // Extract the actual tree data from the response wrapper
-  const projectTree = treeResponse?.data ?? { disciplinas: [] as any[] };
+  const rawTree = treeResponse?.data;
+  const projectTree = isProjectTreeResponse(rawTree)
+    ? rawTree
+    : { disciplinas: [] as ProjectTreeDisciplina[] };
 
    const phases = useMemo(() => {
     const disciplinas = projectTree?.disciplinas;
@@ -179,7 +193,6 @@ export function ProcessSelector({ open, onOpenChange, onSelect, onCreateNew, usu
       id: 'process-selector',
       priority: SHORTCUT_PRIORITY.dialog,
       match: (event) => {
-        if (isSearchInput(event)) return event.key === 'Escape';
         return (
           event.key === 'ArrowDown' ||
           event.key === 'ArrowUp' ||
@@ -189,8 +202,9 @@ export function ProcessSelector({ open, onOpenChange, onSelect, onCreateNew, usu
       },
       run: (event) => {
         // Escape inside a search input clears it (with confirmation) or closes
-        // the dialog when the input is empty.
-        if (isSearchInput(event)) {
+        // the dialog when the input is empty. Arrow keys and Enter still drive
+        // the list navigation while the input keeps focus.
+        if (isSearchInput(event) && event.key === 'Escape') {
           const input = event.target as HTMLInputElement;
 
           if (input.value) {

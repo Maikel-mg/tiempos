@@ -492,6 +492,9 @@ describe('ProcessSelector', () => {
 
   describe('Clear confirmation', () => {
     beforeEach(() => {
+      // Reset spies/implementations first: restoreAllMocks() also wipes the
+      // module-mock return values, so re-establish them afterwards.
+      vi.restoreAllMocks();
       vi.mocked(useProjects).mockReturnValue({
         data: [
           { CodCli: '1', NomCliente: 'Client A', NomProy: 'Project Alpha', Proyecto: 'PA' },
@@ -500,7 +503,6 @@ describe('ProcessSelector', () => {
         isError: false,
       } as any);
       vi.mocked(useProjectTree).mockReturnValue({ isLoading: false } as any);
-      vi.restoreAllMocks();
       // Mock confirm before each test
       vi.spyOn(window, 'confirm').mockReturnValue(true);
     });
