@@ -19,12 +19,12 @@ import { useTimeEntries } from '../hooks/useTimeEntries';
 import { useTimer } from '../hooks/useTimer';
 import { usePeriodFilter } from '../hooks/usePeriodFilter';
 import { useEntryEditor } from '../hooks/useEntryEditor';
+import { useEntrySync } from '../hooks/useEntrySync';
 import { useCommandActions } from '@/components/CommandActionsContext';
 import { useTableKeyboardNavigation } from '@/hooks/useTableKeyboardNavigation';
 import { useTableRowShortcuts } from '@/hooks/useTableRowShortcuts';
 import { createVirtualTimerEntry } from '../lib/timerVirtualEntry';
-import { syncTimeEntries } from '../services/timeEntrySyncService';
-import { wizardConfig, dbConfig, proposalConfig } from '@/config/stores';
+import { wizardConfig, proposalConfig } from '@/config/stores';
 import { TaskProposalModal } from '@/features/proposal-ui/components/TaskProposalModal';
 import { extractProposalsFromLocal } from '@/domain/proposals/extract-local-proposals';
 import type { TaskProposal } from '@/domain/proposals/task-proposal';
@@ -37,7 +37,6 @@ function localDateString(date: Date = new Date()): string {
 
 export function TimeTrackingPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [syncPanelOpen, setSyncPanelOpen] = useState(false);
   const [proposalModalOpen, setProposalModalOpen] = useState(false);
   /** Registro que se está dividiendo. */
   const [splittingEntry, setSplittingEntry] = useState<TimeEntry | null>(null);
@@ -106,15 +105,17 @@ export function TimeTrackingPage() {
   const tableRef = useRef<HTMLTableElement>(null);
   const trackerBarRef = useRef<TimeTrackerBarHandle>(null);
 
-  const pendingEntries = useMemo(
-    () => entries.filter((e) => !e.synced),
-    [entries]
-  );
+  /** Sincronizar una mitad invalida el deshacer de su división: revertirla
+   * dejaría en la base un Registro que ya no existe. */
+  const handleEntriesSynced = useCallback((succeededIds: string[]) => {
+    const undo = splitUndo.current;
+    if (undo && succeededIds.some((id) => id === undo.firstId || id === undo.secondId)) {
+      undo.invalidated = true;
+    }
+  }, []);
 
-  const entriesToSync = useMemo(() => {
-    if (selectedIds.size === 0) return pendingEntries;
-    return pendingEntries.filter((e) => selectedIds.has(e.id));
-  }, [pendingEntries, selectedIds]);
+  const { syncPanelOpen, setSyncPanelOpen, pendingEntries, entriesToSync, handleSyncEntry } =
+    useEntrySync({ entries, selectedIds, markSynced, onEntriesSynced: handleEntriesSynced });
 
   const proposals = useMemo(() => {
     // Solo entradas del mes actual
@@ -140,37 +141,6 @@ export function TimeTrackingPage() {
     getRowId: (entry) => entry.id,
     isEnabled: activeTab === 'table' && !editingEntry,
   });
-
-  const handleSyncEntry = useCallback(async (entry: TimeEntry) => {
-    const dbConfigData = dbConfig.get();
-    if (!dbConfigData || !dbConfigData.server || !dbConfigData.database) {
-      toast.error('Falta configuración de base de datos');
-      return;
-    }
-    const usuario = (() => {
-      try {
-        const stored = wizardConfig.get();
-        return stored?.usuario ?? '';
-      } catch { return ''; }
-    })();
-    const outcome = await syncTimeEntries([entry], dbConfigData, usuario);
-    if (outcome.success && outcome.results.some(r => r.success)) {
-      const succeededIds = outcome.results.filter(r => r.success).map(r => r.entryId);
-      await markSynced(succeededIds);
-
-      // Sincronizar una mitad invalida el deshacer de su división: revertirla
-      // dejaría en la base un Registro que ya no existe.
-      const undo = splitUndo.current;
-      if (undo && succeededIds.some((id) => id === undo.firstId || id === undo.secondId)) {
-        undo.invalidated = true;
-      }
-
-      toast.success(`Sincronizado: ${entry.taskName}`);
-    } else {
-      const error = outcome.results[0]?.error ?? 'Error desconocido';
-      toast.error(`Error al sincronizar: ${error}`);
-    }
-  }, [markSynced]);
 
   const handleApplyOverlapFix = useCallback(async (fix: OverlapFix) => {
     try {
