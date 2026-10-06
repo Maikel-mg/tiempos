@@ -9,6 +9,7 @@
     "start": "node --env-file=.env dist/server.js",
     "dev-backend": "tsx watch --env-file .env server.ts",
     "build:backend": "tsc",
+    "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -29,9 +30,11 @@
     "@types/express": "^5.0.6",
     "@types/mssql": "^9.1.9",
     "@types/node": "^25.5.0",
+    "eslint": "^10.12.0",
     "jsdom": "^29.1.1",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
+    "typescript-eslint": "^8.71.1",
     "vitest": "^4.1.7"
   }
 }

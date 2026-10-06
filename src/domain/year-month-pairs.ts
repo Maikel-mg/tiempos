@@ -33,7 +33,7 @@ export function getYearMonthPairs(arg1: string | { date: string }[], arg2?: stri
   const start = arg1;
   const end = arg2!;
   const pairs: YearMonthPair[] = [];
-  let current = new Date(start);
+  const current = new Date(start);
   const stop = new Date(end);
 
   while (current <= stop) {
