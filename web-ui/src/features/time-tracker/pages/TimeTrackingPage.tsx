@@ -20,14 +20,13 @@ import { useTimer } from '../hooks/useTimer';
 import { usePeriodFilter } from '../hooks/usePeriodFilter';
 import { useEntryEditor } from '../hooks/useEntryEditor';
 import { useEntrySync } from '../hooks/useEntrySync';
+import { useProposals } from '../hooks/useProposals';
 import { useCommandActions } from '@/components/CommandActionsContext';
 import { useTableKeyboardNavigation } from '@/hooks/useTableKeyboardNavigation';
 import { useTableRowShortcuts } from '@/hooks/useTableRowShortcuts';
 import { createVirtualTimerEntry } from '../lib/timerVirtualEntry';
-import { wizardConfig, proposalConfig } from '@/config/stores';
+import { wizardConfig } from '@/config/stores';
 import { TaskProposalModal } from '@/features/proposal-ui/components/TaskProposalModal';
-import { extractProposalsFromLocal } from '@/domain/proposals/extract-local-proposals';
-import type { TaskProposal } from '@/domain/proposals/task-proposal';
 import type { TimeEntry } from '../types';
 
 /** Fecha local en `YYYY-MM-DD`, sin pasar por UTC. */
@@ -37,7 +36,6 @@ function localDateString(date: Date = new Date()): string {
 
 export function TimeTrackingPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [proposalModalOpen, setProposalModalOpen] = useState(false);
   /** Registro que se está dividiendo. */
   const [splittingEntry, setSplittingEntry] = useState<TimeEntry | null>(null);
   /** `true` cuando lo que se divide es el timer en curso y no un Registro guardado. */
@@ -117,23 +115,8 @@ export function TimeTrackingPage() {
   const { syncPanelOpen, setSyncPanelOpen, pendingEntries, entriesToSync, handleSyncEntry } =
     useEntrySync({ entries, selectedIds, markSynced, onEntriesSynced: handleEntriesSynced });
 
-  const proposals = useMemo(() => {
-    // Solo entradas del mes actual
-    const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    const startDay = start.getFullYear() * 10000 + (start.getMonth() + 1) * 100 + start.getDate();
-    const endDay = end.getFullYear() * 10000 + (end.getMonth() + 1) * 100 + end.getDate();
-
-    const monthEntries = entries.filter(e => {
-      const d = new Date(e.date + 'T12:00:00');
-      const entryDay = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
-      return entryDay >= startDay && entryDay <= endDay;
-    });
-
-    const threshold = proposalConfig.get()?.thresholdHours ?? 8;
-    return extractProposalsFromLocal(monthEntries, threshold);
-  }, [entries]);
+  const { proposalModalOpen, setProposalModalOpen, proposals, handleAcceptProposal } =
+    useProposals({ entries, updateEntry });
 
   const { getRowProps, focusFirst, activeItem } = useTableKeyboardNavigation({
     containerRef: tableRef,
@@ -427,42 +410,6 @@ export function TimeTrackingPage() {
       }
     };
   }, [timerHook.isRunning, timerHook.elapsed]);
-
-  const handleAcceptProposal = useCallback(async (
-    proposal: TaskProposal,
-    _proposedName: string,
-    processId: string
-  ) => {
-    const newTaskId = Number(processId);
-    if (!Number.isFinite(newTaskId) || newTaskId <= 0) {
-      toast.error('ID de proceso inválido');
-      return;
-    }
-
-    // Reasignar solo entries no confirmadas en SQL Server (synced !== true)
-    // que pertenezcan a este grupo (mismo genericTask + descripción normalizada)
-    const toReassign = entries.filter(e =>
-      proposal.entryIds.includes(e.id) && !e.synced
-    );
-
-    if (toReassign.length === 0) {
-      toast.info('No hay entradas pendientes para reasignar');
-      return;
-    }
-
-    try {
-      for (const entry of toReassign) {
-        await updateEntry(entry.id, {
-          taskId: newTaskId,
-          taskName: proposal.proposedName,
-          proceso: { ...entry.proceso, proceso: newTaskId, nombre: proposal.proposedName },
-        });
-      }
-      toast.success(`${toReassign.length} entrada(s) reasignada(s) a "${proposal.proposedName}"`);
-    } catch (error) {
-      toast.error('Error al reasignar entradas: ' + (error as Error).message);
-    }
-  }, [entries, updateEntry]);
 
   // Register command palette actions for this page
   const commandActions = useMemo(() => [
