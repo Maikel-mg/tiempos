@@ -40,6 +40,19 @@ export interface TimeEntry {
   syncError?: string;
 }
 
+/** Datos que la capa de persistencia acepta para dar de alta un Registro de tiempo. */
+export interface NewEntryInput {
+  taskId: number;
+  taskName: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  description?: string;
+}
+
+/** Pestaña activa de la lista de Registros: tabla o agrupado por tarea. */
+export type EntryViewTab = 'table' | 'grouped';
+
 export interface LocalWeekDay {
   date: string;           // YYYY-MM-DD
   dateFormatted: string;  // "Lun 2"

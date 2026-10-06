@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { TimeEntryList } from './TimeEntryList';
 import { GroupedEntryView } from './GroupedEntryView';
-import type { TimeEntry } from '../types';
+import type { EntryViewTab, TimeEntry } from '../types';
 import type { RefObject } from 'react';
 
 interface TimerEntryData {
@@ -28,7 +28,7 @@ interface TimeEntryViewSwitcherProps {
   onDuplicate?: (entry: TimeEntry) => void;
   onSplit?: (entry: TimeEntry) => void;
   onSync?: (entry: TimeEntry) => void;
-  activeTab: string;
+  activeTab: EntryViewTab;
   timerEntry?: TimerEntryData | null;
   /** Divide el timer en curso. Solo la vista de tabla lo ofrece en su fila. */
   onSplitTimer?: () => void;

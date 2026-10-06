@@ -266,7 +266,6 @@ describe('TaskProposalModal', () => {
     );
     expect(mockOnAccept).toHaveBeenCalledWith(
       mockProposals[0],
-      mockProposals[0].proposedName,
       'PROC-123'
     );
 

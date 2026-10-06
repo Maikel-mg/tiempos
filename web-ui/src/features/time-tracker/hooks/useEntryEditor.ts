@@ -1,17 +1,8 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
+import { entryToNewEntryInput } from '../lib/newEntryInput';
 import type { TimeEntryFormData } from '../components/TimeEntryEditorDialog';
-import type { TimeEntry } from '../types';
-
-/** Datos que la capa de persistencia acepta para dar de alta un Registro de tiempo. */
-export interface NewEntryInput {
-  taskId: number;
-  taskName: string;
-  date: string;
-  startTime: string;
-  endTime: string;
-  description?: string;
-}
+import type { NewEntryInput, TimeEntry } from '../types';
 
 export interface UseEntryEditorParams {
   /** Registros actuales; se usan para resolver el que se elimina. */
@@ -25,7 +16,7 @@ export interface UseEntryEditorParams {
 
 /**
  * Editor de registros y CRUD de Registros de tiempo: estado de apertura, Registro
- * en edición, crear/editar/duplicar/borrar, submit del editor y buffer de deshacer.
+ * en edición, crear/editar/duplicar/borrar, submit del editor y deshacer el borrado.
  *
  * Deliberadamente **no** conoce el Timer activo (ADR 0002): abrir, guardar o
  * cancelar el editor no detiene, reemplaza ni modifica el timer. La selección de
@@ -40,12 +31,6 @@ export function useEntryEditor({
 }: UseEntryEditorParams) {
   const [isEditorOpen, setEditorOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
-
-  /**
-   * Buffer de los Registros borrados: se conserva mientras el aviso siga vivo para
-   * que "Deshacer" pueda restaurarlos. Mismo comportamiento que tenía la página.
-   */
-  const undoBuffer = useRef<Map<string, TimeEntry>>(new Map());
 
   /** Abre el editor para modificar un Registro existente. */
   const openEdit = useCallback((entry: TimeEntry) => {
@@ -95,14 +80,7 @@ export function useEntryEditor({
   /** Duplica un Registro: crea una copia editable con los mismos datos. */
   const duplicate = useCallback(
     async (entry: TimeEntry) => {
-      await createEntry({
-        taskId: entry.taskId,
-        taskName: entry.taskName,
-        date: entry.date,
-        startTime: entry.startTime,
-        endTime: entry.endTime,
-        description: entry.description,
-      });
+      await createEntry(entryToNewEntryInput(entry));
       toast.success('Entrada duplicada');
     },
     [createEntry],
@@ -121,26 +99,13 @@ export function useEntryEditor({
         setEditingEntry(null);
       }
 
-      undoBuffer.current.set(id, entry);
-
       toast('Entrada eliminada', {
         action: {
           label: 'Deshacer',
           onClick: async () => {
-            await createEntry({
-              taskId: entry.taskId,
-              taskName: entry.taskName,
-              date: entry.date,
-              startTime: entry.startTime,
-              endTime: entry.endTime,
-              description: entry.description,
-            });
-            undoBuffer.current.delete(id);
+            await createEntry(entryToNewEntryInput(entry));
             toast.success('Entrada restaurada');
           },
-        },
-        onAutoClose: () => {
-          undoBuffer.current.delete(id);
         },
       });
     },

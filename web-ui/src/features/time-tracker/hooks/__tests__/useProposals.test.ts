@@ -157,7 +157,7 @@ describe('useProposals', () => {
     });
 
     await act(async () => {
-      await result.current.handleAcceptProposal(proposal, proposal.proposedName, 'no-numerico');
+      await result.current.handleAcceptProposal(proposal, 'no-numerico');
     });
 
     expect(updateEntry).not.toHaveBeenCalled();
@@ -172,7 +172,7 @@ describe('useProposals', () => {
     });
 
     await act(async () => {
-      await result.current.handleAcceptProposal(proposal, proposal.proposedName, '123');
+      await result.current.handleAcceptProposal(proposal, '123');
     });
 
     expect(updateEntry).toHaveBeenCalledTimes(1);
@@ -190,7 +190,7 @@ describe('useProposals', () => {
     });
 
     await act(async () => {
-      await result.current.handleAcceptProposal(proposal, proposal.proposedName, '123');
+      await result.current.handleAcceptProposal(proposal, '123');
     });
 
     expect(updateEntry).not.toHaveBeenCalled();
@@ -204,7 +204,7 @@ describe('useProposals', () => {
     });
 
     await act(async () => {
-      await result.current.handleAcceptProposal(proposal, proposal.proposedName, '123');
+      await result.current.handleAcceptProposal(proposal, '123');
     });
 
     expect(toast.success).toHaveBeenCalledWith(
@@ -220,7 +220,7 @@ describe('useProposals', () => {
     updateEntry.mockRejectedValueOnce(new Error('SQL caído'));
 
     await act(async () => {
-      await result.current.handleAcceptProposal(proposal, proposal.proposedName, '123');
+      await result.current.handleAcceptProposal(proposal, '123');
     });
 
     expect(toast.success).not.toHaveBeenCalled();

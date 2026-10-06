@@ -152,8 +152,9 @@ export function useMiMutation() {
 
 ### Límite de tamaño
 
-- Máximo **150 líneas** por archivo de componente/hook
-- Si se excede, extraer subcomponentes o mover lógica a hooks/adaptadores
+- Máximo **150 líneas** por archivo de **componente presentacional** (UI).
+- Los hooks de lógica cohesiva se juzgan por **cohesión y profundidad**, no por líneas: un hook profundo que orquesta un único flujo es preferible a varios hooks superficiales que sólo reenvían estado. Sólo se parte cuando existe un sub-seam genuino (una responsabilidad con su propia interfaz y sus propios tests), nunca para cumplir un conteo.
+- Si un componente presentacional se excede, extraer subcomponentes. Si un hook de lógica se excede, evaluar primero si el corte es real antes de mover nada.
 
 ### Estado local
 

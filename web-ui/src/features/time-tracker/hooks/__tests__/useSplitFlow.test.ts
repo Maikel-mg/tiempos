@@ -381,7 +381,7 @@ describe('useSplitFlow', () => {
         await result.current.handleSplitConfirm(SAVED_CUT);
       });
       act(() => {
-        result.current.handleEntriesSynced(['entry-2']);
+        result.current.invalidateSplitUndo(['entry-2']);
       });
       await act(async () => {
         await result.current.handleUndoSplit();
@@ -406,7 +406,7 @@ describe('useSplitFlow', () => {
         await result.current.handleSplitConfirm(SAVED_CUT);
       });
       act(() => {
-        result.current.handleEntriesSynced(['otro']);
+        result.current.invalidateSplitUndo(['otro']);
       });
       await act(async () => {
         await result.current.handleUndoSplit();

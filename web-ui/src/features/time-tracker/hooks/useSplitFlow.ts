@@ -110,7 +110,7 @@ export function useSplitFlow({
 
   /** Sincronizar una mitad invalida el deshacer de su división: revertirla
    * dejaría en la base un Registro que ya no existe. */
-  const handleEntriesSynced = useCallback((succeededIds: string[]) => {
+  const invalidateSplitUndo = useCallback((succeededIds: string[]) => {
     const undo = splitUndo.current;
     if (undo && succeededIds.some((id) => id === undo.firstId || id === undo.secondId)) {
       undo.invalidated = true;
@@ -267,6 +267,6 @@ export function useSplitFlow({
     handleSplitDialogOpenChange,
     handleUndoSplit,
     handleSplitConfirm,
-    handleEntriesSynced,
+    invalidateSplitUndo,
   };
 }

@@ -11,3 +11,7 @@ El `Editor de registros` se implementará como un diálogo centrado y reutilizab
 - El editor puede abrirse mientras hay un `Timer activo`; el timer permanece visible detrás y continúa sin cambios.
 - Si el formulario tiene cambios sin guardar, cerrar mediante Escape, X o clic exterior pide confirmación.
 
+## Estado de la extracción
+
+La extracción del editor de registros se entregó en el ticket **#135** (`useEntryEditor`), que **sustituye al #122**. La decisión original de mantener el estado y la persistencia en `TimeTrackingPage` queda superada: el estado del editor y el CRUD de Registros viven ahora en el hook `useEntryEditor`, y la página sólo lo compone.
+

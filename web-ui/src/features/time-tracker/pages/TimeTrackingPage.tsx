@@ -10,9 +10,11 @@ import { SplitEntryDialog } from '../components/SplitEntryDialog';
 import { TimeEntryViewSwitcher } from '../components/TimeEntryViewSwitcher';
 import { OverlapAlert } from '../components/OverlapAlert';
 import type { OverlapFix } from '../lib/overlaps';
+import type { EntryViewTab } from '../types';
 import { SyncPanel } from '../components/SyncPanel';
 import { PeriodProgressPanel } from '../components/PeriodProgressPanel';
 import { useTimeEntries } from '../hooks/useTimeEntries';
+import { useTimer } from '../hooks/useTimer';
 import { useTimerView } from '../hooks/useTimerView';
 import { usePeriodFilter } from '../hooks/usePeriodFilter';
 import { useEntryEditor } from '../hooks/useEntryEditor';
@@ -28,16 +30,7 @@ import { TaskProposalModal } from '@/features/proposal-ui/components/TaskProposa
 export function TimeTrackingPage() {
   const { entries, createEntry, updateEntry, deleteEntry, splitEntry, splitRunningTimer, markSynced } = useTimeEntries();
 
-  const {
-    timer,
-    trackerBarRef,
-    pendingDescription,
-    liveTimerEntry,
-    virtualTimerEntry,
-    throttledElapsed,
-    timerSplitDisabledReason,
-    handlePlayEntry,
-  } = useTimerView({ createEntry });
+  const timer = useTimer();
 
   const { selectedIds, setSelectedIds, tableRef, handleEntryDeleted } = useEntrySelection();
 
@@ -72,13 +65,23 @@ export function TimeTrackingPage() {
   } = usePeriodFilter({ entries, timerElapsed: timer.elapsed });
 
   const {
+    trackerBarRef,
+    pendingDescription,
+    liveTimerEntry,
+    virtualTimerEntry,
+    throttledElapsed,
+    timerSplitDisabledReason,
+    handlePlayEntry,
+  } = useTimerView({ createEntry, timer, todayInRange });
+
+  const {
     splittingEntry,
     splittingTimer,
     handleSplitEntry,
     handleSplitTimer,
     handleSplitDialogOpenChange,
     handleSplitConfirm,
-    handleEntriesSynced,
+    invalidateSplitUndo,
   } = useSplitFlow({
     splitEntry,
     splitRunningTimer,
@@ -91,7 +94,7 @@ export function TimeTrackingPage() {
   });
 
   const { syncPanelOpen, setSyncPanelOpen, pendingEntries, entriesToSync, handleSyncEntry } =
-    useEntrySync({ entries, selectedIds, markSynced, onEntriesSynced: handleEntriesSynced });
+    useEntrySync({ entries, selectedIds, markSynced, onEntriesSynced: invalidateSplitUndo });
 
   const { proposalModalOpen, setProposalModalOpen, proposals, handleAcceptProposal } =
     useProposals({ entries, updateEntry });
@@ -204,7 +207,7 @@ export function TimeTrackingPage() {
           />
           <div className="flex items-center gap-3">
             <span className="text-sm text-muted-foreground">Vista:</span>
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as EntryViewTab)}>
               <TabsList>
                 <TabsTrigger value="table" className="gap-1.5">
                   <Table className="w-4 h-4" />
@@ -284,7 +287,7 @@ export function TimeTrackingPage() {
           onSplit={handleSplitEntry}
           onSync={handleSyncEntry}
           activeTab={activeTab}
-          timerEntry={todayInRange ? virtualTimerEntry : null}
+          timerEntry={virtualTimerEntry}
           onSplitTimer={liveTimerEntry ? handleSplitTimer : undefined}
           timerSplitDisabledReason={timerSplitDisabledReason}
           tableRef={tableRef}

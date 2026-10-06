@@ -1,21 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { useTimer } from './useTimer';
 import { createVirtualTimerEntry } from '../lib/timerVirtualEntry';
 import { splitAvailability, MIN_SPLIT_MINUTES } from '../lib/splitEntry';
+import { stopResultToNewEntryInput } from '../lib/newEntryInput';
+import type { useTimer } from './useTimer';
 import type { TimeTrackerBarHandle } from '../components/TimeTrackerBar';
-import type { TimeEntry } from '../types';
+import type { NewEntryInput, TimeEntry } from '../types';
 
 export interface UseTimerViewParams {
   /** Persiste un Registro; el play handler lo usa al cerrar el timer anterior. */
-  createEntry: (data: {
-    taskId: number;
-    taskName: string;
-    date: string;
-    startTime: string;
-    endTime: string;
-    description?: string;
-  }) => Promise<unknown>;
+  createEntry: (data: NewEntryInput) => Promise<unknown>;
+  /** Timer activo de la app; la página lo comparte con el resto de hooks. */
+  timer: ReturnType<typeof useTimer>;
+  /** `true` cuando la fecha de hoy cae dentro del período visible. */
+  todayInRange: boolean;
 }
 
 /** Fecha local en `YYYY-MM-DD`, sin pasar por UTC. */
@@ -28,12 +26,12 @@ function localDateString(date: Date = new Date()): string {
  * el play handler, el handle de la barra y el motivo por el que el split del timer
  * está deshabilitado.
  *
- * Compone el hook de timer existente (`useTimer`); no reimplementa nada del store
- * ni de la lógica pura (`createVirtualTimerEntry`, `splitAvailability`). El
- * comportamiento es el mismo que tenía la página.
+ * Recibe el Timer activo ya resuelto (`useTimer` lo compone la página) y no
+ * reimplementa nada del store ni de la lógica pura (`createVirtualTimerEntry`,
+ * `splitAvailability`). La fila virtual sólo se expone cuando hoy cae dentro del
+ * período visible. El comportamiento es el mismo que tenía la página.
  */
-export function useTimerView({ createEntry }: UseTimerViewParams) {
-  const timer = useTimer();
+export function useTimerView({ createEntry, timer, todayInRange }: UseTimerViewParams) {
   const trackerBarRef = useRef<TimeTrackerBarHandle>(null);
   const pendingDescription = useRef<string | undefined>(undefined);
 
@@ -97,8 +95,9 @@ export function useTimerView({ createEntry }: UseTimerViewParams) {
 
   const virtualTimerEntry = useMemo(() => {
     if (!timer.isRunning || !timer.timerState) return null;
+    if (!todayInRange) return null;
     return createVirtualTimerEntry(timer.timerState, new Date());
-  }, [timer.isRunning, timer.timerState, timer.elapsed]);
+  }, [timer.isRunning, timer.timerState, timer.elapsed, todayInRange]);
 
   // Throttled elapsed for stats cards — updates every 5s to avoid re-rendering 4 cards every second
   const [throttledElapsed, setThrottledElapsed] = useState(0);
@@ -129,16 +128,10 @@ export function useTimerView({ createEntry }: UseTimerViewParams) {
   const handlePlayEntry = useCallback(async (entry: TimeEntry) => {
     if (timer.isRunning) {
       const result = await timer.stop({ persist: false });
-      if (result && 'start' in result) {
-        await createEntry({
-          taskId: result.taskId,
-          taskName: result.taskName,
-          date: result.end.toLocaleDateString('sv-SE'),
-          startTime: result.start.toTimeString().slice(0, 5),
-          endTime: result.end.toTimeString().slice(0, 5),
-          description: pendingDescription.current,
-        });
-        toast('Timer de ' + result.taskName + ' detenido. Iniciando ' + entry.taskName + '.');
+      const stopped = stopResultToNewEntryInput(result, pendingDescription.current);
+      if (stopped) {
+        await createEntry(stopped);
+        toast('Timer de ' + stopped.taskName + ' detenido. Iniciando ' + entry.taskName + '.');
       }
     }
     pendingDescription.current = entry.description;
@@ -146,7 +139,6 @@ export function useTimerView({ createEntry }: UseTimerViewParams) {
   }, [timer, createEntry]);
 
   return {
-    timer,
     trackerBarRef,
     pendingDescription,
     liveTimerEntry,

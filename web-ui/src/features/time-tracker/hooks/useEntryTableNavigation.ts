@@ -5,7 +5,7 @@ import {
 } from '@/hooks/useTableKeyboardNavigation';
 import { useTableRowShortcuts } from '@/hooks/useTableRowShortcuts';
 import type { TimeTrackerBarHandle } from '../components/TimeTrackerBar';
-import type { TimeEntry } from '../types';
+import type { EntryViewTab, TimeEntry } from '../types';
 
 export interface UseEntryTableNavigationParams {
   /** Contenedor de la tabla; lo aporta `useEntrySelection`. */
@@ -13,7 +13,7 @@ export interface UseEntryTableNavigationParams {
   /** Registros visibles (los del período), en el orden de la tabla. */
   items: TimeEntry[];
   /** Pestaña activa: la navegación sólo opera en la vista de tabla. */
-  activeTab: string;
+  activeTab: EntryViewTab;
   /** Registro en edición: mientras el editor está abierto no se navega. */
   editingEntry: TimeEntry | null;
   /** Barra del timer: sus atajos no aplican mientras se edita la hora de inicio. */

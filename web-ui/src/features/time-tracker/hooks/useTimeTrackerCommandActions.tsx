@@ -3,7 +3,8 @@ import { Database, Table, LayoutGrid, Pencil, Trash2, Copy, Play, RefreshCw, Spl
 import { toast } from 'sonner';
 import { useCommandActions, type CommandAction } from '@/components/CommandActionsContext';
 import { splitAffordance } from '../lib/splitEntry';
-import type { TimeEntry } from '../types';
+import { stopResultToNewEntryInput } from '../lib/newEntryInput';
+import type { EntryViewTab, NewEntryInput, TimeEntry } from '../types';
 import type { StopTimerResult } from '../services/timeTrackingService';
 
 /** Lo que la acción de detener el timer necesita del Timer activo. */
@@ -12,23 +13,13 @@ export interface CommandTimerPort {
   stop: (options?: { persist?: boolean }) => Promise<TimeEntry | StopTimerResult | null>;
 }
 
-/** Datos con los que la acción de detener el timer persiste la entrada. */
-export interface CommandCreateEntryInput {
-  taskId: number;
-  taskName: string;
-  date: string;
-  startTime: string;
-  endTime: string;
-  description?: string;
-}
-
 export interface UseTimeTrackerCommandActionsParams {
   pendingEntries: TimeEntry[];
   handlePlayEntry: (entry: TimeEntry) => void;
   timer: CommandTimerPort;
-  createEntry: (data: CommandCreateEntryInput) => Promise<unknown>;
-  activeTab: string;
-  setActiveTab: (tab: string) => void;
+  createEntry: (data: NewEntryInput) => Promise<unknown>;
+  activeTab: EntryViewTab;
+  setActiveTab: (tab: EntryViewTab) => void;
   activeItem: TimeEntry | null;
   handleEditEntry: (entry: TimeEntry) => void;
   handleDeleteEntry: (id: string) => void;
@@ -154,15 +145,9 @@ export function useTimeTrackerCommandActions({
       icon: <span className="flex items-center"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><rect x="6" y="6" width="12" height="12" rx="2"/></svg></span>,
       action: () => {
         timer.stop({ persist: true }).then((result) => {
-          if (result && 'start' in result) {
-            createEntry({
-              taskId: result.taskId,
-              taskName: result.taskName,
-              date: result.end.toLocaleDateString('sv-SE'),
-              startTime: result.start.toTimeString().slice(0, 5),
-              endTime: result.end.toTimeString().slice(0, 5),
-              description: pendingDescription.current,
-            });
+          const stopped = stopResultToNewEntryInput(result, pendingDescription.current);
+          if (stopped) {
+            createEntry(stopped);
             toast.success('Timer detenido y guardado');
           }
         });

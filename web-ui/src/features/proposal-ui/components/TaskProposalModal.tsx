@@ -16,7 +16,7 @@ export interface TaskProposalModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   proposals: TaskProposal[];
-  onAccept: (proposal: TaskProposal, proposedName: string, processId: string) => void;
+  onAccept: (proposal: TaskProposal, processId: string) => void;
   config: ProcessConfig;
 }
 
@@ -85,7 +85,7 @@ export function TaskProposalModal({
 
     const proposal = proposals.find(p => getProposalKey(p) === activeRowKey);
     if (proposal && row) {
-      onAccept(proposal, row.proposedName, processId);
+      onAccept(proposal, processId);
     }
 
     setSelectorOpen(false);

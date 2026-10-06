@@ -1,11 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
 import { useTimerView } from '../useTimerView';
-import { useTimer } from '../useTimer';
+import type { useTimer } from '../useTimer';
 import { toast } from 'sonner';
 import type { TimeEntry, TimerState } from '../../types';
-
-vi.mock('../useTimer', () => ({ useTimer: vi.fn() }));
 
 vi.mock('sonner', () => ({
   toast: Object.assign(vi.fn(), {
@@ -32,8 +30,11 @@ function runningTimer(startTime: Date, elapsed: number, description?: string): T
 
 type TimerMock = ReturnType<typeof useTimer>;
 
+/** Último timer construido con `mockTimer`; `setup` lo inyecta en el hook. */
+let currentTimer: TimerMock;
+
 function mockTimer(overrides: Partial<TimerMock> = {}): TimerMock {
-  const timer: TimerMock = {
+  currentTimer = {
     timerState: null,
     isRunning: false,
     elapsed: 0,
@@ -44,8 +45,7 @@ function mockTimer(overrides: Partial<TimerMock> = {}): TimerMock {
     cancel: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
-  vi.mocked(useTimer).mockReturnValue(timer);
-  return timer;
+  return currentTimer;
 }
 
 function makeEntry(overrides: Partial<TimeEntry> = {}): TimeEntry {
@@ -66,8 +66,11 @@ function makeEntry(overrides: Partial<TimeEntry> = {}): TimeEntry {
   };
 }
 
-function setup(createEntry = vi.fn().mockResolvedValue(null)) {
-  const utils = renderHook(() => useTimerView({ createEntry }));
+function setup({ todayInRange = true }: { todayInRange?: boolean } = {}) {
+  const createEntry = vi.fn().mockResolvedValue(null);
+  const utils = renderHook(() =>
+    useTimerView({ createEntry, timer: currentTimer, todayInRange }),
+  );
   return { ...utils, createEntry };
 }
 
@@ -104,6 +107,15 @@ describe('useTimerView', () => {
       mockTimer({ isRunning: false, timerState: null });
 
       const { result } = setup();
+
+      expect(result.current.virtualTimerEntry).toBeNull();
+    });
+
+    it('no expone fila virtual cuando hoy queda fuera del período', () => {
+      const start = new Date(NOW.getTime() - 42 * 1000);
+      mockTimer({ isRunning: true, timerState: runningTimer(start, 42, 'Revisión'), elapsed: 42 });
+
+      const { result } = setup({ todayInRange: false });
 
       expect(result.current.virtualTimerEntry).toBeNull();
     });

@@ -46,7 +46,6 @@ export function useProposals({ entries, updateEntry }: UseProposalsParams) {
    */
   const handleAcceptProposal = useCallback(async (
     proposal: TaskProposal,
-    _proposedName: string,
     processId: string
   ) => {
     const newTaskId = Number(processId);

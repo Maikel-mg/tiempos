@@ -21,7 +21,7 @@ inventario exhaustivo. Rutas relativas a la raíz del repo.
 
 | Concepto | Archivo |
 |----------|---------|
-| Página del time tracker (composición de hooks y componentes) | `web-ui/src/features/time-tracker/pages/TimeTrackingPage.tsx` |
+| Página del time tracker (composición de hooks y componentes; 300 líneas, desde ~870) | `web-ui/src/features/time-tracker/pages/TimeTrackingPage.tsx` |
 | Filtro de período (hook) | `web-ui/src/features/time-tracker/hooks/usePeriodFilter.ts` |
 | Editor de registros y CRUD (hook) | `web-ui/src/features/time-tracker/hooks/useEntryEditor.ts` |
 | Vista del Timer activo (hook) | `web-ui/src/features/time-tracker/hooks/useTimerView.ts` |

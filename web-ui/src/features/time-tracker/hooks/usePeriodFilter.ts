@@ -3,7 +3,7 @@ import { computePeriodTotal } from '../lib/computePeriodTotal';
 import { resolvePeriodRange, type ResolvedPeriodRange } from '../lib/periodRange';
 import { formatDurationHMS } from '@/lib/format';
 import type { PeriodType, DateRange } from '@/components/shared/PeriodSelector';
-import type { TimeEntry } from '../types';
+import type { EntryViewTab, TimeEntry } from '../types';
 
 export interface UsePeriodFilterParams {
   entries: TimeEntry[];
@@ -21,7 +21,7 @@ export interface UsePeriodFilterParams {
 export function usePeriodFilter({ entries, timerElapsed }: UsePeriodFilterParams) {
   const [period, setPeriod] = useState<PeriodType>('week');
   const [customRange, setCustomRange] = useState<DateRange | undefined>(undefined);
-  const [activeTab, setActiveTab] = useState('table');
+  const [activeTab, setActiveTab] = useState<EntryViewTab>('table');
 
   const periodRange: ResolvedPeriodRange = useMemo(
     () => resolvePeriodRange(period, customRange),

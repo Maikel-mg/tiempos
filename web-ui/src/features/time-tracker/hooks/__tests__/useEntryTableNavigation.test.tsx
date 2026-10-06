@@ -3,7 +3,7 @@ import { act, renderHook } from '@testing-library/react';
 import type { RefObject } from 'react';
 import { useEntryTableNavigation } from '../useEntryTableNavigation';
 import type { TimeTrackerBarHandle } from '../../components/TimeTrackerBar';
-import type { TimeEntry } from '../../types';
+import type { EntryViewTab, TimeEntry } from '../../types';
 
 function makeEntry(id: string): TimeEntry {
   return {
@@ -24,7 +24,7 @@ function makeEntry(id: string): TimeEntry {
 
 interface SetupOptions {
   items?: TimeEntry[];
-  activeTab?: string;
+  activeTab?: EntryViewTab;
   editingEntry?: TimeEntry | null;
   trackerBarRef?: RefObject<TimeTrackerBarHandle>;
 }
