@@ -7,7 +7,6 @@ import { PeriodSelector } from '@/components/shared/PeriodSelector';
 import { TimeTrackerBar } from '../components/TimeTrackerBar';
 import type { TimeTrackerBarHandle } from '../components/TimeTrackerBar';
 import { TimeEntryEditorDialog } from '../components/TimeEntryEditorDialog';
-import type { TimeEntryFormData } from '../components/TimeEntryEditorDialog';
 import { SplitEntryDialog } from '../components/SplitEntryDialog';
 import type { SplitCut } from '../hooks/useSplitCut';
 import { splitAffordance, splitAvailability, MIN_SPLIT_MINUTES } from '../lib/splitEntry';
@@ -19,6 +18,7 @@ import { PeriodProgressPanel } from '../components/PeriodProgressPanel';
 import { useTimeEntries } from '../hooks/useTimeEntries';
 import { useTimer } from '../hooks/useTimer';
 import { usePeriodFilter } from '../hooks/usePeriodFilter';
+import { useEntryEditor } from '../hooks/useEntryEditor';
 import { useCommandActions } from '@/components/CommandActionsContext';
 import { useTableKeyboardNavigation } from '@/hooks/useTableKeyboardNavigation';
 import { useTableRowShortcuts } from '@/hooks/useTableRowShortcuts';
@@ -38,8 +38,6 @@ function localDateString(date: Date = new Date()): string {
 export function TimeTrackingPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [syncPanelOpen, setSyncPanelOpen] = useState(false);
-  const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
-  const [entryEditorOpen, setEntryEditorOpen] = useState(false);
   const [proposalModalOpen, setProposalModalOpen] = useState(false);
   /** Registro que se está dividiendo. */
   const [splittingEntry, setSplittingEntry] = useState<TimeEntry | null>(null);
@@ -48,6 +46,34 @@ export function TimeTrackingPage() {
 
   const { entries, createEntry, updateEntry, deleteEntry, splitEntry, splitRunningTimer, markSynced } = useTimeEntries();
   const timerHook = useTimer();
+
+  /** Limpia de la selección el Registro eliminado; la selección vive en la página. */
+  const handleEntryDeleted = useCallback((id: string) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      next.delete(id);
+      return next;
+    });
+  }, []);
+
+  const {
+    isEditorOpen,
+    editingEntry,
+    openEdit: handleEditEntry,
+    openCreate,
+    handleOpenChange,
+    submit: handleEditorSubmit,
+    create: handleCreateEntry,
+    duplicate: handleDuplicateEntry,
+    remove: handleDeleteEntry,
+  } = useEntryEditor({
+    entries,
+    createEntry,
+    updateEntry,
+    deleteEntry,
+    onEntryDeleted: handleEntryDeleted,
+  });
+
   const {
     period,
     customRange,
@@ -60,7 +86,6 @@ export function TimeTrackingPage() {
     handlePeriodChange,
   } = usePeriodFilter({ entries, timerElapsed: timerHook.elapsed });
 
-  const undoBuffer = useRef<Map<string, TimeEntry>>(new Map());
   const splitUndo = useRef<{
     /** Registro persistido a recortar; `null` si la mitad vive solo en el timer. */
     firstId: string | null;
@@ -116,48 +141,6 @@ export function TimeTrackingPage() {
     isEnabled: activeTab === 'table' && !editingEntry,
   });
 
-  const handleDeleteEntry = async (id: string) => {
-    const entry = entries.find((e) => e.id === id);
-    if (!entry) return;
-
-    await deleteEntry(id);
-    const newSelected = new Set(selectedIds);
-    newSelected.delete(id);
-    setSelectedIds(newSelected);
-
-    if (editingEntry?.id === id) {
-      setEditingEntry(null);
-    }
-
-    undoBuffer.current.set(id, entry);
-
-    toast('Entrada eliminada', {
-      action: {
-        label: 'Deshacer',
-        onClick: async () => {
-          await createEntry({
-            taskId: entry.taskId,
-            taskName: entry.taskName,
-            date: entry.date,
-            startTime: entry.startTime,
-            endTime: entry.endTime,
-            description: entry.description,
-          });
-          undoBuffer.current.delete(id);
-          toast.success('Entrada restaurada');
-        },
-      },
-      onAutoClose: () => {
-        undoBuffer.current.delete(id);
-      },
-    });
-  };
-
-  const handleEditEntry = useCallback((entry: TimeEntry) => {
-    setEditingEntry(entry);
-    setEntryEditorOpen(true);
-  }, []);
-
   const handleSyncEntry = useCallback(async (entry: TimeEntry) => {
     const dbConfigData = dbConfig.get();
     if (!dbConfigData || !dbConfigData.server || !dbConfigData.database) {
@@ -198,18 +181,6 @@ export function TimeTrackingPage() {
       toast.error('No se pudo aplicar la corrección');
     }
   }, [updateEntry]);
-
-  const handleDuplicateEntry = useCallback(async (entry: TimeEntry) => {
-    await createEntry({
-      taskId: entry.taskId,
-      taskName: entry.taskName,
-      date: entry.date,
-      startTime: entry.startTime,
-      endTime: entry.endTime,
-      description: entry.description,
-    });
-    toast.success('Entrada duplicada');
-  }, [createEntry]);
 
   const handleSplitEntry = useCallback((entry: TimeEntry) => {
     setSplittingTimer(false);
@@ -487,19 +458,6 @@ export function TimeTrackingPage() {
     };
   }, [timerHook.isRunning, timerHook.elapsed]);
 
-  const handleCreateEntry = useCallback(async (data: TimeEntryFormData) => {
-    await createEntry(data);
-  }, [createEntry]);
-
-  const handleEditorSubmit = useCallback(async (data: TimeEntryFormData) => {
-    if (editingEntry) {
-      await updateEntry(editingEntry.id, data);
-    } else {
-      await createEntry(data);
-    }
-    setEditingEntry(null);
-  }, [editingEntry, updateEntry, createEntry]);
-
   const handleAcceptProposal = useCallback(async (
     proposal: TaskProposal,
     _proposedName: string,
@@ -648,10 +606,7 @@ export function TimeTrackingPage() {
       id: 'manual-entry',
       label: 'Crear entrada manual',
       icon: <span className="flex items-center"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>,
-      action: () => {
-        setEditingEntry(null);
-        setEntryEditorOpen(true);
-      },
+      action: () => openCreate(),
       group: 'TimeTracker',
     },
     {
@@ -670,7 +625,7 @@ export function TimeTrackingPage() {
       when: () => activeTab !== 'grouped',
       group: 'TimeTracker',
     },
-  ], [pendingEntries, handlePlayEntry, timerHook.isRunning, timerHook.stop, createEntry, activeTab, activeItem, handleEditEntry, handleDeleteEntry, handleDuplicateEntry, handleSyncEntry]);
+  ], [pendingEntries, handlePlayEntry, timerHook.isRunning, timerHook.stop, createEntry, activeTab, activeItem, handleEditEntry, handleDeleteEntry, handleDuplicateEntry, handleSyncEntry, openCreate]);
 
   useCommandActions('time-tracker', commandActions);
 
@@ -691,13 +646,10 @@ export function TimeTrackingPage() {
       </div>
 
       <TimeEntryEditorDialog
-        open={entryEditorOpen}
+        open={isEditorOpen}
         mode={editingEntry ? 'edit' : 'create'}
         entry={editingEntry}
-        onOpenChange={(open) => {
-          setEntryEditorOpen(open);
-          if (!open) setEditingEntry(null);
-        }}
+        onOpenChange={handleOpenChange}
         onSubmit={handleEditorSubmit}
       />
 
