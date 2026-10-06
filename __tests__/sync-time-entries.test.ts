@@ -350,8 +350,11 @@ describe('POST /api/sync-time-entries', () => {
                 usuario: 'MG01',
             });
 
-            // Two distinct months → two SP calls
-            expect(mockQuery).toHaveBeenCalledTimes(2);
+            // Two distinct months → two SP calls (plus one SET LANGUAGE query)
+            const spCalls = mockQuery.mock.calls.filter(([q]) =>
+                String(q).includes('spNETTiempos_ListaImputaciones')
+            );
+            expect(spCalls).toHaveLength(2);
         });
 
         it('closes the pool even on error', async () => {
@@ -475,8 +478,9 @@ describe('POST /api/sync-time-entries', () => {
     // ===== Multiple months ==================================================
     describe('entries spanning multiple months', () => {
         it('queries each month and merges results for classification', async () => {
-            // First call → January, second call → February
+            // Call 1 → SET LANGUAGE, call 2 → January, call 3 → February
             mockQuery
+                .mockResolvedValueOnce({ recordset: [] })
                 .mockResolvedValueOnce({
                     recordset: [
                         { Fecha: '2026-01-15', Desde: '09:00', Hasta: '10:00', IdProceso: 100 },
