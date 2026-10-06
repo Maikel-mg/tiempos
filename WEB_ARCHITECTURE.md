@@ -163,6 +163,16 @@ export function useMiMutation() {
 
 ---
 
+## Testing
+
+- Un test bueno comprueba **comportamiento externo a través de la interfaz** del módulo, nunca detalles internos.
+- **Hooks**: se prueban por su **interfaz devuelta** (estado + callbacks) con `renderHook`. Prior art: `useTimer`, `useProcessCache`, `useConfigGuard`.
+- **Componentes y páginas**: se prueban por lo que el usuario ve y hace, con Testing Library.
+- **Lógica pura**: funciones puras con sus tests (p. ej. `splitEntry`, `balance`).
+- **Un seam por módulo**: cada hook tiene su test; la página mantiene sus tests de integración.
+
+---
+
 ## Flujo para crear una nueva feature
 
 1. **Tipos** — Definir interfaces en `lib/types.ts` o `features/[name]/types.ts`
