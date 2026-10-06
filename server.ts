@@ -169,13 +169,18 @@ app.post('/api/sync-time-entries', async (req: Request, res: Response) => {
     return res.json({ success: true, willInsert: [], alreadyExists: [] });
   }
 
-  const pairs = getYearMonthPairs(entries);
+  try {
+    const pairs = getYearMonthPairs(entries);
     const pairResults = await executeForYearMonthPairs(req.body as SyncTimeEntriesParams, pairs, usuario);
     const allDbRows = pairResults.flatMap(r => r.data);
 
     const result = classifyEntries(entries, allDbRows);
 
     res.json({ success: true, ...result });
+  } catch (error: any) {
+    console.error('Sync Error:', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
 });
 
 // --- Execute Time Entries: insert time entries via spNETTiempos_Alta ---
@@ -206,8 +211,13 @@ app.post('/api/execute-time-entries', async (req: Request, res: Response) => {
     return res.status(400).json({ success: false, message: 'database is required' });
   }
 
-  const results = await executeTimeEntriesInTransaction(req.body as ExecuteTimeEntriesParams, entries);
-  res.json({ success: true, results });
+  try {
+    const results = await executeTimeEntriesInTransaction(req.body as ExecuteTimeEntriesParams, entries);
+    res.json({ success: true, results });
+  } catch (error: any) {
+    console.error('Execute Time Entries Error:', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
 });
 
 // --- Preview Time Entries SQL: returns constructed SQL without executing ---
