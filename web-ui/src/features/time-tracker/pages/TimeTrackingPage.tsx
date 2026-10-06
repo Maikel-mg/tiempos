@@ -18,26 +18,17 @@ import { SyncPanel } from '../components/SyncPanel';
 import { PeriodProgressPanel } from '../components/PeriodProgressPanel';
 import { useTimeEntries } from '../hooks/useTimeEntries';
 import { useTimer } from '../hooks/useTimer';
+import { usePeriodFilter } from '../hooks/usePeriodFilter';
 import { useCommandActions } from '@/components/CommandActionsContext';
 import { useTableKeyboardNavigation } from '@/hooks/useTableKeyboardNavigation';
 import { useTableRowShortcuts } from '@/hooks/useTableRowShortcuts';
 import { createVirtualTimerEntry } from '../lib/timerVirtualEntry';
-import { computePeriodTotal } from '../lib/computePeriodTotal';
-import { resolvePeriodRange } from '../lib/periodRange';
 import { syncTimeEntries } from '../services/timeEntrySyncService';
 import { wizardConfig, dbConfig, proposalConfig } from '@/config/stores';
 import { TaskProposalModal } from '@/features/proposal-ui/components/TaskProposalModal';
 import { extractProposalsFromLocal } from '@/domain/proposals/extract-local-proposals';
 import type { TaskProposal } from '@/domain/proposals/task-proposal';
 import type { TimeEntry } from '../types';
-import type { PeriodType, DateRange } from '@/components/shared/PeriodSelector';
-
-function formatDurationHMS(totalSeconds: number): string {
-  const h = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
-  const m = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
-  const s = String(totalSeconds % 60).padStart(2, '0');
-  return `${h}:${m}:${s}`;
-}
 
 /** Fecha local en `YYYY-MM-DD`, sin pasar por UTC. */
 function localDateString(date: Date = new Date()): string {
@@ -49,9 +40,6 @@ export function TimeTrackingPage() {
   const [syncPanelOpen, setSyncPanelOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
   const [entryEditorOpen, setEntryEditorOpen] = useState(false);
-  const [period, setPeriod] = useState<PeriodType>('week');
-  const [customRange, setCustomRange] = useState<DateRange | undefined>(undefined);
-  const [activeTab, setActiveTab] = useState('table');
   const [proposalModalOpen, setProposalModalOpen] = useState(false);
   /** Registro que se está dividiendo. */
   const [splittingEntry, setSplittingEntry] = useState<TimeEntry | null>(null);
@@ -60,6 +48,17 @@ export function TimeTrackingPage() {
 
   const { entries, createEntry, updateEntry, deleteEntry, splitEntry, splitRunningTimer, markSynced } = useTimeEntries();
   const timerHook = useTimer();
+  const {
+    period,
+    customRange,
+    activeTab,
+    setActiveTab,
+    periodRange,
+    filteredByPeriod,
+    todayInRange,
+    periodTotalDisplay,
+    handlePeriodChange,
+  } = usePeriodFilter({ entries, timerElapsed: timerHook.elapsed });
 
   const undoBuffer = useRef<Map<string, TimeEntry>>(new Map());
   const splitUndo = useRef<{
@@ -92,16 +91,6 @@ export function TimeTrackingPage() {
     return pendingEntries.filter((e) => selectedIds.has(e.id));
   }, [pendingEntries, selectedIds]);
 
-  const periodRange = useMemo(
-    () => resolvePeriodRange(period, customRange),
-    [period, customRange]
-  );
-
-  const filteredByPeriod = useMemo(
-    () => entries.filter(e => e.date >= periodRange.startStr && e.date <= periodRange.endStr),
-    [entries, periodRange]
-  );
-
   const proposals = useMemo(() => {
     // Solo entradas del mes actual
     const now = new Date();
@@ -119,12 +108,6 @@ export function TimeTrackingPage() {
     const threshold = proposalConfig.get()?.thresholdHours ?? 8;
     return extractProposalsFromLocal(monthEntries, threshold);
   }, [entries]);
-
-  const todayInRange = useMemo(() => {
-    const now = new Date();
-    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    return todayStr >= periodRange.startStr && todayStr <= periodRange.endStr;
-  }, [periodRange]);
 
   const { getRowProps, focusFirst, activeItem } = useTableKeyboardNavigation({
     containerRef: tableRef,
@@ -503,19 +486,6 @@ export function TimeTrackingPage() {
       }
     };
   }, [timerHook.isRunning, timerHook.elapsed]);
-
-  const periodTotal = useMemo(() => {
-    return computePeriodTotal(filteredByPeriod, timerHook.elapsed, todayInRange);
-  }, [filteredByPeriod, timerHook.elapsed, todayInRange]);
-
-  const periodTotalDisplay = useMemo(() => formatDurationHMS(periodTotal), [periodTotal]);
-
-  const handlePeriodChange = (newPeriod: PeriodType, newCustomRange?: DateRange) => {
-    setPeriod(newPeriod);
-    if (newCustomRange) {
-      setCustomRange(newCustomRange);
-    }
-  };
 
   const handleCreateEntry = useCallback(async (data: TimeEntryFormData) => {
     await createEntry(data);
