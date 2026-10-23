@@ -77,3 +77,19 @@ export interface TimerState {
   elapsed: number;
   description?: string;
 }
+/** Resumen de horas registradas para una tarea (proceso). */
+export interface TaskHourSummary {
+  taskId: number;
+  taskName: string;
+  totalSeconds: number;
+  entryCount: number;
+  entries: TimeEntry[];
+}
+
+/** Resultado de agrupar Registros de tiempo por tarea. */
+export interface TaskHoursResult {
+  byTaskId: Map<number, TaskHourSummary>;
+  /** Grupos ordenados de mayor a menor totalSeconds (empate: taskId ascendente). */
+  sorted: TaskHourSummary[];
+  grandTotalSeconds: number;
+}
