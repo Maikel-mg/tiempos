@@ -86,6 +86,7 @@ SET DATEFORMAT dmy;
 | `docs/PRD-TimeTracking.md` | Requisitos del sistema de registro de tiempos |
 | `docs/prd/` | PRDs de features concretas |
 | `docs/TECH-DESIGN-TimeTracker.md` | Diseño técnico del tracker (abr 2026) |
+| `docs/TECH-DESIGN-SoftwareFactory.md` | Diseño de la fábrica local issue→PR (oct 2026) |
 | `DESIGN.md` | Tokens y sistema visual (Linear). No es arquitectura |
 | `plans/` | Planes de implementación (skill improve) |
 | `openspec/changes/` | Cambios del flujo SDD/OpenSpec (archivados) |
