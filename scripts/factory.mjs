@@ -255,5 +255,18 @@ if (cmd === 'check' || cmd === 'finish') {
     '## Cómo verificarlo en 2 minutos', '', '(completar)', '',
     `> Abierto por la fábrica local. Radio: ${radio.join(', ')}`,
   ].join('\n');
+  // `finish` tiene que poder repetirse: si el PR ya existe se actualiza en vez de
+  // romper con un stack trace de gh.
+  const rama = sh('git rev-parse --abbrev-ref HEAD', { cwd: wt });
+  const existente = JSON.parse(sh(`gh pr list --head ${rama} --state all --json number,url,state`))[0];
+  if (existente) {
+    if (existente.state !== 'OPEN') {
+      console.log(`el PR #${existente.number} está ${existente.state}: ${existente.url}\nNo se toca. Para empezar de nuevo, borra el worktree y la rama.`);
+      process.exit(0);
+    }
+    sh(`gh pr edit ${existente.number} --title ${JSON.stringify(subject)} --body ${JSON.stringify(body)}`, { cwd: wt });
+    console.log(`PR actualizado: ${existente.url}`);
+    process.exit(0);
+  }
   console.log(sh(`gh pr create --base ${BASE} --title ${JSON.stringify(subject)} --body ${JSON.stringify(body)}`, { cwd: wt }));
 }
