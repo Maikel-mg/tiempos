@@ -2,6 +2,7 @@
 // Fábrica local: issue -> brief + worktree -> PR.
 // Diseño: docs/TECH-DESIGN-SoftwareFactory.md
 //   node scripts/factory.mjs prepare <n> [--radio a,b]
+//   node scripts/factory.mjs run     <n> [--radio a,b]   # prepare + agente + PR
 //   node scripts/factory.mjs check   <n>     # radio de impacto + tests
 //   node scripts/factory.mjs finish  <n>     # check + push + PR
 import { execSync } from 'node:child_process';
@@ -68,6 +69,35 @@ function filesChanged(cwd) {
   const diff = shRaw(`git diff --name-only ${BASE}...HEAD`, cwd);
   const dirty = parsePorcelain(shRaw('git status --porcelain', cwd));
   return [...new Set([...diff.split('\n'), ...dirty])].map((f) => f.trim()).filter(Boolean);
+}
+
+if (cmd === 'run') {
+  // prepare + una sesión de agente + PR. La sesión es un `pi --print` en el worktree:
+  // contexto limpio, sin nada de la conversación donde se decidió (eso es el brief).
+  const radioArg = rest.join(' ');
+  sh(`node "${join(ROOT, 'scripts', 'factory.mjs')}" prepare ${n} ${radioArg}`);
+  const { text } = readBrief();
+  const prompt = [
+    'Estás implementando una issue en solitario. El brief es tu único contexto.',
+    '',
+    text,
+    '',
+    'Instrucciones:',
+    '- Implementa lo que pide la issue. Nada más.',
+    '- Añade los tests que pide el contrato y ejecuta: cd web-ui && npm run type-check &&',
+    '  npm run lint && npm run test:run   (y lo equivalente del backend si tocaste src/).',
+    '- No hagas commit ni push: de eso se encarga el runner.',
+    '- Escribe .factory/briefs/' + n + '.pr.md con: "subject: <mensaje convencional>", la línea',
+    '  "Closes #' + n + '" y las secciones del DoD (qué cambió, qué NO se hizo, cambio',
+    '  observable, cómo verificarlo en 2 minutos). Ese fichero es la descripción del PR.',
+    '- Si necesitas escribir fuera del radio declarado, PARA y explica por qué en voz alta.',
+    '- Al terminar, responde solo con un resumen de 5 líneas: qué hiciste y qué quedó fuera.',
+  ].join('\n');
+  console.log('lanzando agente en el worktree...');
+  execSync('pi --print ' + JSON.stringify(prompt), {
+    cwd: worktree(n), stdio: 'inherit', shell: true,
+  });
+  sh(`node "${join(ROOT, 'scripts', 'factory.mjs')}" finish ${n}`, { stdio: 'inherit' });
 }
 
 if (cmd === 'prepare') {

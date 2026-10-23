@@ -11,7 +11,8 @@
     "build:backend": "tsc",
     "lint": "eslint .",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "factory": "node scripts/factory.mjs"
   },
   "keywords": [
     "tiempos",

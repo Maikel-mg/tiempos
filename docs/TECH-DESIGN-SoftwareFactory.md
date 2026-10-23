@@ -3,6 +3,35 @@
 > Estado: **diseño cerrado, nada implementado**. Decisiones tomadas en sesión de grilling
 > (oct 2026). Este documento fija el contrato; el runner se implementa después.
 
+## 0. Cómo se usa
+
+```bash
+npm run factory -- run 124 --radio "web-ui/src/features/time-tracker/lib/**,web-ui/src/features/time-tracker/types/**"
+```
+
+Eso hace tres cosas sin ti: crea un **worktree aislado** con un brief sacado de la issue,
+lanza una **sesión de agente limpia** dentro de él (no arrastra esta conversación: el brief
+es todo su contexto), y abre el **PR** con la descripción del DoD ya rellenada. Si el cambio
+se sale del radio, no hay PR: te dice qué ficheros se salieron.
+
+Tus tres decisiones, y ninguna más:
+
+1. **Qué issue** y con qué radio (`--radio`).
+2. **Mergear el PR o no.** Nadie mergea por ti.
+3. Las issues marcadas **parcial** en la auditoría: leer y decidir si reescribir o cerrar.
+
+Otros comandos:
+
+| Comando | Para qué |
+|---|---|
+| `npm run factory -- check 124` | verifica el radio de un worktree sin lanzar nada |
+| `npm run factory -- prepare 124 --radio ...` | solo el brief + worktree, sin agente |
+| `npm run factory -- finish 124` | commit + push + PR del worktree existente |
+| `npm run factory -- selftest` | comprueba el verificador de radio |
+
+Los briefs viven en `.factory/briefs/<issue>.md` (no versionados). El del PR es
+`<issue>.pr.md`, que puede escribirlo el agente o tú.
+
 ## 1. Qué es y qué no es
 
 Una fábrica **local** que convierte una issue de GitHub en un PR mergeable sin que el
