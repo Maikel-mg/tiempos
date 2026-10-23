@@ -24,10 +24,17 @@ Otros comandos:
 
 | Comando | Para qué |
 |---|---|
+| `npm run factory -- help` | ayuda, sin abrir documentación |
+| `npm run factory -- list` | qué issues se pueden lanzar, con radio propuesto y estado |
+| `npm run factory -- status` | qué está en curso, qué tiene PR, qué cambios sin commitear |
 | `npm run factory -- check 124` | verifica el radio de un worktree sin lanzar nada |
 | `npm run factory -- prepare 124 --radio ...` | solo el brief + worktree, sin agente |
 | `npm run factory -- finish 124` | commit + push + PR del worktree existente |
 | `npm run factory -- selftest` | comprueba el verificador de radio |
+
+`list` propone el radio solo cuando la issue nombra ficheros que existen; si no, lo marca
+con ⚠ y hay que pasarlo. Una propuesta equivocada es peor que ninguna: el `check` la
+rechaza al final y el PR no sale.
 
 Los briefs viven en `.factory/briefs/<issue>.md` (no versionados). El del PR es
 `<issue>.pr.md`, que puede escribirlo el agente o tú.

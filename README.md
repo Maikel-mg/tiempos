@@ -52,3 +52,13 @@ Para más detalles, ver [web-ui/README.md](web-ui/README.md).
 - Los registros se guardan en el navegador (IndexedDB) hasta que se sincronizan
 - Requiere Node.js 18+ para ejecutar el servidor backend
 - Web UI usa React 18 + Vite 5 + TailwindCSS
+
+## Fábrica local (issue → PR)
+
+```bash
+npm run factory -- help
+```
+
+Lanza una issue en un worktree aislado y abre el PR. Uso y decisiones humanas en
+[`docs/TECH-DESIGN-SoftwareFactory.md`](./docs/TECH-DESIGN-SoftwareFactory.md#0-cómo-se-usa).
+Estado del backlog en [`docs/AUDITORIA-Backlog.md`](./docs/AUDITORIA-Backlog.md).

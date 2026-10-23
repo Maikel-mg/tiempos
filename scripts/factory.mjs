@@ -45,7 +45,89 @@ if (cmd === 'selftest') {
   process.exit(0);
 }
 
-if (!cmd || !n) {
+function radioPropuesto(issue, ficheros) {
+  const texto = `${issue.title}\n${issue.body || ''}`;
+  // Solo se propone radio si la issue nombra ficheros que existen: adivinar por palabras
+  // del título daba propuestas con confianza y equivocadas (T7 acababa en server.ts).
+  const tokens = [...texto.matchAll(/([\w./-]+\.tsx?)/g)].map((m) => m[1].split('/').pop());
+  const dirs = new Set();
+  for (const t of tokens) {
+    for (const f of ficheros) {
+      if (!f.endsWith('/' + t)) continue;
+      // Un test vive junto al código que prueba: se propone la carpeta padre.
+      const sinTests = f.split('/').slice(0, -1).join('/').replace(/\/__tests__$/, '');
+      dirs.add(sinTests + '/**');
+    }
+  }
+  return [...dirs].slice(0, 3).join(',');
+}
+
+function prDeIssue(n, todos) {
+  // Solo dos señales fiables: la rama de la fábrica, o un cierre explícito en el cuerpo.
+  // Mencionar "#N" de pasada no cuenta: el PR #3 menciona media cola y el #141 menciona
+  // #113 como "esto no lo hace", que no es lo mismo que cerrarlo.
+  try {
+    const lista = todos || JSON.parse(sh('gh pr list --state all --json number,state,url,title,body,headRefName --limit 100'));
+    const cierre = new RegExp(`(closes|fixes|resolves)\\s+#${n}\\b`, 'i');
+    return lista.find((p) => p.headRefName.startsWith(`factory/${n}-`) || cierre.test(p.body || '')) || null;
+  } catch { return null; }
+}
+
+if (cmd === 'help' || !cmd) {
+  console.log(`fábrica local — issue -> PR
+
+  npm run factory -- list                  qué issues se pueden lanzar, con radio propuesto
+  npm run factory -- status                qué está en curso y qué espera merge
+  npm run factory -- run <n> --radio "..."  brief + agente + PR (el comando normal)
+  npm run factory -- check <n>              verifica el radio sin lanzar ni pushear
+  npm run factory -- prepare <n> --radio "..."  solo brief + worktree (sin agente)
+  npm run factory -- finish <n>             commit + push + PR del worktree existente
+  npm run factory -- selftest              comprueba el verificador de radio
+
+Documentación: docs/TECH-DESIGN-SoftwareFactory.md (sección 0)
+El radio se acepta como comodines separados por comas: "ruta/a/**,otra/ruta/**"`);
+  process.exit(0);
+}
+
+if (cmd === 'list') {
+  const issues = JSON.parse(sh('gh issue list --state open --label ready-for-agent --limit 100 --json number,title,body'));
+  const todosLosPR = JSON.parse(sh('gh pr list --state all --json number,state,url,title,body,headRefName --limit 100'));
+  const ficheros = sh('git ls-files').split('\n');
+  const enCurso = new Set(sh('git worktree list --porcelain').split('\n').filter((l) => l.startsWith('worktree ')).map((l) => l.slice(9)).filter((p) => /-wt-\d+$/.test(p)).map((p) => Number(p.match(/-wt-(\d+)$/)[1])));
+  for (const issue of issues) {
+    const pr = prDeIssue(issue.number, todosLosPR);
+    const estado = pr && pr.state === 'OPEN' ? `PR #${pr.number} abierto`
+      : enCurso.has(issue.number) ? 'en curso (worktree)' : 'libre';
+    const radio = radioPropuesto(issue, ficheros);
+    console.log(`#${issue.number}  ${estado.padEnd(16)} ${issue.title.slice(0, 62)}`);
+    console.log(`        radio: ${radio || '⚠ sin radio propuesto, pásalo tú con --radio'}`);
+  }
+  process.exit(0);
+}
+
+if (cmd === 'status') {
+  const wts = sh('git worktree list --porcelain').split('\n\n').filter(Boolean).map((b) => {
+    const l = b.split('\n');
+    return { path: l[0].slice(9), branch: (l.find((x) => x.startsWith('branch ')) || 'branch (detached)').replace('branch refs/heads/', '') };
+  });
+  const fabrica = wts.filter((w) => /-wt-\d+$/.test(w.path));
+  if (!fabrica.length) console.log('nada en curso.');
+  for (const w of fabrica) {
+    const n = Number(w.path.match(/-wt-(\d+)$/)[1]);
+    const sucio = execSync('git status --porcelain', { cwd: w.path, encoding: 'utf8' })
+      .split('\n').filter(Boolean).length;
+    const pr = prDeIssue(n);
+    console.log(`#${n}  ${w.branch}\n      ${w.path}\n      cambios sin commitear: ${sucio}`
+      + (pr ? `\n      PR #${pr.number} (${pr.state}) ${pr.url}` : '\n      sin PR todavía'));
+  }
+  const abiertos = JSON.parse(sh('gh pr list --state open --json number,title,headRefName --limit 30'))
+    .filter((p) => p.headRefName.startsWith('factory/'));
+  console.log(`\nPRs de la fábrica abiertos: ${abiertos.length ? '' : 'ninguno'}`);
+  for (const p of abiertos) console.log(`  #${p.number}  ${p.title}`);
+  process.exit(0);
+}
+
+if (!n) {
   console.error('uso: factory.mjs prepare|check|finish <issue> [--radio p1,p2]');
   process.exit(2);
 }
