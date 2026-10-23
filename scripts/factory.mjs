@@ -6,7 +6,7 @@
 //   node scripts/factory.mjs check   <n>     # radio de impacto + tests
 //   node scripts/factory.mjs finish  <n>     # check + push + PR
 import { execSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const BASE = process.env.FACTORY_BASE || 'develop';
@@ -73,6 +73,40 @@ function prDeIssue(n, todos) {
   } catch { return null; }
 }
 
+if (cmd === 'clean') {
+  const wt = worktree(n);
+  const rama = `factory/${n}-`;
+  const pr = prDeIssue(n);
+  if (pr && pr.state === 'OPEN') {
+    console.error(`el PR #${pr.number} sigue abierto: mergea (o cierra) antes de limpiar.\n${pr.url}`);
+    process.exit(1);
+  }
+  const ramas = sh('git branch --list "factory/*"').split('\n').map((s) => s.replace('*', '').trim())
+    .filter((b) => b.startsWith(rama));
+  if (!existsSync(wt) && !ramas.length) {
+    console.log(`nada que limpiar para #${n}.`);
+    process.exit(0);
+  }
+  if (existsSync(wt)) {
+    const sucio = execSync('git status --porcelain', { cwd: wt, encoding: 'utf8' }).split('\n').filter(Boolean).length;
+    if (sucio) {
+      console.error(`el worktree tiene ${sucio} cambios sin commitear: revisalo antes de borrarlo.\n${wt}`);
+      process.exit(1);
+    }
+    sh(`git worktree remove "${wt}"`);
+    console.log(`worktree borrado: ${wt}`);
+  }
+  for (const b of ramas) {
+    try { sh(`git branch -D ${b}`); console.log(`rama borrada: ${b}`); }
+    catch { console.log(`no pude borrar ${b} (¿sin mergear?): git branch -D ${b} a mano`); }
+    try { sh(`git push origin --delete ${b}`); } catch { /* ya no estaba en origin */ }
+  }
+  rmSync(join(ROOT, '.factory', 'briefs', `${n}.md`), { force: true });
+  rmSync(join(ROOT, '.factory', 'briefs', `${n}.pr.md`), { force: true });
+  console.log(`limpio. #${n} no vuelve a la cola: si sigue abierta, cierrala.`);
+  process.exit(0);
+}
+
 if (cmd === 'help' || !cmd) {
   console.log(`fábrica local — issue -> PR
 
@@ -82,6 +116,7 @@ if (cmd === 'help' || !cmd) {
   npm run factory -- check <n>              verifica el radio sin lanzar ni pushear
   npm run factory -- prepare <n> --radio "..."  solo brief + worktree (sin agente)
   npm run factory -- finish <n>             commit + push + PR del worktree existente
+  npm run factory -- clean <n>              borra worktree + rama de una issue ya mergeada
   npm run factory -- selftest              comprueba el verificador de radio
 
 Documentación: docs/TECH-DESIGN-SoftwareFactory.md (sección 0)

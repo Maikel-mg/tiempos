@@ -30,6 +30,7 @@ Otros comandos:
 | `npm run factory -- check 124` | verifica el radio de un worktree sin lanzar nada |
 | `npm run factory -- prepare 124 --radio ...` | solo el brief + worktree, sin agente |
 | `npm run factory -- finish 124` | commit + push + PR del worktree existente |
+| `npm run factory -- clean 124` | tras mergear: borra worktree y rama. Se niega si el PR sigue abierto o hay cambios sin commitear |
 | `npm run factory -- selftest` | comprueba el verificador de radio |
 
 `list` propone el radio solo cuando la issue nombra ficheros que existen; si no, lo marca
