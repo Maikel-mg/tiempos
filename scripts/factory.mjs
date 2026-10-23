@@ -81,25 +81,37 @@ if (cmd === 'clean') {
     console.error(`el PR #${pr.number} sigue abierto: mergea (o cierra) antes de limpiar.\n${pr.url}`);
     process.exit(1);
   }
-  const ramas = sh('git branch --list "factory/*"').split('\n').map((s) => s.replace('*', '').trim())
+  // Una rama marcada en otro worktree sale con '+', no con '*'. Quitar solo '*' la dejaba invisible.
+  const ramas = sh('git branch --list "factory/*"').split('\n').map((s) => s.trim().replace(/^[+*]\s*/, ''))
     .filter((b) => b.startsWith(rama));
   if (!existsSync(wt) && !ramas.length) {
     console.log(`nada que limpiar para #${n}.`);
     process.exit(0);
   }
   if (existsSync(wt)) {
-    const sucio = execSync('git status --porcelain', { cwd: wt, encoding: 'utf8' }).split('\n').filter(Boolean).length;
-    if (sucio) {
-      console.error(`el worktree tiene ${sucio} cambios sin commitear: revisalo antes de borrarlo.\n${wt}`);
+    const modificados = execSync('git status --porcelain --untracked-files=no', { cwd: wt, encoding: 'utf8' })
+      .split('\n').filter(Boolean).length;
+    if (modificados) {
+      console.error(`el worktree tiene ${modificados} ficheros versionados modificados: revisalo antes de borrarlo.\n${wt}`);
       process.exit(1);
     }
-    sh(`git worktree remove "${wt}"`);
-    console.log(`worktree borrado: ${wt}`);
+    // Nada de junctions aquí: si quedara alguno, `git worktree remove` vaciaria el repo real.
+    try { sh(`git worktree remove --force "${wt}"`); console.log(`worktree borrado: ${wt}`); }
+    catch {
+      // Puede que git ya lo haya desregistrado (intento anterior a medias) y solo queden
+      // restos en disco. Aqui no hay junctiones, pero el guardia del nombre se queda.
+      if (!/-wt-\d+$/.test(wt)) { console.error(`ruta inesperada, no la borro: ${wt}`); process.exit(1); }
+      sh('git worktree prune');
+      try { rmSync(wt, { recursive: true, force: true }); console.log(`restos borrados: ${wt}`); }
+      catch { console.error(`no pude borrar ${wt}: hazlo a mano`); process.exit(1); }
+    }
   }
   for (const b of ramas) {
     try { sh(`git branch -D ${b}`); console.log(`rama borrada: ${b}`); }
     catch { console.log(`no pude borrar ${b} (¿sin mergear?): git branch -D ${b} a mano`); }
-    try { sh(`git push origin --delete ${b}`); } catch { /* ya no estaba en origin */ }
+    // Solo si existe en origin: si no, git escupe 'failed to push some refs' sin motivo.
+    const enOrigin = sh(`git ls-remote --heads origin ${b}`);
+    if (enOrigin) { try { sh(`git push origin --delete ${b}`); } catch { console.log(`no pude borrar ${b} en origin`); } }
   }
   rmSync(join(ROOT, '.factory', 'briefs', `${n}.md`), { force: true });
   rmSync(join(ROOT, '.factory', 'briefs', `${n}.pr.md`), { force: true });
@@ -251,14 +263,14 @@ if (cmd === 'prepare') {
     'de lo que decía la issue" en lugar de ampliarlo por tu cuenta.',
   ].join('\n'));
   if (!existsSync(wt)) sh(`git worktree add -b ${branch} "${wt}" ${BASE}`);
-  // Sin node_modules el worktree no puede correr tests: enlazar los del repo en
-  // lugar de pagar un npm ci por issue.
-  for (const dir of ['node_modules', 'web-ui/node_modules']) {
-    const link = join(wt, dir);
-    if (!existsSync(link) && existsSync(join(ROOT, dir))) {
-      try { execSync(`cmd /c mklink /J "${link}" "${join(ROOT, dir)}"`, { stdio: 'ignore' }); }
-      catch { console.warn(`aviso: no pude enlazar ${dir}; corre npm ci en ${wt}`); }
-    }
+  // Sin node_modules el worktree no puede correr tests. Se instala de verdad en lugar de
+  // enlazar los del repo: un junction dentro de un worktree hace que `git worktree remove`
+  // siga el enlace y vacíe el node_modules real (pasó, y costó 20s de npm ci recuperarlo).
+  if (!existsSync(join(wt, 'node_modules'))) {
+    console.log('instalando dependencias en el worktree (una vez por issue)...');
+    // Sin la global sh(): con stdio 'inherit' no devuelve stdout y sh() hace .trim() (crash real).
+    execSync('npm ci --prefer-offline --no-audit --no-fund', { cwd: wt, stdio: 'inherit' });
+    execSync('npm ci --prefer-offline --no-audit --no-fund', { cwd: join(wt, 'web-ui'), stdio: 'inherit' });
   }
   console.log(`brief:  ${briefPath(n)}\nworktree: ${wt}\nrama:   ${branch}`);
 }
