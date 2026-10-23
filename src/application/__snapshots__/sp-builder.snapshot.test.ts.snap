@@ -1,0 +1,63 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`gate SQL — batches de escritura > batch de alta de proceso (fechas DD/MM/YYYY → YYYYMMDD) 1`] = `
+"SET LANGUAGE Spanish;
+SET DATEFORMAT dmy;
+
+DECLARE @p38 VARCHAR(200)
+SET @p38 = NULL
+
+EXEC spNETTiempos_Procesos_Mantenimiento
+    @pAccion = 'I',
+    @pProceso = NULL,
+    @pNombre = 'Tarea O''Brien',
+    @pFechaIniPrevista = '20260317',
+    @pFechaFinPrevista = '20260331',
+    @pFechaIniReal = NULL,
+    @pFechaFinReal = NULL,
+    @pTiempoPrevisto = 480,
+    @pTecnicoPrev = 480,
+    @pObservaciones = NULL,
+    @pRutaDOC = NULL,
+    @pTipoDeHora = 1,
+    @pPresencial = 1,
+    @pDisponible = 1,
+    @pCosteEmpresa = 1,
+    @pFechaAviso = NULL,
+    @pHoraAviso = NULL,
+    @pUsuredAviso = NULL,
+    @pUsuredResp = 'BR00',
+    @pUsuredRespRev = 'BR00',
+    @pRecursos = NULL,
+    @pDiseño = 'N',
+    @pTecnicos = 'BR00',
+    @pIdDpto = 5,
+    @pFase = 'DES',
+    @pComentarioOblig = 0,
+    @pCliente = 'ELECNOR',
+    @pIdDptoClte = NULL,
+    @pIdAplicacion = NULL,
+    @pFechaEstimacion = '20260401',
+    @pTareaTecnica = 1,
+    @pObservacionEstExt = NULL,
+    @pHito = 0,
+    @pDesplazamientoPS = 0,
+    @pHerramienta = NULL,
+    @pProtegida = 0,
+    @pFaseAnterior = NULL,
+    @Resultado = @p38 OUTPUT;"
+`;
+
+exports[`gate SQL — batches de escritura > batch de alta de tiempos (2 entradas, comillas y default de pTipoHora) 1`] = `
+"SET LANGUAGE Spanish;
+SET DATEFORMAT dmy;
+
+EXEC spNETTiempos_Alta @Usured='BR00', @Fecha='20260317', @HoraDesde='09:00:00', @HoraHasta='11:30:00', @Minutos=150, @Proceso=1234, @pParteSalida=NULL, @pGastos=0, @pKms=0, @pTipoHora=11, @ClienteComercial=NULL, @Comentario='It''s a test', @pCambio=NULL, @pTeleTrabajo=0, @ObservacionesCalidad=NULL, @Rapport=0, @RapportCheck=0, @VBPermisoUsured=NULL, @VBPermisoFechaHora=NULL, @ObservacionesPermiso=NULL, @Ticket=NULL, @EsTeleTrabajo=1, @pMarcajeIP_INI=0, @pMarcajeIP_FIN=0, @pObservacionesPseudoMarcaje=NULL, @pTiempoNoReconocido=0, @pObservacionesRegistroHorario=NULL
+
+EXEC spNETTiempos_Alta @Usured='O''Brien', @Fecha='20260317', @HoraDesde='09:00:00', @HoraHasta='11:30:00', @Minutos=60, @Proceso=5678, @pParteSalida=NULL, @pGastos=0, @pKms=0, @pTipoHora=11, @ClienteComercial=NULL, @Comentario='', @pCambio=NULL, @pTeleTrabajo=0, @ObservacionesCalidad=NULL, @Rapport=0, @RapportCheck=0, @VBPermisoUsured=NULL, @VBPermisoFechaHora=NULL, @ObservacionesPermiso=NULL, @Ticket=NULL, @EsTeleTrabajo=1, @pMarcajeIP_INI=0, @pMarcajeIP_FIN=0, @pObservacionesPseudoMarcaje=NULL, @pTiempoNoReconocido=0, @pObservacionesRegistroHorario=NULL"
+`;
+
+exports[`gate SQL — batches de escritura > batch vacío: solo cabecera de idioma y formato 1`] = `
+"SET LANGUAGE Spanish;
+SET DATEFORMAT dmy;"
+`;
