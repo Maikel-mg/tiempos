@@ -89,7 +89,7 @@ export function TimeEntryEditorDialog({
     () => computeDurationSeconds(form.startTime, form.endTime),
     [form.startTime, form.endTime]
   );
-  const isValid = form.taskId > 0 && !!form.date && !!form.startTime && !!form.endTime && durationSeconds > 0;
+  const isValid = form.taskId !== 0 && !!form.date && !!form.startTime && !!form.endTime && durationSeconds > 0;
   const isDirty = hasFormChanged(form, initialForm);
   const title = mode === 'edit' ? 'Editar registro de tiempo' : 'Nuevo registro de tiempo';
   const description = mode === 'edit'
@@ -129,7 +129,7 @@ export function TimeEntryEditorDialog({
     setForm((current) => ({ ...current, [key]: value }));
   }, []);
 
-  const task: Proceso | null = form.taskId > 0
+  const task: Proceso | null = form.taskId !== 0
     ? { proceso: form.taskId, nombre: form.taskName }
     : null;
 

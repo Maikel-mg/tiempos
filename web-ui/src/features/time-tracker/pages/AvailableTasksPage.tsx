@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { ListTodo, Loader2, RefreshCw, AlertCircle, Plus, Inbox, UploadCloud, WifiOff } from 'lucide-react';
+import { ListTodo, Loader2, RefreshCw, AlertCircle, Plus, Inbox, UploadCloud, WifiOff, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -9,7 +9,7 @@ import { SQLPreviewModal } from '@/components/SQLPreviewModal';
 import { useCreateProcess } from '@/features/process-management/mutations/useCreateProcess';
 import type { CreateProcessDTO } from '@/features/process-management/types';
 import { useProcessCache } from '../hooks/useProcessCache';
-import { saveLocalTask } from '../services/localTasksService';
+import { deleteLocalTask, saveLocalTask } from '../services/localTasksService';
 import { CreatePendingTaskDialog } from '../components/CreatePendingTaskDialog';
 import { useCommandActions } from '@/components/CommandActionsContext';
 import { useTableKeyboardNavigation } from '@/hooks/useTableKeyboardNavigation';
@@ -29,7 +29,8 @@ const columnDefinitions = [
 ];
 
 const buildColumns = (
-  onCreatePending: (proceso: Proceso) => void
+  onCreatePending: (proceso: Proceso) => void,
+  onDeletePending: (proceso: Proceso) => void
 ): ColumnDef<Proceso, any>[] => [
   {
     accessorKey: 'proceso',
@@ -55,6 +56,16 @@ const buildColumns = (
             >
               <UploadCloud className="mr-1 h-3 w-3" />
               Crear en la BD
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 text-muted-foreground hover:text-destructive"
+              onClick={() => onDeletePending(row.original)}
+              title="Eliminar tarea local"
+              aria-label={`Eliminar tarea local ${row.original.nombre}`}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
             </Button>
           </>
         )}
@@ -99,7 +110,21 @@ export function AvailableTasksPage() {
   const createProcess = useCreateProcess();
   const tableRef = useRef<HTMLTableElement>(null);
 
-  const columns = useMemo(() => buildColumns(setCreatingTask), []);
+  const handleDeletePending = useCallback(async (proceso: Proceso) => {
+    if (!window.confirm(`¿Eliminar la tarea local "${proceso.nombre}"?`)) return;
+    try {
+      await deleteLocalTask(proceso.proceso);
+      await refresh();
+      toast.success('Tarea local eliminada');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'No se pudo eliminar la tarea');
+    }
+  }, [refresh]);
+
+  const columns = useMemo(
+    () => buildColumns(setCreatingTask, handleDeletePending),
+    [handleDeletePending]
+  );
 
   const filteredProcesses = useMemo(() => {
     if (showAll) return processes;

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { materializeLocalTask, saveLocalTask, toProceso } from '../localTasksService';
+import { deleteLocalTask, materializeLocalTask, saveLocalTask, toProceso } from '../localTasksService';
 import type { LocalProcess } from '../../types';
 
 const { mockStorage, mockPost, mockDbGet } = vi.hoisted(() => ({
@@ -8,6 +8,7 @@ const { mockStorage, mockPost, mockDbGet } = vi.hoisted(() => ({
     saveLocalProcess: vi.fn(async () => {}),
     deleteLocalProcess: vi.fn(async () => {}),
     remapTaskId: vi.fn(async () => 0),
+    countEntriesByTaskId: vi.fn(async () => 0),
     upsertProceso: vi.fn(async () => {}),
   },
   mockPost: vi.fn(),
@@ -96,5 +97,35 @@ describe('localTasksService', () => {
       'La tarea pendiente ya no existe en este equipo'
     );
     expect(mockPost).not.toHaveBeenCalled();
+  });
+
+  describe('deleteLocalTask', () => {
+    it('borra la tarea local cuando no tiene registros', async () => {
+      mockStorage.getLocalProcesses.mockResolvedValue([local()]);
+      mockStorage.countEntriesByTaskId.mockResolvedValue(0);
+
+      await deleteLocalTask(-1);
+
+      expect(mockStorage.deleteLocalProcess).toHaveBeenCalledWith(-1);
+    });
+
+    it('no borra una tarea con registros: se perderían sin traza', async () => {
+      mockStorage.getLocalProcesses.mockResolvedValue([local()]);
+      mockStorage.countEntriesByTaskId.mockResolvedValue(3);
+
+      await expect(deleteLocalTask(-1)).rejects.toThrow(
+        'La tarea tiene 3 registro(s) de tiempo: reasignalos o borralos antes de eliminarla'
+      );
+      expect(mockStorage.deleteLocalProcess).not.toHaveBeenCalled();
+    });
+
+    it('no borra una tarea que ya no existe en local', async () => {
+      mockStorage.getLocalProcesses.mockResolvedValue([]);
+
+      await expect(deleteLocalTask(-7)).rejects.toThrow(
+        'La tarea pendiente ya no existe en este equipo'
+      );
+      expect(mockStorage.deleteLocalProcess).not.toHaveBeenCalled();
+    });
   });
 });

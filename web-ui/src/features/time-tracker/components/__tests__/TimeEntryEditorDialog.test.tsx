@@ -64,6 +64,23 @@ describe('TimeEntryEditorDialog', () => {
     expect(screen.getByDisplayValue('11:30')).toBeInTheDocument();
   });
 
+  it('permite editar un registro de una tarea local (taskId negativo)', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <TimeEntryEditorDialog
+        open
+        mode="edit"
+        entry={{ ...entry, taskId: -1, taskName: 'Tarea local', proceso: { proceso: -1, nombre: 'Tarea local' } }}
+        onOpenChange={vi.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+
+    expect(screen.getByRole('button', { name: /guardar/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /tarea local/i })).toBeInTheDocument();
+  });
+
   it('submits a new manual entry with the editor fields', async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn().mockResolvedValue(undefined);

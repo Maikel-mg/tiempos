@@ -37,6 +37,26 @@ export async function saveLocalTask(dto: CreateProcessDTO): Promise<Proceso> {
 }
 
 /**
+ * Borra una tarea creada sin conexión. Se niega si tiene Registros: nunca se
+ * sincronizaron, así que borrarla los dejaría huérfanos y sin traza.
+ */
+export async function deleteLocalTask(proceso: number): Promise<void> {
+  const local = (await indexedDBStorage.getLocalProcesses()).find((p) => p.proceso === proceso);
+  if (!local) {
+    throw new Error('La tarea pendiente ya no existe en este equipo');
+  }
+
+  const registros = await indexedDBStorage.countEntriesByTaskId(proceso);
+  if (registros > 0) {
+    throw new Error(
+      `La tarea tiene ${registros} registro(s) de tiempo: reasignalos o borralos antes de eliminarla`
+    );
+  }
+
+  await indexedDBStorage.deleteLocalProcess(proceso);
+}
+
+/**
  * Crea en la BD una tarea guardada en local (spNETTiempos_Procesos_Mantenimiento
  * vía /create-process) con la fase real elegida, y reapunta a su id los Registros
  * que la usaban. Si algo falla lanza: la tarea se conserva en local para reintentar.

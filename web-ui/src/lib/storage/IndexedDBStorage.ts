@@ -256,6 +256,11 @@ export class IndexedDBStorage implements StorageStrategy {
     await db.localProcesses.delete(proceso);
   }
 
+  /** Cuántos Registros apuntan a una tarea (local o real). */
+  async countEntriesByTaskId(proceso: number): Promise<number> {
+    return await db.timeEntries.where('taskId').equals(proceso).count();
+  }
+
   /**
    * Apunta al proceso real los Registros que usaban una tarea local.
    * Devuelve cuántos Registros se movieron.
