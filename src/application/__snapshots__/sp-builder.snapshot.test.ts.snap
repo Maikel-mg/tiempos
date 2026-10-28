@@ -45,7 +45,9 @@ EXEC spNETTiempos_Procesos_Mantenimiento
     @pHerramienta = NULL,
     @pProtegida = 0,
     @pFaseAnterior = NULL,
-    @Resultado = @p38 OUTPUT;"
+    @Resultado = @p38 OUTPUT;
+
+SELECT @p38 AS Resultado;"
 `;
 
 exports[`gate SQL — batches de escritura > batch de alta de tiempos (2 entradas, comillas y default de pTipoHora) 1`] = `

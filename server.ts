@@ -275,11 +275,18 @@ app.post('/api/create-process', async (req: Request, res: Response) => {
       [sql]
     );
     const totalRowsAffected = results.reduce((sum, r) => sum + r.rowsAffected, 0);
+    // El SP devuelve el id del proceso creado en su parámetro OUTPUT (@p38).
+    // Lo necesitamos para remapear los Registros que apuntaban a una tarea local.
+    const rawResultado = results[0]?.recordset?.[0]?.Resultado;
+    const resultado = rawResultado === null || rawResultado === undefined || rawResultado === ''
+      ? null
+      : Number(rawResultado);
 
     res.json({
       success: true,
       message: 'Proceso creado exitosamente',
       totalRowsAffected,
+      resultado: Number.isFinite(resultado as number) ? resultado : null,
       results
     });
   } catch (error: any) {

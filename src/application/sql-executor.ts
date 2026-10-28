@@ -54,18 +54,19 @@ export async function executeQueryRaw(
 export async function executeStatements(
   params: DbConnectionParams,
   statements: string[]
-): Promise<{ success: boolean; rowsAffected: number }[]> {
+): Promise<{ success: boolean; rowsAffected: number; recordset?: any[] }[]> {
   const config = createDbConfig(params);
   const pool = new sql.ConnectionPool(config);
   let connected = false;
   try {
     await pool.connect();
     connected = true;
-    const results: { success: boolean; rowsAffected: number }[] = [];
+    const results: { success: boolean; rowsAffected: number; recordset?: any[] }[] = [];
     for (const statement of statements) {
       const result = await pool.request().query(statement);
       const rowsAffected = result.rowsAffected[0] || 0;
-      results.push({ success: true, rowsAffected });
+      // recordset: lo usa /api/create-process para devolver el id que genera el SP
+      results.push({ success: true, rowsAffected, recordset: result.recordset });
     }
     return results;
   } finally {
