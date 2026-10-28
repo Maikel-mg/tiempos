@@ -9,7 +9,8 @@ import { SQLPreviewModal } from '@/components/SQLPreviewModal';
 import { useCreateProcess } from '@/features/process-management/mutations/useCreateProcess';
 import type { CreateProcessDTO } from '@/features/process-management/types';
 import { useProcessCache } from '../hooks/useProcessCache';
-import { materializeLocalTasks, saveLocalTask } from '../services/localTasksService';
+import { saveLocalTask } from '../services/localTasksService';
+import { CreatePendingTaskDialog } from '../components/CreatePendingTaskDialog';
 import { useCommandActions } from '@/components/CommandActionsContext';
 import { useTableKeyboardNavigation } from '@/hooks/useTableKeyboardNavigation';
 import { wizardConfig } from '@/config/stores';
@@ -27,7 +28,9 @@ const columnDefinitions = [
   { id: 'disciplinaId', label: 'Disciplina', visible: true },
 ];
 
-const columns: ColumnDef<Proceso, any>[] = [
+const buildColumns = (
+  onCreatePending: (proceso: Proceso) => void
+): ColumnDef<Proceso, any>[] => [
   {
     accessorKey: 'proceso',
     header: 'ID',
@@ -40,9 +43,20 @@ const columns: ColumnDef<Proceso, any>[] = [
       <span className="flex items-center gap-1.5 font-medium">
         {row.getValue('nombre')}
         {row.original.pendiente && (
-          <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">
-            pendiente
-          </span>
+          <>
+            <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">
+              pendiente
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-6 px-2 text-xs"
+              onClick={() => onCreatePending(row.original)}
+            >
+              <UploadCloud className="mr-1 h-3 w-3" />
+              Crear en la BD
+            </Button>
+          </>
         )}
       </span>
     ),
@@ -81,11 +95,11 @@ export function AvailableTasksPage() {
     () => Object.fromEntries(columnDefinitions.map((c) => [c.id, c.visible]))
   );
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [isMaterializing, setIsMaterializing] = useState(false);
+  const [creatingTask, setCreatingTask] = useState<Proceso | null>(null);
   const createProcess = useCreateProcess();
   const tableRef = useRef<HTMLTableElement>(null);
 
-  const pendingProcesses = useMemo(() => processes.filter((p) => p.pendiente), [processes]);
+  const columns = useMemo(() => buildColumns(setCreatingTask), []);
 
   const filteredProcesses = useMemo(() => {
     if (showAll) return processes;
@@ -139,29 +153,6 @@ export function AvailableTasksPage() {
     [offline, refresh, createProcess]
   );
 
-  const handleMaterialize = useCallback(async () => {
-    setIsMaterializing(true);
-    try {
-      const result = await materializeLocalTasks();
-      await refresh();
-      if (result.fallidas.length === 0) {
-        toast.success(
-          `${result.creadas} tarea(s) creada(s) en la base de datos · ${result.movidos} registro(s) reapuntados`
-        );
-      } else {
-        toast.error(
-          `Creadas: ${result.creadas}. Fallaron: ${result.fallidas
-            .map((f) => `${f.nombre} (${f.error})`)
-            .join('; ')}`
-        );
-      }
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'No se pudieron crear las tareas pendientes');
-    } finally {
-      setIsMaterializing(false);
-    }
-  }, [refresh]);
-
   const toggleColumns = useMemo(() => 
     columnDefinitions.map((c) => ({ ...c, visible: columnVisibility[c.id] ?? true })),
     [columnVisibility]
@@ -200,22 +191,6 @@ export function AvailableTasksPage() {
           <Plus className="w-4 h-4 mr-1" />
           Crear tarea
         </Button>
-        {pendingProcesses.length > 0 && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleMaterialize}
-            disabled={isMaterializing}
-            title="Crear en la base de datos las tareas guardadas sin conexión"
-          >
-            {isMaterializing ? (
-              <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-            ) : (
-              <UploadCloud className="w-4 h-4 mr-1" />
-            )}
-            Crear tareas pendientes ({pendingProcesses.length})
-          </Button>
-        )}
       </div>
 
       {offline && (
@@ -290,6 +265,13 @@ export function AvailableTasksPage() {
         </div>
       )}
 
+      <CreatePendingTaskDialog
+        proceso={creatingTask?.proceso ?? null}
+        nombre={creatingTask?.nombre ?? ''}
+        onOpenChange={(open) => { if (!open) setCreatingTask(null); }}
+        onCreated={refresh}
+      />
+
       <SQLPreviewModal
         open={isCreateOpen}
         onOpenChange={setIsCreateOpen}
@@ -299,6 +281,7 @@ export function AvailableTasksPage() {
           fase: wizardConfig.get()?.fase ?? '',
         }}
         title="Crear Tarea"
+        sinFase={offline}
         onExecute={handleCreate}
         isExecuting={createProcess.isPending}
         executeResult={createProcess.data ? {

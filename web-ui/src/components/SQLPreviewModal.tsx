@@ -30,6 +30,11 @@ export interface SQLPreviewModalProps {
     } | null;
     fases?: Array<{ id: string; label: string }>;
     selectedProject?: Project | null;
+    /**
+     * Alta sin proyecto ni fase: se eligen contra la BD real cuando se crea la tarea
+     * más adelante. Sin conexión esas listas no existen, así que no se piden.
+     */
+    sinFase?: boolean;
     title?: string;
     onExecute?: (dto: CreateProcessDTO) => void;
     isExecuting?: boolean;
@@ -59,6 +64,7 @@ export function SQLPreviewModal({
     isExecuting = false,
     executeResult = null,
     selectedProject,
+    sinFase,
 }: SQLPreviewModalProps) {
     const [copied, setCopied] = useState(false);
     const [editedTask, setEditedTask] = useState<any>(null);
@@ -109,8 +115,10 @@ export function SQLPreviewModal({
 
     // Fetch preview SQL from backend when editedTask changes
     const fetchPreview = useCallback(async () => {
-        if (!editedTask || !editedTask.fase?.trim()) {
-            setPreviewSql('');
+        if (!editedTask || sinFase || !editedTask.fase?.trim()) {
+            setPreviewSql(
+                sinFase ? '-- El proyecto y la fase se eligen al crear la tarea en la base de datos.' : ''
+            );
             return;
         }
 
@@ -140,7 +148,7 @@ export function SQLPreviewModal({
         } finally {
             setIsLoadingPreview(false);
         }
-    }, [editedTask, config]);
+    }, [editedTask, config, sinFase]);
 
     useEffect(() => {
         if (open) {
@@ -177,14 +185,14 @@ export function SQLPreviewModal({
                     isDateValid(editedTask.fechaFin) && 
                     isDateValid(editedTask.fechaEstimacion) &&
                     !isNaN(editedTask.minutos) &&
-                    !!editedTask?.fase?.trim();
+                    (sinFase ? !!editedTask?.nombre?.trim() : !!editedTask?.fase?.trim());
 
     const currentHours = editedTask ? (editedTask.minutos / 60) : 0;
 
     const handleExecute = () => {
         if (!onExecute || !editedTask) return;
         const dto = buildDTOFromTask(editedTask, config);
-        onExecute(dto);
+        onExecute(sinFase ? { ...dto, fase: '' } : dto);
     };
 
     return (
@@ -197,7 +205,11 @@ export function SQLPreviewModal({
                 <div className="flex-1 overflow-hidden flex flex-col gap-4">
                     {/* Row 1: Proyecto + Fase */}
                     <div className="p-4 bg-muted/30 rounded-lg border" data-testid="row-proyecto-fase">
-                        {!fases ? (
+                        {sinFase ? (
+                            <p className="text-sm text-muted-foreground">
+                                El proyecto y la fase se eligen al crear la tarea en la base de datos.
+                            </p>
+                        ) : !fases ? (
                             <SinFasesSelector
                                 config={config}
                                 onTaskChange={(updates) => {

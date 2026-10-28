@@ -476,6 +476,61 @@ describe('SQLPreviewModal', () => {
         });
     });
 
+    describe('Alta sin fase (sin conexión)', () => {
+        it('no pide proyecto ni fase: se eligen al crear la tarea en la base de datos', () => {
+            renderModal({ sinFase: true });
+
+            expect(screen.queryByTestId('sin-fases-selector')).toBeNull();
+            expect(screen.queryByTestId('row-proyecto-fase')).toHaveTextContent(
+                'El proyecto y la fase se eligen al crear la tarea en la base de datos.'
+            );
+        });
+
+        it('no consulta la vista previa SQL sin fase y envía el DTO con fase vacía', async () => {
+            renderModal({
+                sinFase: true,
+                taskData: {
+                    name: 'Tarea sin conexión',
+                    fechaInicio: '01/06/2026',
+                    fechaFin: '08/06/2026',
+                    fechaEstimacion: '01/06/2026',
+                    totalMinutes: 120,
+                },
+                config: { usuario: 'MG01', fase: 'DES' },
+                onExecute: mockOnExecute,
+            });
+
+            expect(apiClient.post).not.toHaveBeenCalled();
+            expect(screen.getByTestId('sql-preview')).toHaveTextContent(
+                '-- El proyecto y la fase se eligen al crear la tarea en la base de datos.'
+            );
+
+            const executeButton = screen.getByRole('button', { name: /Ejecutar en BD/i });
+            await waitFor(() => expect(executeButton).toBeEnabled());
+            fireEvent.click(executeButton);
+
+            expect(mockOnExecute).toHaveBeenCalledWith(
+                expect.objectContaining({ nombre: 'Tarea sin conexión', fase: '' })
+            );
+        });
+
+        it('el nombre es obligatorio en modo sin fase', async () => {
+            renderModal({
+                sinFase: true,
+                taskData: {
+                    name: '',
+                    fechaInicio: '01/06/2026',
+                    fechaFin: '08/06/2026',
+                    fechaEstimacion: '01/06/2026',
+                    totalMinutes: 120,
+                },
+                onExecute: mockOnExecute,
+            });
+
+            expect(screen.getByRole('button', { name: /Ejecutar en BD/i })).toBeDisabled();
+        });
+    });
+
     describe('Validation: SinFases mode', () => {
         it('disables execute button when no project or phase selected in SinFases mode', () => {
             vi.mocked(useProjects).mockReturnValue({
