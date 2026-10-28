@@ -143,6 +143,31 @@ describe('useEntrySync', () => {
     expect(result.current.entriesToSync).toEqual([]);
   });
 
+  it('excluye del sync los Registros de una tarea local (taskId negativo) y los reporta aparte', () => {
+    const { result } = setup({
+      entries: [
+        makeEntry({ id: 'e1' }),
+        makeEntry({ id: 'e2', taskId: -1, proceso: { proceso: -1, nombre: 'Tarea local' } }),
+      ],
+    });
+
+    expect(result.current.entriesToSync.map((e) => e.id)).toEqual(['e1']);
+    expect(result.current.pendingEntries.map((e) => e.id)).toEqual(['e1', 'e2']);
+    expect(result.current.blockedEntries.map((e) => e.id)).toEqual(['e2']);
+  });
+
+  it('no sincroniza un Registro de tarea local ni cuando se pide explícitamente', async () => {
+    const entry = makeEntry({ id: 'e1', taskId: -1, proceso: { proceso: -1, nombre: 'Tarea local' } });
+    const { result, markSynced } = setup({ entries: [entry] });
+
+    await act(async () => {
+      await result.current.handleSyncEntry(entry);
+    });
+
+    expect(syncTimeEntries).not.toHaveBeenCalled();
+    expect(markSynced).not.toHaveBeenCalled();
+  });
+
   it('sin configuración de base de datos no sincroniza y avisa', async () => {
     vi.mocked(dbConfig.get).mockReturnValue({ server: '', database: '', username: '', password: '' });
     const entry = makeEntry({ id: 'e1' });

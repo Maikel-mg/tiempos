@@ -1,3 +1,5 @@
+import type { CreateProcessDTO } from '@/features/process-management/types';
+
 export interface Proceso {
   proceso: number;
   nombre: string;
@@ -19,6 +21,20 @@ export interface Proceso {
   departamentoNombre?: string;
   /** ID de la disciplina */
   disciplinaId?: number;
+  /** true si la tarea existe solo en local y todavía no se creó en la BD. */
+  pendiente?: boolean;
+}
+
+/**
+ * Tarea creada sin conexión a la BD. Guarda el DTO exacto que hay que reenviar al
+ * SP de alta cuando vuelva la conexión, y usa un `proceso` negativo (que no puede
+ * colisionar con un id real) como `taskId` de los Registros que la usan.
+ */
+export interface LocalProcess {
+  proceso: number;
+  nombre: string;
+  dto: CreateProcessDTO;
+  creadoEn: string;
 }
 
 export interface TimeEntry {

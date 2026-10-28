@@ -14,6 +14,8 @@ import { ConfigGuardPanel } from './ConfigGuardPanel';
 interface SyncPanelProps {
   selectedEntries: TimeEntry[];
   totalPendingCount: number;
+  /** Registros cuya tarea todavía no existe en la BD (tarea local pendiente). */
+  blockedCount?: number;
   onSyncComplete: (ids: string[]) => Promise<void>;
 }
 
@@ -21,7 +23,7 @@ interface SyncPanelProps {
  * Panel de sincronización que permite sincronizar registros de tiempo
  * hacia SQL Server usando el servicio timeEntrySyncService.
  */
-export function SyncPanel({ selectedEntries, totalPendingCount, onSyncComplete }: SyncPanelProps) {
+export function SyncPanel({ selectedEntries, totalPendingCount, blockedCount = 0, onSyncComplete }: SyncPanelProps) {
   const [isExecuting, setIsExecuting] = useState(false);
   const [syncResults, setSyncResults] = useState<SyncResultEntry[] | null>(null);
   const [overallSuccess, setOverallSuccess] = useState<boolean | null>(null);
@@ -82,6 +84,12 @@ export function SyncPanel({ selectedEntries, totalPendingCount, onSyncComplete }
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {blockedCount > 0 && (
+          <p className="text-sm text-amber-600 dark:text-amber-400">
+            {blockedCount} registro{blockedCount !== 1 ? 's' : ''} espera{blockedCount !== 1 ? 'n' : ''} a que su
+            tarea se cree en la base de datos (Mis Tareas → Crear tareas pendientes)
+          </p>
+        )}
         {/* Auto-sync toggle */}
         <div className="flex items-center gap-2">
           <Switch 

@@ -159,6 +159,7 @@ export function ProcessSelectorButton({
                   {process.faseNombre && ` · ${process.faseNombre}`}
                   {process.proyectoNombre && ` · ${process.proyectoNombre}`}
                   {process.clienteNombre && ` · ${process.clienteNombre}`}
+                  {process.pendiente && ' · pendiente (aún no existe en la BD)'}
                 </span>
               </button>
             ))

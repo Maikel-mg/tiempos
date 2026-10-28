@@ -93,7 +93,7 @@ export function TimeTrackingPage() {
     setSelectedIds,
   });
 
-  const { syncPanelOpen, setSyncPanelOpen, pendingEntries, entriesToSync, handleSyncEntry } =
+  const { syncPanelOpen, setSyncPanelOpen, pendingEntries, blockedEntries, entriesToSync, handleSyncEntry } =
     useEntrySync({ entries, selectedIds, markSynced, onEntriesSynced: invalidateSplitUndo });
 
   const { proposalModalOpen, setProposalModalOpen, proposals, handleAcceptProposal } =
@@ -272,6 +272,7 @@ export function TimeTrackingPage() {
           <SyncPanel
             selectedEntries={entriesToSync}
             totalPendingCount={pendingEntries.length}
+            blockedCount={blockedEntries.length}
             onSyncComplete={markSynced}
           />
         )}

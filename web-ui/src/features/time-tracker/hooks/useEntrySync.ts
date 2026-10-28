@@ -36,13 +36,31 @@ export function useEntrySync({
 
   const pendingEntries = useMemo(() => entries.filter((e) => !e.synced), [entries]);
 
+  /**
+   * Registros de una tarea local (taskId < 0): su tarea todavía no existe en la BD,
+   * así que spNETTiempos_Alta los rechazaría. Se avisa en vez de mandarlos.
+   */
+  const blockedEntries = useMemo(
+    () => pendingEntries.filter((e) => e.taskId < 0),
+    [pendingEntries]
+  );
+
+  const syncablePending = useMemo(
+    () => pendingEntries.filter((e) => e.taskId > 0),
+    [pendingEntries]
+  );
+
   const entriesToSync = useMemo(() => {
-    if (selectedIds.size === 0) return pendingEntries;
-    return pendingEntries.filter((e) => selectedIds.has(e.id));
-  }, [pendingEntries, selectedIds]);
+    if (selectedIds.size === 0) return syncablePending;
+    return syncablePending.filter((e) => selectedIds.has(e.id));
+  }, [syncablePending, selectedIds]);
 
   /** Sincroniza un Registro contra SQL Server y refleja el resultado en local. */
   const handleSyncEntry = useCallback(async (entry: TimeEntry) => {
+    if (entry.taskId < 0) {
+      toast.error('La tarea de este registro todavía no existe en la base de datos');
+      return;
+    }
     const dbConfigData = dbConfig.get();
     if (!dbConfigData || !dbConfigData.server || !dbConfigData.database) {
       toast.error('Falta configuración de base de datos');
@@ -70,6 +88,7 @@ export function useEntrySync({
     syncPanelOpen,
     setSyncPanelOpen,
     pendingEntries,
+    blockedEntries,
     entriesToSync,
     handleSyncEntry,
   };

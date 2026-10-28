@@ -29,6 +29,7 @@ inventario exhaustivo. Rutas relativas a la raíz del repo.
 | Sincronización de Registros (hook) | `web-ui/src/features/time-tracker/hooks/useEntrySync.ts` |
 | Propuestas de tarea (hook) | `web-ui/src/features/time-tracker/hooks/useProposals.ts` |
 | Selección de filas (hook) | `web-ui/src/features/time-tracker/hooks/useEntrySelection.ts` |
+| Caché de procesos y tareas locales pendientes (sin VPN) | `web-ui/src/features/time-tracker/hooks/useProcessCache.ts`, `services/localTasksService.ts` |
 | Navegación por teclado de la tabla (hook) | `web-ui/src/features/time-tracker/hooks/useEntryTableNavigation.ts` |
 | Acciones del command palette (hook) | `web-ui/src/features/time-tracker/hooks/useTimeTrackerCommandActions.tsx` |
 | Timer activo (estado y ciclo de vida) | `web-ui/src/features/time-tracker/hooks/useTimer.ts` |

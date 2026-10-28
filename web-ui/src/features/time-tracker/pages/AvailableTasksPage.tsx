@@ -1,12 +1,15 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { ListTodo, Loader2, RefreshCw, AlertCircle, Plus, Inbox } from 'lucide-react';
+import { ListTodo, Loader2, RefreshCw, AlertCircle, Plus, Inbox, UploadCloud, WifiOff } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
 import { DataTable, ColumnDef } from '@/components/ui/data-table';
 import { SQLPreviewModal } from '@/components/SQLPreviewModal';
 import { useCreateProcess } from '@/features/process-management/mutations/useCreateProcess';
+import type { CreateProcessDTO } from '@/features/process-management/types';
 import { useProcessCache } from '../hooks/useProcessCache';
+import { materializeLocalTasks, saveLocalTask } from '../services/localTasksService';
 import { useCommandActions } from '@/components/CommandActionsContext';
 import { useTableKeyboardNavigation } from '@/hooks/useTableKeyboardNavigation';
 import { wizardConfig } from '@/config/stores';
@@ -33,7 +36,16 @@ const columns: ColumnDef<Proceso, any>[] = [
   {
     accessorKey: 'nombre',
     header: 'Nombre',
-    cell: ({ row }) => <span className="font-medium">{row.getValue('nombre')}</span>,
+    cell: ({ row }) => (
+      <span className="flex items-center gap-1.5 font-medium">
+        {row.getValue('nombre')}
+        {row.original.pendiente && (
+          <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">
+            pendiente
+          </span>
+        )}
+      </span>
+    ),
   },
   {
     accessorKey: 'faseNombre',
@@ -63,14 +75,17 @@ const columns: ColumnDef<Proceso, any>[] = [
 ];
 
 export function AvailableTasksPage() {
-  const { processes, loading, error, refresh } = useProcessCache();
+  const { processes, loading, error, offline, refresh } = useProcessCache();
   const [showAll, setShowAll] = useState(false);
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(
     () => Object.fromEntries(columnDefinitions.map((c) => [c.id, c.visible]))
   );
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isMaterializing, setIsMaterializing] = useState(false);
   const createProcess = useCreateProcess();
   const tableRef = useRef<HTMLTableElement>(null);
+
+  const pendingProcesses = useMemo(() => processes.filter((p) => p.pendiente), [processes]);
 
   const filteredProcesses = useMemo(() => {
     if (showAll) return processes;
@@ -105,6 +120,47 @@ export function AvailableTasksPage() {
   const handleColumnToggle = useCallback((columnId: string, visible: boolean) => {
     setColumnVisibility((prev) => ({ ...prev, [columnId]: visible }));
   }, []);
+
+  /**
+   * Sin conexión la tarea no se puede crear en la BD: se guarda en local con un id
+   * negativo y se materializa más tarde desde "Crear tareas pendientes".
+   */
+  const handleCreate = useCallback(
+    async (dto: CreateProcessDTO) => {
+      if (offline) {
+        await saveLocalTask(dto);
+        await refresh();
+        setIsCreateOpen(false);
+        toast.success('Tarea guardada en local: se creará en la base de datos al recuperar la conexión');
+        return;
+      }
+      await createProcess.mutateAsync(dto);
+    },
+    [offline, refresh, createProcess]
+  );
+
+  const handleMaterialize = useCallback(async () => {
+    setIsMaterializing(true);
+    try {
+      const result = await materializeLocalTasks();
+      await refresh();
+      if (result.fallidas.length === 0) {
+        toast.success(
+          `${result.creadas} tarea(s) creada(s) en la base de datos · ${result.movidos} registro(s) reapuntados`
+        );
+      } else {
+        toast.error(
+          `Creadas: ${result.creadas}. Fallaron: ${result.fallidas
+            .map((f) => `${f.nombre} (${f.error})`)
+            .join('; ')}`
+        );
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'No se pudieron crear las tareas pendientes');
+    } finally {
+      setIsMaterializing(false);
+    }
+  }, [refresh]);
 
   const toggleColumns = useMemo(() => 
     columnDefinitions.map((c) => ({ ...c, visible: columnVisibility[c.id] ?? true })),
@@ -144,7 +200,35 @@ export function AvailableTasksPage() {
           <Plus className="w-4 h-4 mr-1" />
           Crear tarea
         </Button>
+        {pendingProcesses.length > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleMaterialize}
+            disabled={isMaterializing}
+            title="Crear en la base de datos las tareas guardadas sin conexión"
+          >
+            {isMaterializing ? (
+              <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+            ) : (
+              <UploadCloud className="w-4 h-4 mr-1" />
+            )}
+            Crear tareas pendientes ({pendingProcesses.length})
+          </Button>
+        )}
       </div>
+
+      {offline && (
+        <Alert className="mb-4">
+          <WifiOff className="h-4 w-4" />
+          <AlertTitle>Sin conexión a la base de datos</AlertTitle>
+          <AlertDescription>
+            Se muestra la última lista de tareas guardada en este equipo. Puedes crear tareas y
+            registrar tiempos: se guardan en local y se crean en la base de datos cuando recuperes la
+            conexión (VPN).
+          </AlertDescription>
+        </Alert>
+      )}
 
       {loading ? (
         <div className="flex items-center justify-center p-8 text-muted-foreground">
@@ -215,7 +299,7 @@ export function AvailableTasksPage() {
           fase: wizardConfig.get()?.fase ?? '',
         }}
         title="Crear Tarea"
-        onExecute={(dto) => createProcess.mutateAsync(dto)}
+        onExecute={handleCreate}
         isExecuting={createProcess.isPending}
         executeResult={createProcess.data ? {
           success: true,

@@ -1,6 +1,6 @@
 import Dexie, { type Table, type Transaction } from 'dexie';
 import type { StorageStrategy } from './StorageStrategy';
-import type { TimeEntry, TimerState, Proceso } from '../../features/time-tracker/types';
+import type { TimeEntry, TimerState, Proceso, LocalProcess } from '../../features/time-tracker/types';
 
 /**
  * Migración v1→v2: convierte taskId de string a number.
@@ -66,6 +66,7 @@ class TimeTrackerDB extends Dexie {
   timerState!: Table<TimerState, string>;
   processes!: Table<Proceso, number>;
   processRecents!: Table<{ proceso: number; lastUsedAt: number }, number>;
+  localProcesses!: Table<LocalProcess, number>;
   migrationMeta!: Table<{ key: string; value: unknown }, string>;
 
   constructor() {
@@ -98,6 +99,16 @@ class TimeTrackerDB extends Dexie {
       const result = await migrateToV3(tx);
       await tx.table('migrationMeta').put({ key: 'v3_migration', value: result });
       return result;
+    });
+
+    // v4: tareas creadas sin conexión, pendientes de crearse en la BD.
+    this.version(4).stores({
+      timeEntries: 'id, taskId, date, startTime, endTime, synced, createdAt, serverId, recoverable',
+      timerState: 'id',
+      processes: 'proceso, nombre, faseNombre, proyectoNombre, clienteNombre',
+      processRecents: 'proceso, lastUsedAt',
+      localProcesses: 'proceso, nombre',
+      migrationMeta: 'key',
     });
   }
 }
@@ -219,6 +230,42 @@ export class IndexedDBStorage implements StorageStrategy {
 
   async upsertProceso(p: Proceso): Promise<void> {
     await db.processes.put(p, p.proceso);
+  }
+
+  /** Guarda en bloque la lista de procesos recibida de la BD (caché offline). */
+  async upsertProcesos(procesos: Proceso[]): Promise<void> {
+    if (procesos.length === 0) return;
+    await db.processes.bulkPut(procesos);
+  }
+
+  /** Última lista conocida de procesos de la BD; vacía si nunca hubo conexión. */
+  async getAllProcesos(): Promise<Proceso[]> {
+    return await db.processes.toArray();
+  }
+
+  // Local Processes (tareas creadas sin conexión)
+  async saveLocalProcess(local: LocalProcess): Promise<void> {
+    await db.localProcesses.put(local, local.proceso);
+  }
+
+  async getLocalProcesses(): Promise<LocalProcess[]> {
+    return await db.localProcesses.toArray();
+  }
+
+  async deleteLocalProcess(proceso: number): Promise<void> {
+    await db.localProcesses.delete(proceso);
+  }
+
+  /**
+   * Apunta al proceso real los Registros que usaban una tarea local.
+   * Devuelve cuántos Registros se movieron.
+   */
+  async remapTaskId(desde: number, hacia: Proceso): Promise<number> {
+    return await db.timeEntries.where('taskId').equals(desde).modify((entry) => {
+      entry.taskId = hacia.proceso;
+      entry.taskName = hacia.nombre;
+      entry.proceso = hacia;
+    });
   }
 
   // Process Recents

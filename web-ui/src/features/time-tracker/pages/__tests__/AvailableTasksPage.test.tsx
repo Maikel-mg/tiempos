@@ -78,6 +78,7 @@ describe('AvailableTasksPage', () => {
       loading: true,
       error: null,
       refresh: vi.fn(),
+      offline: false,
     });
 
     render(<AvailableTasksPage />);
@@ -90,6 +91,7 @@ describe('AvailableTasksPage', () => {
       loading: false,
       error: null,
       refresh: vi.fn(),
+      offline: false,
     });
 
     render(<AvailableTasksPage />);
@@ -107,6 +109,7 @@ describe('AvailableTasksPage', () => {
       loading: false,
       error: null,
       refresh: vi.fn(),
+      offline: false,
     });
 
     render(<AvailableTasksPage />);
@@ -127,6 +130,7 @@ describe('AvailableTasksPage', () => {
       loading: false,
       error: 'Error al cargar procesos',
       refresh: mockRefresh,
+      offline: false,
     });
 
     render(<AvailableTasksPage />);
@@ -140,6 +144,7 @@ describe('AvailableTasksPage', () => {
       loading: false,
       error: null,
       refresh: vi.fn(),
+      offline: false,
     });
 
     render(<AvailableTasksPage />);
@@ -153,6 +158,7 @@ describe('AvailableTasksPage', () => {
       loading: false,
       error: 'Network error',
       refresh: mockRefresh,
+      offline: false,
     });
 
     render(<AvailableTasksPage />);
@@ -167,6 +173,7 @@ describe('AvailableTasksPage', () => {
       loading: false,
       error: null,
       refresh: vi.fn(),
+      offline: false,
     });
 
     render(<AvailableTasksPage />);
@@ -185,6 +192,7 @@ describe('AvailableTasksPage', () => {
       loading: false,
       error: null,
       refresh: vi.fn(),
+      offline: false,
     });
 
     render(<AvailableTasksPage />);
@@ -209,6 +217,7 @@ describe('AvailableTasksPage', () => {
       loading: false,
       error: null,
       refresh: vi.fn(),
+      offline: false,
     });
 
     render(<AvailableTasksPage />);
@@ -230,6 +239,7 @@ describe('AvailableTasksPage', () => {
       loading: false,
       error: null,
       refresh: vi.fn(),
+      offline: false,
     });
 
     render(<AvailableTasksPage />);
@@ -243,6 +253,7 @@ describe('AvailableTasksPage', () => {
       loading: false,
       error: null,
       refresh: vi.fn(),
+      offline: false,
     });
 
     render(<AvailableTasksPage />);
@@ -262,6 +273,7 @@ describe('AvailableTasksPage', () => {
         loading: false,
         error: null,
         refresh: vi.fn(),
+        offline: false,
       });
 
       render(<AvailableTasksPage />);
@@ -277,6 +289,7 @@ describe('AvailableTasksPage', () => {
         loading: false,
         error: null,
         refresh: vi.fn(),
+        offline: false,
       });
 
       render(<AvailableTasksPage />);
@@ -292,6 +305,7 @@ describe('AvailableTasksPage', () => {
         loading: true,
         error: null,
         refresh: vi.fn(),
+        offline: false,
       });
 
       render(<AvailableTasksPage />);
@@ -307,6 +321,7 @@ describe('AvailableTasksPage', () => {
         loading: false,
         error: null,
         refresh: vi.fn(),
+        offline: false,
       });
 
       render(<AvailableTasksPage />);
@@ -331,6 +346,7 @@ describe('AvailableTasksPage', () => {
         loading: false,
         error: null,
         refresh: vi.fn(),
+        offline: false,
       });
 
       render(<AvailableTasksPage />);
@@ -357,6 +373,7 @@ describe('AvailableTasksPage', () => {
         loading: false,
         error: null,
         refresh: vi.fn(),
+        offline: false,
       });
 
       render(<AvailableTasksPage />);
@@ -380,6 +397,7 @@ describe('AvailableTasksPage', () => {
         loading: false,
         error: null,
         refresh: vi.fn(),
+        offline: false,
       });
 
       render(<AvailableTasksPage />);
@@ -396,6 +414,7 @@ describe('AvailableTasksPage', () => {
         loading: false,
         error: null,
         refresh: vi.fn(),
+        offline: false,
       });
 
       render(<AvailableTasksPage />);
@@ -418,6 +437,7 @@ describe('AvailableTasksPage', () => {
         loading: false,
         error: null,
         refresh: vi.fn(),
+        offline: false,
       });
 
       render(<AvailableTasksPage />);
@@ -440,6 +460,7 @@ describe('AvailableTasksPage', () => {
         loading: false,
         error: null,
         refresh: vi.fn(),
+        offline: false,
       });
 
       render(<AvailableTasksPage />);
