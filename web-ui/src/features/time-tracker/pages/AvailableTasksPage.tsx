@@ -306,7 +306,9 @@ export function AvailableTasksPage() {
           fase: wizardConfig.get()?.fase ?? '',
         }}
         title="Crear Tarea"
-        sinFase={offline}
+        // Se asume "sin conexión" hasta que la primera carga confirme lo contrario:
+        // pedir proyecto y fase contra la BD es lo único que no se puede hacer offline.
+        sinFase={offline !== false}
         onExecute={handleCreate}
         isExecuting={createProcess.isPending}
         executeResult={createProcess.data ? {

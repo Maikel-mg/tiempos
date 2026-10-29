@@ -1,9 +1,25 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
 import { wizardConfig, dbConfig } from '@/config/stores';
 import { indexedDBStorage } from '@/lib/storage/IndexedDBStorage';
 import { toProceso } from '../services/localTasksService';
 import type { Proceso } from '../types';
+
+/**
+ * Los procesos cambian poco y la consulta es cara (abre conexión nueva contra SQL
+ * Server), así que se comparte entre todos los consumidores —barra del tracker,
+ * selector del editor, Mis Tareas— y se considera fresca durante unos minutos.
+ */
+const STALE_TIME_MS = 5 * 60_000;
+
+interface ProcessesData {
+  remotos: Proceso[];
+  /** true si la última carga no pudo hablar con la BD y se usó la caché local. */
+  offline: boolean;
+  /** Motivo del fallo; sólo se muestra si no hay nada cacheado que enseñar. */
+  error: string | null;
+}
 
 /**
  * La caché es best-effort: si IndexedDB no está disponible (modo privado, jsdom)
@@ -17,88 +33,90 @@ async function readCache<T>(read: () => Promise<T>, fallback: T): Promise<T> {
   }
 }
 
+async function loadProcesses(usuario: string): Promise<ProcessesData> {
+  if (!usuario) {
+    return { remotos: [], offline: false, error: null };
+  }
+
+  try {
+    const dbConf = dbConfig.get();
+    const response = await apiClient.post<{ success: boolean; data: Proceso[]; message?: string }>(
+      '/processes',
+      {
+        usured: usuario,
+        server: dbConf?.server,
+        database: dbConf?.database,
+        username: dbConf?.username,
+        password: dbConf?.password,
+      }
+    );
+
+    if (response.success && response.data?.success) {
+      const remotos = response.data.data || [];
+      await readCache(() => indexedDBStorage.upsertProcesos(remotos), undefined);
+      return { remotos, offline: false, error: null };
+    }
+
+    return {
+      remotos: [],
+      offline: true,
+      error: (response.success ? response.data?.message : response.message) || 'Error al cargar procesos',
+    };
+  } catch (err) {
+    return {
+      remotos: [],
+      offline: true,
+      error: err instanceof Error ? err.message : 'Error al cargar procesos',
+    };
+  }
+}
+
 /**
- * Fetches processes for the current usuario from the SP endpoint.
- * Reads wizardConfig.usuario internally — no props needed.
+ * Procesos disponibles para registrar tiempos.
  *
- * La BD sólo es alcanzable dentro de la VPN, así que la lista se cachea en
- * IndexedDB y las tareas creadas sin conexión (`pendiente`) se mezclan al
- * principio para poder registrar tiempos igualmente.
+ * Pinta de inmediato lo que hay guardado en el navegador (última lista de la BD +
+ * tareas creadas sin conexión) y sólo después habla con la BD, así abrir el
+ * selector no cuesta un round-trip. Sin conexión se queda con la caché.
  */
 export function useProcessCache() {
-  const [processes, setProcesses] = useState<Proceso[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  /**
-   * true cuando la última carga no pudo hablar con la BD y se usó la caché local.
-   * undefined mientras no se sabe (primera carga en curso).
-   */
-  const [offline, setOffline] = useState<boolean | undefined>(undefined);
+  const usuario = wizardConfig.get()?.usuario ?? '';
+  const [cacheados, setCacheados] = useState<Proceso[]>([]);
+  const [locales, setLocales] = useState<Proceso[]>([]);
 
-  const fetchProcesses = useCallback(async () => {
-    const usuario = wizardConfig.get()?.usuario ?? '';
-
-    setLoading(true);
-    setError(null);
-
-    const locales = (await readCache(() => indexedDBStorage.getLocalProcesses(), [])).map(toProceso);
-
-    if (!usuario) {
-      setProcesses(locales);
-      setOffline(undefined);
-      setLoading(false);
-      return;
-    }
-
-    let remotos: Proceso[] = [];
-    let fallo: string | null = null;
-
-    try {
-      const dbConf = dbConfig.get();
-      const response = await apiClient.post<{ success: boolean; data: Proceso[]; message?: string }>(
-        '/processes',
-        {
-          usured: usuario,
-          server: dbConf?.server,
-          database: dbConf?.database,
-          username: dbConf?.username,
-          password: dbConf?.password,
-        }
-      );
-
-      if (response.success && response.data?.success) {
-        remotos = response.data.data || [];
-        await readCache(() => indexedDBStorage.upsertProcesos(remotos), undefined);
-      } else {
-        fallo = (response.success ? response.data?.message : response.message) || 'Error al cargar procesos';
-      }
-    } catch (err) {
-      fallo = err instanceof Error ? err.message : 'Error al cargar procesos';
-    }
-
-    if (fallo) {
-      // Sin VPN: se muestra la última lista conocida en lugar de dejar la pantalla vacía.
-      const cache = await readCache(() => indexedDBStorage.getAllProcesos(), []);
-      setProcesses([...locales, ...cache]);
-      setError(cache.length > 0 ? null : fallo);
-      setOffline(true);
-    } else {
-      setProcesses([...locales, ...remotos]);
-      setOffline(false);
-    }
-
-    setLoading(false);
+  const loadLocal = useCallback(async () => {
+    setLocales((await readCache(() => indexedDBStorage.getLocalProcesses(), [])).map(toProceso));
+    setCacheados(await readCache(() => indexedDBStorage.getAllProcesos(), []));
   }, []);
 
   useEffect(() => {
-    fetchProcesses();
-  }, [fetchProcesses]);
+    loadLocal();
+  }, [loadLocal]);
+
+  const { data, isPending, refetch } = useQuery({
+    queryKey: ['processes', usuario],
+    queryFn: () => loadProcesses(usuario),
+    staleTime: STALE_TIME_MS,
+  });
+
+  const processes = useMemo(
+    () => [
+      ...locales,
+      // Si la BD falló se sigue mostrando la última lista guardada en el navegador.
+      ...(data && !data.offline ? data.remotos : cacheados),
+    ],
+    [locales, data, cacheados]
+  );
+
+  /** Fuerza volver a leer la BD y el navegador (tras crear o materializar tareas). */
+  const refresh = useCallback(async () => {
+    await Promise.all([refetch(), loadLocal()]);
+  }, [refetch, loadLocal]);
 
   return {
     processes,
-    loading,
-    error,
-    offline,
-    refresh: fetchProcesses,
+    loading: isPending && processes.length === 0,
+    error: data?.error && processes.length === 0 ? data.error : null,
+    offline: data?.offline,
+    refresh,
   };
 }

@@ -1,5 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import type { ReactNode } from 'react';
 import { renderHook, waitFor, act } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { createElement } from 'react';
 import { useProcessCache } from '../useProcessCache';
 import type { LocalProcess, Proceso } from '../../types';
 
@@ -49,6 +52,18 @@ const PROCESOS: Proceso[] = [
   { proceso: 102, nombre: 'Desarrollo Backend', faseNombre: 'Fase Construccion' },
 ];
 
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+// El hook es una query de React Query: comparte caché entre consumidores.
+const renderProcessCache = () =>
+  renderHook(() => useProcessCache(), {
+    wrapper: ({ children }: { children: ReactNode }) =>
+      createElement(QueryClientProvider, {
+        client: new QueryClient({ defaultOptions: { queries: { retry: false } } }),
+        children,
+      }),
+  });
+
 // ── Tests ────────────────────────────────────────────────────────────────────
 
 describe('useProcessCache', () => {
@@ -64,7 +79,7 @@ describe('useProcessCache', () => {
     // apiClient.post returns ApiClient-wrapped body: { success, data: <server body> }
     mockApiClientPost.mockResolvedValue({ success: true, data: { success: true, data: PROCESOS } });
 
-    const { result } = renderHook(() => useProcessCache());
+    const { result } = renderProcessCache();
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
@@ -85,7 +100,7 @@ describe('useProcessCache', () => {
   it('returns empty processes without fetch when usuario is empty', async () => {
     mockWizardGet.mockReturnValue({ usuario: '' });
 
-    const { result } = renderHook(() => useProcessCache());
+    const { result } = renderProcessCache();
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
@@ -99,7 +114,7 @@ describe('useProcessCache', () => {
   it('returns empty processes without fetch when usuario is null', async () => {
     mockWizardGet.mockReturnValue(null);
 
-    const { result } = renderHook(() => useProcessCache());
+    const { result } = renderProcessCache();
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
@@ -116,7 +131,7 @@ describe('useProcessCache', () => {
       message: 'Server error',
     });
 
-    const { result } = renderHook(() => useProcessCache());
+    const { result } = renderProcessCache();
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
@@ -130,7 +145,7 @@ describe('useProcessCache', () => {
     mockWizardGet.mockReturnValue({ usuario: 'MG01' });
     mockApiClientPost.mockRejectedValue(new Error('Network failure'));
 
-    const { result } = renderHook(() => useProcessCache());
+    const { result } = renderProcessCache();
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
@@ -144,7 +159,7 @@ describe('useProcessCache', () => {
     mockWizardGet.mockReturnValue({ usuario: 'MG01' });
     mockApiClientPost.mockResolvedValueOnce({ success: true, data: { success: true, data: PROCESOS } });
 
-    const { result } = renderHook(() => useProcessCache());
+    const { result } = renderProcessCache();
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
@@ -170,7 +185,7 @@ describe('useProcessCache', () => {
     mockWizardGet.mockReturnValue({ usuario: 'MG01' });
     mockApiClientPost.mockResolvedValue({ success: true, data: { success: true, data: PROCESOS } });
 
-    const { result } = renderHook(() => useProcessCache());
+    const { result } = renderProcessCache();
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     expect(mockStorage.upsertProcesos).toHaveBeenCalledWith(PROCESOS);
@@ -182,8 +197,9 @@ describe('useProcessCache', () => {
     mockApiClientPost.mockRejectedValue(new Error('Network failure'));
     mockStorage.getAllProcesos.mockResolvedValue(PROCESOS);
 
-    const { result } = renderHook(() => useProcessCache());
-    await waitFor(() => expect(result.current.loading).toBe(false));
+    const { result } = renderProcessCache();
+    // La caché del navegador se pinta aunque la BD no responda.
+    await waitFor(() => expect(result.current.processes).toHaveLength(2));
 
     expect(result.current.offline).toBe(true);
     expect(result.current.error).toBeNull();
@@ -210,10 +226,39 @@ describe('useProcessCache', () => {
       },
     ]);
 
-    const { result } = renderHook(() => useProcessCache());
-    await waitFor(() => expect(result.current.loading).toBe(false));
+    const { result } = renderProcessCache();
+    await waitFor(() =>
+      expect(result.current.processes[0]).toMatchObject({ proceso: -1, pendiente: true })
+    );
 
-    expect(result.current.processes[0]).toMatchObject({ proceso: -1, pendiente: true });
     expect(result.current.offline).toBe(true);
+  });
+
+  it('pinta la caché del navegador sin esperar a que responda la BD', async () => {
+    mockWizardGet.mockReturnValue({ usuario: 'MG01' });
+    // La BD nunca responde: lo único que puede pintar la lista es la caché.
+    mockApiClientPost.mockReturnValue(new Promise(() => {}));
+    mockStorage.getAllProcesos.mockResolvedValue(PROCESOS);
+
+    const { result } = renderProcessCache();
+
+    await waitFor(() => expect(result.current.processes).toHaveLength(2));
+    expect(result.current.loading).toBe(false);
+  });
+
+  it('varios consumidores comparten una sola consulta a la BD', async () => {
+    mockWizardGet.mockReturnValue({ usuario: 'MG01' });
+    mockApiClientPost.mockResolvedValue({ success: true, data: { success: true, data: PROCESOS } });
+
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const wrapper = ({ children }: { children: ReactNode }) =>
+      createElement(QueryClientProvider, { client, children });
+
+    const barra = renderHook(() => useProcessCache(), { wrapper });
+    const editor = renderHook(() => useProcessCache(), { wrapper });
+
+    await waitFor(() => expect(editor.result.current.processes).toHaveLength(2));
+    expect(barra.result.current.processes).toHaveLength(2);
+    expect(mockApiClientPost).toHaveBeenCalledTimes(1);
   });
 });
