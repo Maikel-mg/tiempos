@@ -241,6 +241,43 @@ describe('TimeEntryViewSwitcher', () => {
       expect(onSelect).toHaveBeenCalledWith(new Set());
     });
 
+    it('"Cambiar tarea" abre el cambio en bloque sólo con selección', async () => {
+      const onReassignSelected = vi.fn();
+      const user = userEvent.setup();
+      const { unmount } = render(
+        <TimeEntryViewSwitcher
+          entries={ENTRIES}
+          selectedIds={new Set(['1', '3'])}
+          onSelect={vi.fn()}
+          onDelete={vi.fn()}
+          onEdit={vi.fn()}
+          onPlay={vi.fn()}
+          onReassignSelected={onReassignSelected}
+          activeTab="table"
+        />
+      );
+
+      await user.click(screen.getByRole('button', { name: /cambiar tarea/i }));
+      expect(onReassignSelected).toHaveBeenCalledTimes(1);
+
+      unmount();
+
+      render(
+        <TimeEntryViewSwitcher
+          entries={ENTRIES}
+          selectedIds={new Set()}
+          onSelect={vi.fn()}
+          onDelete={vi.fn()}
+          onEdit={vi.fn()}
+          onPlay={vi.fn()}
+          onReassignSelected={vi.fn()}
+          activeTab="table"
+        />
+      );
+
+      expect(screen.queryByRole('button', { name: /cambiar tarea/i })).toBeNull();
+    });
+
     it('shows selected count when entries are selected', () => {
       render(
         <TimeEntryViewSwitcher

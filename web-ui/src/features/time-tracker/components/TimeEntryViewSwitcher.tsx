@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { ArrowLeftRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -28,6 +29,8 @@ interface TimeEntryViewSwitcherProps {
   onDuplicate?: (entry: TimeEntry) => void;
   onSplit?: (entry: TimeEntry) => void;
   onSync?: (entry: TimeEntry) => void;
+  /** Abre el cambio de tarea para la selección múltiple. */
+  onReassignSelected?: () => void;
   activeTab: EntryViewTab;
   timerEntry?: TimerEntryData | null;
   /** Divide el timer en curso. Solo la vista de tabla lo ofrece en su fila. */
@@ -48,6 +51,7 @@ export function TimeEntryViewSwitcher({
   onDuplicate,
   onSplit,
   onSync,
+  onReassignSelected,
   activeTab,
   timerEntry,
   onSplitTimer,
@@ -131,6 +135,12 @@ export function TimeEntryViewSwitcher({
             <Button variant="outline" size="sm" onClick={selectAll}>
               Seleccionar sin sincronizar
             </Button>
+            {selectedCount > 0 && onReassignSelected && (
+              <Button variant="outline" size="sm" onClick={onReassignSelected}>
+                <ArrowLeftRight className="w-4 h-4 mr-1" />
+                Cambiar tarea
+              </Button>
+            )}
             {selectedCount > 0 && (
               <Button variant="outline" size="sm" onClick={deselectAll}>
                 Deseleccionar

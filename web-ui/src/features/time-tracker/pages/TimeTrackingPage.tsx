@@ -19,6 +19,8 @@ import { useTimerView } from '../hooks/useTimerView';
 import { usePeriodFilter } from '../hooks/usePeriodFilter';
 import { useEntryEditor } from '../hooks/useEntryEditor';
 import { useEntrySync } from '../hooks/useEntrySync';
+import { useBulkReassign } from '../hooks/useBulkReassign';
+import { BulkReassignDialog } from '../components/BulkReassignDialog';
 import { useSplitFlow } from '../hooks/useSplitFlow';
 import { useProposals } from '../hooks/useProposals';
 import { useEntrySelection } from '../hooks/useEntrySelection';
@@ -95,6 +97,14 @@ export function TimeTrackingPage() {
 
   const { syncPanelOpen, setSyncPanelOpen, pendingEntries, blockedEntries, entriesToSync, handleSyncEntry } =
     useEntrySync({ entries, selectedIds, markSynced, onEntriesSynced: invalidateSplitUndo });
+
+  const {
+    reassignOpen,
+    setReassignOpen,
+    reassignableCount,
+    skippedSyncedCount,
+    handleReassign,
+  } = useBulkReassign({ entries, selectedIds, setSelectedIds, updateEntry });
 
   const { proposalModalOpen, setProposalModalOpen, proposals, handleAcceptProposal } =
     useProposals({ entries, updateEntry });
@@ -268,6 +278,14 @@ export function TimeTrackingPage() {
           </div>
         </div>
 
+        <BulkReassignDialog
+          open={reassignOpen}
+          onOpenChange={setReassignOpen}
+          count={reassignableCount}
+          skippedSyncedCount={skippedSyncedCount}
+          onConfirm={handleReassign}
+        />
+
         {syncPanelOpen && (
           <SyncPanel
             selectedEntries={entriesToSync}
@@ -287,6 +305,7 @@ export function TimeTrackingPage() {
           onDuplicate={handleDuplicateEntry}
           onSplit={handleSplitEntry}
           onSync={handleSyncEntry}
+          onReassignSelected={() => setReassignOpen(true)}
           activeTab={activeTab}
           timerEntry={virtualTimerEntry}
           onSplitTimer={liveTimerEntry ? handleSplitTimer : undefined}
