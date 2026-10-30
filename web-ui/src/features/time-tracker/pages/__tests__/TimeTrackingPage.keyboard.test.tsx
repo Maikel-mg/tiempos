@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { TimeTrackingPage } from '../TimeTrackingPage';
@@ -217,5 +217,59 @@ describe('TimeTrackingPage keyboard navigation', () => {
 
     // ArrowDown should NOT change active row (isEnabled=false in grouped view)
     await user.keyboard('{ArrowDown}');
+  });
+});
+
+describe('TimeTrackingPage row shortcuts target the highlighted row', () => {
+  function makeTimedEntry(id: string, startTime: string): TimeEntry {
+    return { ...makeEntry(id), startTime };
+  }
+
+  it('edits the highlighted entry even when `entries` order differs from table order', async () => {
+    const user = userEvent.setup();
+    // `entries` llega en el orden de IndexedDB; la tabla ordena por hora de inicio.
+    setupMocks([makeTimedEntry('1', '10:00'), makeTimedEntry('2', '09:00')]);
+
+    renderWithProviders(<TimeTrackingPage />);
+
+    // Primera fila visible = Task 2 (09:00), auto-focuseada.
+    await user.keyboard('e');
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Description 2')).toBeInTheDocument();
+    });
+  });
+
+  it('edits the highlighted entry while the timer row is shown', async () => {
+    const user = userEvent.setup();
+    setupMocks([makeTimedEntry('1', '10:00'), makeTimedEntry('2', '09:00')]);
+    vi.mocked(useTimer).mockReturnValue({
+      timerState: {
+        isRunning: true,
+        taskId: 999,
+        taskName: 'Timer Task',
+        startTime: new Date().toISOString(),
+        elapsed: 60,
+      } as never,
+      isRunning: true,
+      elapsed: 60,
+      start: vi.fn(),
+      stop: vi.fn(),
+      cancel: vi.fn(),
+      updateStartTime: vi.fn(),
+      updateDescription: vi.fn(),
+    });
+
+    renderWithProviders(<TimeTrackingPage />);
+
+    // rows[1] es la fila del timer; la primera entrada (Task 2, 09:00) es rows[2].
+    const rows = screen.getAllByRole('row');
+    expect(rows[2]?.getAttribute('data-state')).toBe('active');
+
+    await user.keyboard('e');
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Description 2')).toBeInTheDocument();
+    });
   });
 });

@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { Database, Table, LayoutGrid, Lightbulb } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,7 @@ import { SplitEntryDialog } from '../components/SplitEntryDialog';
 import { TimeEntryViewSwitcher } from '../components/TimeEntryViewSwitcher';
 import { OverlapAlert } from '../components/OverlapAlert';
 import type { OverlapFix } from '../lib/overlaps';
-import type { EntryViewTab } from '../types';
+import type { EntryViewTab, TimeEntry } from '../types';
 import { SyncPanel } from '../components/SyncPanel';
 import { PeriodProgressPanel } from '../components/PeriodProgressPanel';
 import { useTimeEntries } from '../hooks/useTimeEntries';
@@ -35,6 +35,10 @@ export function TimeTrackingPage() {
   const timer = useTimer();
 
   const { selectedIds, setSelectedIds, tableRef, handleEntryDeleted } = useEntrySelection();
+
+  // Lista que la tabla está pintando (con sus filtros y orden): la comparten los
+  // atajos de fila para no actuar sobre otro registro. Null hasta el primer render.
+  const [visibleEntries, setVisibleEntries] = useState<TimeEntry[] | null>(null);
 
   const {
     isEditorOpen,
@@ -121,7 +125,7 @@ export function TimeTrackingPage() {
 
   const { getRowProps, activeItem } = useEntryTableNavigation({
     tableRef,
-    items: filteredByPeriod,
+    items: visibleEntries ?? filteredByPeriod,
     activeTab,
     editingEntry,
     trackerBarRef,
@@ -312,6 +316,7 @@ export function TimeTrackingPage() {
           timerSplitDisabledReason={timerSplitDisabledReason}
           tableRef={tableRef}
           getRowProps={getRowProps}
+          onVisibleEntriesChange={setVisibleEntries}
         />
       </div>
       </div>

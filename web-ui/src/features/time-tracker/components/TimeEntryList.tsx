@@ -97,7 +97,8 @@ export function TimeEntryList({ entries, selectedIds, onSelect, onDelete, onEdit
                 onDuplicate={onDuplicate ? () => onDuplicate(entry) : undefined}
                 onSplit={onSplit ? () => onSplit(entry) : undefined}
                 onSync={onSync ? () => onSync(entry) : undefined}
-                rowProps={getRowProps ? getRowProps(timerEntry ? entryIndex + 1 : entryIndex) : undefined}
+                // El índice es el de `entries`, no el de la fila DOM: la fila del timer no participa en la navegación por teclado.
+                rowProps={getRowProps ? getRowProps(entryIndex) : undefined}
               />
             ))}
           </TableBody>

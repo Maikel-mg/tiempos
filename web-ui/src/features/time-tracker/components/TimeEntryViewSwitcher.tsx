@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeftRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,6 +39,12 @@ interface TimeEntryViewSwitcherProps {
   timerSplitDisabledReason?: string;
   tableRef?: RefObject<HTMLTableElement>;
   getRowProps?: (index: number) => Record<string, unknown>;
+  /**
+   * Publica las entradas que se están pintando, en su orden real (filtros y
+   * orden aplicados). La navegación por teclado numera filas, así que necesita
+   * esta misma lista o los atajos actúan sobre otro registro.
+   */
+  onVisibleEntriesChange?: (entries: TimeEntry[]) => void;
 }
 
 export function TimeEntryViewSwitcher({
@@ -58,6 +64,7 @@ export function TimeEntryViewSwitcher({
   timerSplitDisabledReason,
   tableRef,
   getRowProps,
+  onVisibleEntriesChange,
 }: TimeEntryViewSwitcherProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'date' | 'duration' | 'task'>('date');
@@ -102,6 +109,10 @@ export function TimeEntryViewSwitcher({
 
     return result;
   }, [entries, searchQuery, filterSync, filterRecoverable, sortBy, activeTab]);
+
+  useEffect(() => {
+    onVisibleEntriesChange?.(filtered);
+  }, [filtered, onVisibleEntriesChange]);
 
   const selectAll = () => {
     const unsynced = filtered.filter(e => !e.synced).map(e => e.id);

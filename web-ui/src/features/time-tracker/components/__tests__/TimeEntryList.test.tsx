@@ -83,6 +83,23 @@ describe('TimeEntryList', () => {
     expect(screen.getByText('Estado')).toBeInTheDocument();
   });
 
+  it('indexa las filas por su posición en `entries` aunque haya fila del timer', () => {
+    const getRowProps = vi.fn<(index: number) => Record<string, unknown>>(() => ({}));
+    render(
+      <TimeEntryList
+        entries={ENTRIES}
+        selectedIds={new Set()}
+        onSelect={vi.fn()}
+        onDelete={vi.fn()}
+        onEdit={vi.fn()}
+        getRowProps={getRowProps}
+        timerEntry={{ taskName: 'Timer', date: '2026-01-15', startTime: '09:00', endTime: '09:15', duration: 900 }}
+      />
+    );
+
+    expect(getRowProps.mock.calls.map(([i]) => i)).toEqual([0, 1, 2]);
+  });
+
   it('shows only provided entries (pre-filtered)', () => {
     const filteredEntries = [makeEntry('1', false), makeEntry('3', false, 'Error')];
     render(
