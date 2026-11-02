@@ -5,7 +5,15 @@ import { useTimeTrackingSession } from '@/features/time-tracker/hooks/useTimeTra
 import { getWorkdayStart } from '@/features/time-tracker/lib/schedule';
 import { PeriodBar } from '../components/PeriodBar';
 import { TimelineView } from '../components/TimelineView';
-import { entriesOfDays, todayKey, toWorkday, visibleDays, type PlanMode } from '../lib/planRange';
+import {
+  addDays,
+  entriesOfDays,
+  nextWorkday,
+  todayKey,
+  toWorkday,
+  visibleDays,
+  type PlanMode,
+} from '../lib/planRange';
 
 /**
  * Agenda: la pantalla de entrada de la aplicación.
@@ -18,12 +26,15 @@ export function AgendaPage() {
   const session = useTimeTrackingSession();
   const { entries, timer, editor } = session;
 
-  const [cursor] = useState(() => toWorkday(todayKey()));
-  const mode: PlanMode = 'day';
+  const [cursor, setCursor] = useState(() => toWorkday(todayKey()));
+  const [mode, setMode] = useState<PlanMode>('day');
 
   const days = useMemo(() => visibleDays(mode, cursor), [mode, cursor]);
   const visibleEntries = useMemo(() => entriesOfDays(entries, days), [entries, days]);
   const workdayStart = useMemo(() => getWorkdayStart(cursor), [cursor]);
+
+  const step = (direction: 1 | -1) =>
+    setCursor((current) => (mode === 'day' ? nextWorkday(current, direction) : addDays(current, direction * 7)));
 
   return (
     <main className="w-full">
@@ -34,13 +45,26 @@ export function AgendaPage() {
       </div>
 
       <div className="space-y-4 px-4 py-5 sm:px-6">
-        <PeriodBar mode={mode} cursor={cursor} entries={visibleEntries} />
+        <PeriodBar
+          mode={mode}
+          cursor={cursor}
+          entries={visibleEntries}
+          onPrev={() => step(-1)}
+          onNext={() => step(1)}
+          onToday={() => setCursor(toWorkday(todayKey()))}
+          onModeChange={setMode}
+          onJump={(day) => setCursor(toWorkday(day))}
+        />
         <TimelineView
           entries={visibleEntries}
           days={days}
           mode={mode}
           workdayStart={workdayStart}
           onEdit={(entry) => editor.openEdit(entry)}
+          onPickDay={(day) => {
+            setCursor(toWorkday(day));
+            setMode('day');
+          }}
         />
       </div>
 

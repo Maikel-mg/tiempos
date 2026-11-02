@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import '@testing-library/jest-dom';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AgendaPage } from '../AgendaPage';
 import { useTimeEntries } from '@/features/time-tracker/hooks/useTimeEntries';
@@ -110,5 +111,67 @@ describe('AgendaPage — Timeline del día laborable', () => {
 
     expect(container.textContent).toContain('viernes 12 jun 2026');
     expect(container.textContent).toContain('Del viernes');
+  });
+});
+
+describe('AgendaPage — período navegable', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date('2026-06-10T10:00:00'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.clearAllMocks();
+  });
+
+  it('las flechas mueven el día y saltan el fin de semana', async () => {
+    mockSession([entry('a', '2026-06-15', '09:00', '10:00', 'Del lunes')]);
+    const { container } = renderPage();
+
+    await userEvent.click(screen.getByLabelText('Período anterior'));
+    expect(container.textContent).toContain('martes 9 jun 2026');
+
+    for (let click = 0; click < 4; click++) {
+      await userEvent.click(screen.getByLabelText('Período siguiente'));
+    }
+    expect(container.textContent).toContain('lunes 15 jun 2026');
+    expect(container.textContent).toContain('Del lunes');
+    expect(container.textContent).not.toContain('sábado');
+    expect(container.textContent).not.toContain('domingo');
+  });
+
+  it('el modo semana muestra solo de lunes a viernes', async () => {
+    mockSession([entry('a', '2026-06-10', '09:00', '10:00', 'Del miércoles')]);
+    const { container } = renderPage();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Semana' }));
+
+    expect(container.textContent).toContain('8 – 12 jun');
+    expect(container.textContent).toContain('Lun 8');
+    expect(container.textContent).toContain('Vie 12');
+    expect(container.textContent).not.toContain('Sáb');
+    expect(container.textContent).not.toContain('Dom');
+  });
+
+  it('el botón de hoy vuelve al día laborable actual', async () => {
+    mockSession([]);
+    const { container } = renderPage();
+
+    await userEvent.click(screen.getByLabelText('Período siguiente'));
+    await userEvent.click(screen.getByRole('button', { name: 'Hoy' }));
+
+    expect(container.textContent).toContain('miércoles 10 jun 2026');
+  });
+
+  it('el salto a fecha abre el día elegido y su semana', async () => {
+    mockSession([entry('a', '2026-06-19', '09:00', '10:00', 'Del viernes 19')]);
+    const { container } = renderPage();
+
+    fireEvent.change(screen.getByLabelText('Ir a fecha'), { target: { value: '2026-06-19' } });
+    expect(container.textContent).toContain('viernes 19 jun 2026');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Semana' }));
+    expect(container.textContent).toContain('15 – 19 jun');
   });
 });
