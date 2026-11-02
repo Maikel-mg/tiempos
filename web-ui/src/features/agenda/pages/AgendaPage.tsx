@@ -108,12 +108,38 @@ export function AgendaPage() {
   );
   const { activeEntry, activeEntryId } = useEntryKeyboardNavigation({ items: dayItems, isEnabled: mode === 'day' });
   useEntryActionShortcuts({ activeEntry, actions, isEnabled: mode === 'day' });
+  const selectViewByPosition = (position: number) => {
+    const target = IMPLEMENTED_AGENDA_VIEWS[position - 1];
+    if (target) setView(target);
+  };
+
+  const focusDateSelector = () => {
+    const input = document.getElementById('agenda-jump');
+    if (!(input instanceof HTMLInputElement)) return;
+    input.focus();
+    // Chromium: además de enfocar, abre el calendario nativo.
+    const picker = (input as HTMLInputElement & { showPicker?: () => void }).showPicker;
+    if (typeof picker === 'function') {
+      try {
+        picker.call(input);
+      } catch {
+        // showPicker exige gesto de usuario; con el foco ya basta.
+      }
+    }
+  };
+
   useAgendaShortcuts({
     onPrev: goPrev,
     onNext: goNext,
     onToday: () => setCursor(toWorkday(todayKey())),
     onToggleMode: () => setMode(mode === 'day' ? 'week' : 'day'),
     onNew: () => openComposerAfterDay(cursor),
+    onNextView: () => {
+      const index = IMPLEMENTED_AGENDA_VIEWS.indexOf(view);
+      setView(IMPLEMENTED_AGENDA_VIEWS[(index + 1) % IMPLEMENTED_AGENDA_VIEWS.length]);
+    },
+    onSelectView: selectViewByPosition,
+    onFocusDate: focusDateSelector,
   });
 
   const step = (direction: 1 | -1) =>

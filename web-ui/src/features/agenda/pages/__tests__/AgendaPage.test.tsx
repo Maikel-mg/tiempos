@@ -621,6 +621,46 @@ describe('AgendaPage — teclado', () => {
     expect(await screen.findByRole('dialog')).toBeInTheDocument();
   });
 
+  it('V rota entre las vistas del período', () => {
+    mockSession(twoEntries());
+    renderPage();
+
+    // Arranca en Agenda (por defecto), rota a Timeline y luego a Calendario.
+    expect(screen.getByRole('tab', { name: 'Agenda' })).toHaveAttribute('aria-selected', 'true');
+
+    fireEvent.keyDown(window, { key: 'v' });
+    expect(screen.getByRole('tab', { name: 'Timeline' })).toHaveAttribute('aria-selected', 'true');
+
+    fireEvent.keyDown(window, { key: 'v' });
+    expect(screen.getByRole('tab', { name: 'Calendario' })).toHaveAttribute('aria-selected', 'true');
+
+    fireEvent.keyDown(window, { key: 'v' });
+    expect(screen.getByRole('tab', { name: 'Agenda' })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('1, 2 y 3 eligen vista directamente', () => {
+    mockSession(twoEntries());
+    renderPage();
+
+    fireEvent.keyDown(window, { key: '3' });
+    expect(screen.getByRole('tab', { name: 'Timeline' })).toHaveAttribute('aria-selected', 'true');
+
+    fireEvent.keyDown(window, { key: '1' });
+    expect(screen.getByRole('tab', { name: 'Calendario' })).toHaveAttribute('aria-selected', 'true');
+
+    fireEvent.keyDown(window, { key: '2' });
+    expect(screen.getByRole('tab', { name: 'Agenda' })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('F lleva el foco al selector de fechas', () => {
+    mockSession(twoEntries());
+    renderPage();
+
+    fireEvent.keyDown(window, { key: 'f' });
+
+    expect(document.activeElement).toBe(screen.getByLabelText('Ir a fecha'));
+  });
+
   it('las letras no se disparan mientras se escribe en un campo', async () => {
     mockSession(twoEntries());
     renderPage();

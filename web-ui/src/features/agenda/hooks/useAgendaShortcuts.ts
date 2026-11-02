@@ -8,6 +8,12 @@ export interface AgendaShortcutHandlers {
   onToday: () => void;
   onToggleMode: () => void;
   onNew: () => void;
+  /** Rota a la siguiente vista del período. */
+  onNextView: () => void;
+  /** Elige vista por posición: 1 Calendario, 2 Agenda, 3 Timeline. */
+  onSelectView: (position: number) => void;
+  /** Lleva el foco al selector de fechas del paginador. */
+  onFocusDate: () => void;
 }
 
 /**
@@ -17,6 +23,9 @@ export interface AgendaShortcutHandlers {
  *   T      hoy
  *   W      alterna día / semana
  *   N      nuevo Registro de tiempo al final del día visible
+ *   V      rota a la siguiente vista del período
+ *   1 2 3  elige vista: Calendario, Agenda, Timeline
+ *   F      lleva el foco al selector de fechas
  *
  * Registrados en el despachador central del proyecto, con prioridad de tabla y
  * sin dispararse mientras se escribe en un campo ni con un diálogo abierto.
@@ -30,7 +39,7 @@ export function useAgendaShortcuts(handlers: AgendaShortcutHandlers) {
       id: 'agenda.period',
       priority: SHORTCUT_PRIORITY.table,
       when: () => shouldInterceptTableKeys(),
-      match: bareKey('arrowleft', 'arrowright', 't', 'w', 'n'),
+      match: bareKey('arrowleft', 'arrowright', 't', 'w', 'n', 'v', 'f', '1', '2', '3'),
       run: (event) => {
         const current = handlersRef.current;
         switch (normalizeKey(event)) {
@@ -48,6 +57,17 @@ export function useAgendaShortcuts(handlers: AgendaShortcutHandlers) {
             return;
           case 'n':
             current.onNew();
+            return;
+          case 'v':
+            current.onNextView();
+            return;
+          case '1':
+          case '2':
+          case '3':
+            current.onSelectView(Number(normalizeKey(event)));
+            return;
+          case 'f':
+            current.onFocusDate();
         }
       },
     });

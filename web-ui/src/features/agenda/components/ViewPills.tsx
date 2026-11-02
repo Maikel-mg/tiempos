@@ -10,11 +10,12 @@ interface ViewPillsProps {
 export function ViewPills({ value, available, onChange }: ViewPillsProps) {
   return (
     <div role="tablist" aria-label="Vista del período" className="inline-flex rounded-lg border bg-muted/40 p-0.5">
-      {AGENDA_VIEWS.filter((view) => available.includes(view.key)).map((view) => (
+      {AGENDA_VIEWS.filter((view) => available.includes(view.key)).map((view, index) => (
         <button
           key={view.key}
           role="tab"
           aria-selected={value === view.key}
+          title={`${view.label} (${index + 1})`}
           onClick={() => onChange(view.key)}
           className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
             value === view.key ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground'

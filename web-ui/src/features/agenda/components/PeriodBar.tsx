@@ -52,16 +52,17 @@ export function PeriodBar({
 
       <div className="flex flex-wrap items-center gap-2">
         {children}
-        <Button variant="outline" size="sm" onClick={onToday}>
+        <Button variant="outline" size="sm" onClick={onToday} title="Hoy (T)">
           Hoy
         </Button>
-        <label htmlFor="agenda-jump" className="text-xs text-muted-foreground">
+        <label htmlFor="agenda-jump" className="text-xs text-muted-foreground" title="Ir a una fecha (F)">
           Ir a
         </label>
         <Input
           id="agenda-jump"
           type="date"
           aria-label="Ir a fecha"
+          title="Ir a una fecha (F)"
           value={cursor}
           onChange={(event) => {
             if (event.target.value) onJump(event.target.value);
