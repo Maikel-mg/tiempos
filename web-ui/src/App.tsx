@@ -6,6 +6,7 @@ import { ProjectsPage } from './pages/ProjectsPage';
 import { ProjectDetailPage } from './pages/ProjectDetailPage';
 import { DashboardPage } from './features/dashboard/DashboardPage';
 import { TimeTrackingPage } from './features/time-tracker/pages/TimeTrackingPage';
+import { AgendaPage } from './features/agenda/pages/AgendaPage';
 import { AvailableTasksPage } from './features/time-tracker/pages/AvailableTasksPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { AppLayout } from './components/AppLayout';
@@ -36,7 +37,8 @@ function App() {
     return (
         <AppLayout>
             <Routes>
-                <Route path="/" element={<HomePage />} />
+                <Route path="/" element={<AgendaPage />} />
+                <Route path="/inicio" element={<HomePage />} />
                 <Route path="/projects" element={<ProjectsPage />} />
                 <Route path="/projects/:codCli/:proyecto" element={<ProjectDetailPage />} />
                 <Route path="/dashboard" element={<DashboardPage />} />

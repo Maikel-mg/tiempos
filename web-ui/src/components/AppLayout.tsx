@@ -13,6 +13,7 @@ import {
   SidebarGroupContent,
 } from "@/components/ui/sidebar"
 import {
+  CalendarRange,
   LayoutDashboard,
   Timer,
   Clock,
@@ -30,6 +31,11 @@ import { useLiveTabTitle } from "@/hooks/useLiveTabTitle"
 import { WorkReminder } from "@/components/WorkReminder"
 
 const mainNavItems = [
+  {
+    title: "Agenda",
+    url: "/",
+    icon: CalendarRange,
+  },
   {
     title: "Dashboard",
     url: "/dashboard",
