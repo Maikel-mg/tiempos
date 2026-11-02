@@ -541,3 +541,95 @@ describe('AgendaPage — sincronizar el día', () => {
     expect(await screen.findByText(/Sincronizar 1 registros/i)).toBeInTheDocument();
   });
 });
+
+describe('AgendaPage — teclado', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date('2026-06-10T10:00:00'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.clearAllMocks();
+  });
+
+  const twoEntries = () => [
+    entry('a', '2026-06-10', '09:00', '10:00', 'Primera'),
+    entry('b', '2026-06-10', '10:00', '11:00', 'Segunda'),
+  ];
+
+  it('↑/↓ mueven la entrada activa y Esc la quita', async () => {
+    mockSession(twoEntries());
+    const { container } = renderPage();
+
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+    expect(container.querySelectorAll('[data-plan-active="true"]')).toHaveLength(1);
+
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+    expect(container.querySelectorAll('[data-plan-active="true"]')).toHaveLength(1);
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(container.querySelectorAll('[data-plan-active="true"]')).toHaveLength(0);
+  });
+
+  it('cambiar de día limpia la entrada activa', () => {
+    mockSession(twoEntries());
+    const { container } = renderPage();
+
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+    expect(container.querySelectorAll('[data-plan-active="true"]')).toHaveLength(1);
+
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    expect(container.querySelectorAll('[data-plan-active="true"]')).toHaveLength(0);
+  });
+
+  it('←/→ mueven día en modo día y semana en modo semana', () => {
+    mockSession(twoEntries());
+    const { container } = renderPage();
+
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    expect(container.textContent).toContain('jueves 11 jun 2026');
+
+    fireEvent.keyDown(window, { key: 'w' });
+    expect(container.textContent).toContain('8 – 12 jun');
+
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    expect(container.textContent).toContain('15 – 19 jun');
+  });
+
+  it('T vuelve a hoy y W alterna el modo', () => {
+    mockSession(twoEntries());
+    const { container } = renderPage();
+
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 't' });
+    expect(container.textContent).toContain('miércoles 10 jun 2026');
+
+    fireEvent.keyDown(window, { key: 'w' });
+    expect(container.textContent).toContain('8 – 12 jun');
+  });
+
+  it('G edit y S dividir actúan sobre la entrada activa', async () => {
+    const syncedEntry = twoEntries()[0];
+    mockSession([syncedEntry, { ...twoEntries()[1], id: 'b2' }]);
+    renderPage();
+
+    // Sin Tarea elegida el editor se abre igual (el diálogo es el de siempre).
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+    fireEvent.keyDown(window, { key: 'e' });
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('las letras no se disparan mientras se escribe en un campo', async () => {
+    mockSession(twoEntries());
+    renderPage();
+
+    fireEvent.keyDown(window, { key: 'n' });
+    const description = screen.getByLabelText('Descripción del Registro de tiempo');
+    await userEvent.click(description);
+    fireEvent.keyDown(description, { key: 'e' });
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+});

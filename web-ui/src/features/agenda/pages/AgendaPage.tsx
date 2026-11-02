@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { TimeTrackerBar } from '@/features/time-tracker/components/TimeTrackerBar';
 import { TimeEntryEditorDialog } from '@/features/time-tracker/components/TimeEntryEditorDialog';
 import { useTimeTrackingSession, useTimeTrackingFlows } from '@/features/time-tracker/hooks/useTimeTrackingSession';
@@ -15,6 +15,9 @@ import { CalendarView } from '../components/CalendarView';
 import { InlineComposer, type ComposerSlot, type EntryDraft } from '../components/InlineComposer';
 import { TimelineView } from '../components/TimelineView';
 import { useAgendaPreferences } from '../hooks/useAgendaPreferences';
+import { useAgendaShortcuts } from '../hooks/useAgendaShortcuts';
+import { useEntryKeyboardNavigation } from '../hooks/useEntryKeyboardNavigation';
+import { useEntryActionShortcuts } from '../hooks/useEntryActionShortcuts';
 import { IMPLEMENTED_AGENDA_VIEWS } from '../lib/agendaViews';
 import {
   addDays,
@@ -23,6 +26,7 @@ import {
   endOfDay,
   entriesOfDays,
   nextWorkday,
+  sortByStart,
   todayKey,
   toWorkday,
   visibleDays,
@@ -89,18 +93,28 @@ export function AgendaPage() {
     setComposer(null);
   };
 
-  // Atajo N: alta al final del día visible.
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'n' || event.altKey || event.ctrlKey || event.metaKey) return;
-      const target = event.target as HTMLElement | null;
-      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
-      event.preventDefault();
-      openComposerAfterDay(cursor);
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [cursor, openComposerAfterDay]);
+  const goPrev = () =>
+    setCursor((current) => (mode === 'day' ? nextWorkday(current, -1) : addDays(current, -7)));
+  const goNext = () =>
+    setCursor((current) => (mode === 'day' ? nextWorkday(current, 1) : addDays(current, 7)));
+
+  // Teclado: en modo día las flechas mueven la entrada activa; en semana, el período.
+  const dayItems = useMemo(
+    () =>
+      mode === 'day'
+        ? sortByStart(visibleEntries.filter((entry) => entry.id !== liveTimerEntry?.id))
+        : [],
+    [mode, visibleEntries, liveTimerEntry?.id],
+  );
+  const { activeEntry, activeEntryId } = useEntryKeyboardNavigation({ items: dayItems, isEnabled: mode === 'day' });
+  useEntryActionShortcuts({ activeEntry, actions, isEnabled: mode === 'day' });
+  useAgendaShortcuts({
+    onPrev: goPrev,
+    onNext: goNext,
+    onToday: () => setCursor(toWorkday(todayKey())),
+    onToggleMode: () => setMode(mode === 'day' ? 'week' : 'day'),
+    onNew: () => openComposerAfterDay(cursor),
+  });
 
   const step = (direction: 1 | -1) =>
     setCursor((current) => (mode === 'day' ? nextWorkday(current, direction) : addDays(current, direction * 7)));
@@ -152,6 +166,7 @@ export function AgendaPage() {
             mode={mode}
             workdayStart={workdayStart}
             timerEntryId={liveTimerEntry?.id}
+            activeEntryId={activeEntryId}
             actions={actions}
             onAdd={(day, startTime) => openComposer(day, startTime)}
             onPickDay={(day) => {
@@ -165,6 +180,7 @@ export function AgendaPage() {
             days={days}
             mode={mode}
             timerEntryId={liveTimerEntry?.id}
+            activeEntryId={activeEntryId}
             actions={actions}
             onAdd={openComposer}
             onAddAfterDay={openComposerAfterDay}
@@ -180,6 +196,7 @@ export function AgendaPage() {
             days={days}
             mode={mode}
             timerEntryId={liveTimerEntry?.id}
+            activeEntryId={activeEntryId}
             workdayStart={workdayStart}
             actions={actions}
             onAddAt={(day, startTime) => openComposer(day, startTime)}
