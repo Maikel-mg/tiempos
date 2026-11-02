@@ -63,7 +63,9 @@ export function useEntryActionShortcuts({ activeEntry, actions, isEnabled }: Use
             return;
           }
           case 'delete':
-            if (window.confirm(`¿Eliminar "${entry.taskName}"?`)) current.onDelete?.(entry.id);
+            if (!entry.synced && window.confirm(`¿Eliminar "${entry.taskName}"?`)) {
+              current.onDelete?.(entry.id);
+            }
         }
       },
     });

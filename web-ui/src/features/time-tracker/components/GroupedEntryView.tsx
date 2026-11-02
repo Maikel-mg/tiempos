@@ -467,9 +467,9 @@ function DayRow({ day, isExpanded, onToggle, onDelete, onEdit, onPlay, onDuplica
                             {split.enabled ? 'Dividir' : split.reason}
                           </DropdownMenuItem>
                         )}
-                        <DropdownMenuItem onClick={() => onDelete?.(entry.id)}>
+                        <DropdownMenuItem disabled={entry.synced} onClick={() => onDelete?.(entry.id)}>
                           <Trash2 className="h-4 w-4" />
-                          Eliminar
+                          {entry.synced ? 'Eliminar · ya sincronizado' : 'Eliminar'}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

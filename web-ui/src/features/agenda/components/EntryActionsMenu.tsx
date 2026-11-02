@@ -47,9 +47,9 @@ export function EntryActionsMenu({ entry, actions, className }: EntryActionsMenu
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" onClick={(event: React.MouseEvent) => event.stopPropagation()}>
-        <DropdownMenuItem onClick={() => actions.onEdit?.(entry)}>
+        <DropdownMenuItem disabled={entry.synced} onClick={() => actions.onEdit?.(entry)}>
           <Pencil className="h-4 w-4" />
-          Editar
+          {entry.synced ? 'Editar · ya sincronizado' : 'Editar'}
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => actions.onPlay?.(entry)}>
           <Play className="h-4 w-4" />
@@ -73,9 +73,9 @@ export function EntryActionsMenu({ entry, actions, className }: EntryActionsMenu
           </DropdownMenuItem>
         )}
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => actions.onDelete?.(entry.id)}>
+        <DropdownMenuItem disabled={entry.synced} onClick={() => actions.onDelete?.(entry.id)}>
           <Trash2 className="h-4 w-4" />
-          Eliminar
+          {entry.synced ? 'Eliminar · ya sincronizado' : 'Eliminar'}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

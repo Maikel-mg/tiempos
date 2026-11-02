@@ -34,6 +34,11 @@ export function useEntryEditor({
 
   /** Abre el editor para modificar un Registro existente. */
   const openEdit = useCallback((entry: TimeEntry) => {
+    // Lo sincronizado ya está en SQL Server: aquí sólo se corrige lo pendiente.
+    if (entry.synced) {
+      toast.error('Un Registro ya sincronizado no se puede editar');
+      return;
+    }
     setEditingEntry(entry);
     setEditorOpen(true);
   }, []);
@@ -60,13 +65,19 @@ export function useEntryEditor({
   const submit = useCallback(
     async (data: TimeEntryFormData) => {
       if (editingEntry) {
+        // Pudo sincronizarse mientras el editor estaba abierto: se relee el estado.
+        if (entries.find((e) => e.id === editingEntry.id)?.synced) {
+          toast.error('Un Registro ya sincronizado no se puede editar');
+          setEditingEntry(null);
+          return;
+        }
         await updateEntry(editingEntry.id, data);
       } else {
         await createEntry(data);
       }
       setEditingEntry(null);
     },
-    [editingEntry, updateEntry, createEntry],
+    [entries, editingEntry, updateEntry, createEntry],
   );
 
   /** Da de alta un Registro sin pasar por el editor (barra del timer). */
@@ -91,6 +102,11 @@ export function useEntryEditor({
     async (id: string) => {
       const entry = entries.find((e) => e.id === id);
       if (!entry) return;
+
+      if (entry.synced) {
+        toast.error('Un Registro ya sincronizado no se puede eliminar');
+        return;
+      }
 
       await deleteEntry(id);
       onEntryDeleted?.(id);

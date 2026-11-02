@@ -298,4 +298,52 @@ describe('useEntryEditor', () => {
     expect(onEntryDeleted).not.toHaveBeenCalled();
     expect(toast).not.toHaveBeenCalled();
   });
+
+  describe('Registros ya sincronizados', () => {
+    it('openEdit no abre el editor y avisa', () => {
+      const entry = makeEntry({ id: 'e7', synced: true });
+      const { result } = setup({ entries: [entry] });
+
+      act(() => {
+        result.current.openEdit(entry);
+      });
+
+      expect(result.current.isEditorOpen).toBe(false);
+      expect(result.current.editingEntry).toBeNull();
+      expect(toast.error).toHaveBeenCalledWith('Un Registro ya sincronizado no se puede editar');
+    });
+
+    it('submit no actualiza un Registro que se sincronizó con el editor abierto', async () => {
+      const entry = makeEntry({ id: 'e7' });
+      const entries = [entry];
+      const { result, updateEntry } = setup({ entries });
+
+      act(() => {
+        result.current.openEdit(entry);
+      });
+      // Mientras el diálogo está abierto, la sincronización reescribe el Registro.
+      entries[0] = { ...entry, synced: true };
+
+      await act(async () => {
+        await result.current.submit(formData);
+      });
+
+      expect(updateEntry).not.toHaveBeenCalled();
+      expect(result.current.editingEntry).toBeNull();
+      expect(toast.error).toHaveBeenCalledWith('Un Registro ya sincronizado no se puede editar');
+    });
+
+    it('remove no borra el Registro y avisa', async () => {
+      const entry = makeEntry({ id: 'e7', synced: true });
+      const { result, deleteEntry, onEntryDeleted } = setup({ entries: [entry] });
+
+      await act(async () => {
+        await result.current.remove('e7');
+      });
+
+      expect(deleteEntry).not.toHaveBeenCalled();
+      expect(onEntryDeleted).not.toHaveBeenCalled();
+      expect(toast.error).toHaveBeenCalledWith('Un Registro ya sincronizado no se puede eliminar');
+    });
+  });
 });
