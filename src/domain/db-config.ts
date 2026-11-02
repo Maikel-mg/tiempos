@@ -19,8 +19,8 @@ export function createDbConfig(params: DbConnectionParams): sql.config {
     user: params.username ?? params.user,
     password: params.password,
     options: {
-      encrypt: true,
-      trustServerCertificate: true,
+      encrypt: false,
+      trustServerCertificate: false,
       language: 'Spanish',
       dateFormat: 'dmy',
       useUTC: false,
