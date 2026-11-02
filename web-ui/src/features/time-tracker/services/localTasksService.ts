@@ -44,6 +44,20 @@ export async function getLocalTask(proceso: number): Promise<LocalProcess | unde
 }
 
 /**
+ * El borrado se niega porque la tarea todavía tiene Registros. Lleva el conteo
+ * para que la UI pueda abrir el desglose en vez de sólo mostrar el mensaje.
+ */
+export class TaskHasEntriesError extends Error {
+  readonly count: number;
+
+  constructor(count: number) {
+    super(`La tarea tiene ${count} registro(s) de tiempo: reasignalos o borralos antes de eliminarla`);
+    this.name = 'TaskHasEntriesError';
+    this.count = count;
+  }
+}
+
+/**
  * Borra una tarea creada sin conexión. Se niega si tiene Registros: nunca se
  * sincronizaron, así que borrarla los dejaría huérfanos y sin traza.
  */
@@ -55,9 +69,7 @@ export async function deleteLocalTask(proceso: number): Promise<void> {
 
   const registros = await indexedDBStorage.countEntriesByTaskId(proceso);
   if (registros > 0) {
-    throw new Error(
-      `La tarea tiene ${registros} registro(s) de tiempo: reasignalos o borralos antes de eliminarla`
-    );
+    throw new TaskHasEntriesError(registros);
   }
 
   await indexedDBStorage.deleteLocalProcess(proceso);

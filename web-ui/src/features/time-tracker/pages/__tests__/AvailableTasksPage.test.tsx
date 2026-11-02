@@ -1,13 +1,21 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AvailableTasksPage } from '../AvailableTasksPage';
 import { useProcessCache } from '../../hooks/useProcessCache';
-import type { Proceso } from '../../types';
+import { useTimeEntries } from '../../hooks/useTimeEntries';
+import { deleteLocalTask, TaskHasEntriesError } from '../../services/localTasksService';
+import type { Proceso, TimeEntry } from '../../types';
 
 // ── Mocks ────────────────────────────────────────────────────────────────────
 
 vi.mock('../../hooks/useProcessCache');
+vi.mock('../../hooks/useTimeEntries');
+vi.mock('../../services/localTasksService', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../services/localTasksService')>()),
+  deleteLocalTask: vi.fn(),
+  saveLocalTask: vi.fn(),
+}));
 vi.mock('@/features/process-management/mutations/useCreateProcess', () => ({
   useCreateProcess: () => ({
     mutateAsync: vi.fn().mockResolvedValue({}),
@@ -65,11 +73,26 @@ const mockProcesses: Proceso[] = [
   },
 ];
 
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+/** `useTimeEntries` con las entradas dadas y la mutación simulada. */
+const mockEntriesHook = (entries: TimeEntry[] = []) =>
+  vi.mocked(useTimeEntries).mockReturnValue({
+    entries,
+    loading: false,
+    updateEntry: mockUpdateEntry,
+    deleteEntry: mockDeleteEntry,
+  } as unknown as ReturnType<typeof useTimeEntries>);
+
+const mockUpdateEntry = vi.fn().mockResolvedValue(null);
+const mockDeleteEntry = vi.fn().mockResolvedValue(undefined);
+
 // ── Tests ────────────────────────────────────────────────────────────────────
 
 describe('AvailableTasksPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockEntriesHook();
   });
 
   it('renders loading state', () => {
@@ -264,6 +287,127 @@ describe('AvailableTasksPage', () => {
     await user.click(createBtn);
 
     expect(screen.getByTestId('sql-preview-modal')).toBeDefined();
+  });
+
+  describe('Columna Horas y visor de Registros', () => {
+    const today = new Date();
+    const monthDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-10`;
+
+    const makeEntry = (over: Partial<TimeEntry>): TimeEntry => ({
+      id: 'e1',
+      taskId: 101,
+      taskName: 'Desarrollo Frontend',
+      proceso: mockProcesses[0],
+      date: monthDate,
+      startTime: '09:00',
+      endTime: '10:30',
+      duration: 5400,
+      createdAt: '',
+      updatedAt: '',
+      synced: false,
+      ...over,
+    });
+
+    const withProcesses = () =>
+      vi.mocked(useProcessCache).mockReturnValue({
+        processes: mockProcesses,
+        loading: false,
+        error: null,
+        refresh: vi.fn(),
+        offline: false,
+      });
+
+    it('muestra el encabezado Horas', () => {
+      withProcesses();
+      render(<AvailableTasksPage />);
+      expect(screen.getByText('Horas')).toBeDefined();
+    });
+
+    it('muestra HH:MM y el porcentaje sobre el total del mes', () => {
+      withProcesses();
+      mockEntriesHook([
+        makeEntry({ id: 'e1', duration: 5400 }),
+        makeEntry({ id: 'e2', taskId: 103, duration: 1800, proceso: mockProcesses[2] }),
+      ]);
+
+      render(<AvailableTasksPage />);
+      expect(screen.getByText('1:30')).toBeDefined();
+      expect(screen.getByText('(75.0%)')).toBeDefined();
+      expect(screen.getByText('0:30')).toBeDefined();
+      expect(screen.getByText('(25.0%)')).toBeDefined();
+    });
+
+    it('muestra — cuando la tarea no tiene Registros este mes', () => {
+      withProcesses();
+      mockEntriesHook([makeEntry({ date: '2020-01-10' })]);
+
+      render(<AvailableTasksPage />);
+      expect(screen.getAllByTitle('Ver registros de la tarea')).toHaveLength(2);
+      expect(screen.queryByText('1:30')).toBeNull();
+    });
+
+    it('abre el desglose al hacer click en las horas y permite ver todo el historial', async () => {
+      const user = userEvent.setup();
+      withProcesses();
+      mockEntriesHook([
+        makeEntry({}),
+        makeEntry({ id: 'e2', date: '2020-01-10', duration: 3600 }),
+      ]);
+
+      render(<AvailableTasksPage />);
+      await user.click(screen.getByText('1:30'));
+
+      const dialog = screen.getByRole('dialog');
+      expect(within(dialog).getByText(/Registros de «Desarrollo Frontend»/)).toBeDefined();
+      expect(within(dialog).getByText('1 registro(s)')).toBeDefined();
+      expect(within(dialog).getByText('1h 30m')).toBeDefined();
+
+      await user.click(within(dialog).getByRole('button', { name: 'Todo el historial' }));
+      expect(within(dialog).getByText('2 registro(s)')).toBeDefined();
+      expect(within(dialog).getByText('10/01/2020')).toBeDefined();
+    });
+
+    it('abre el desglose completo cuando el borrado se bloquea por Registros', async () => {
+      const user = userEvent.setup();
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
+      vi.mocked(deleteLocalTask).mockRejectedValue(new TaskHasEntriesError(1));
+      vi.mocked(useProcessCache).mockReturnValue({
+        processes: [{ ...mockProcesses[0], pendiente: true }],
+        loading: false,
+        error: null,
+        refresh: vi.fn(),
+        offline: false,
+      });
+      mockEntriesHook([makeEntry({ date: '2020-01-10' })]);
+
+      render(<AvailableTasksPage />);
+      await user.click(screen.getByRole('button', { name: /Eliminar tarea local/ }));
+
+      const dialog = await screen.findByRole('dialog');
+      // Abierto en "Todo el historial": el Registro que bloquea está a la vista.
+      expect(within(dialog).getByText('10/01/2020')).toBeDefined();
+    });
+
+    it('permite seleccionar un Registro sin sincronizar y cambiarle la tarea', async () => {
+      const user = userEvent.setup();
+      withProcesses();
+      mockEntriesHook([makeEntry({})]);
+
+      render(<AvailableTasksPage />);
+      await user.click(screen.getByText('1:30'));
+
+      const drawer = screen.getByRole('dialog');
+      const firstRow = within(drawer).getAllByRole('row')[1];
+      await user.click(within(firstRow).getAllByRole('button')[0]);
+
+      const changeButton = within(drawer).getByRole('button', { name: /Cambiar tarea/ });
+      expect(changeButton).toHaveProperty('disabled', false);
+      await user.click(changeButton);
+
+      expect(
+        await screen.findByText('Cambiar tarea de 1 registro')
+      ).toBeDefined();
+    });
   });
 
   describe('Auto-focus on mount', () => {

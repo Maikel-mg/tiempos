@@ -31,6 +31,7 @@ inventario exhaustivo. Rutas relativas a la raíz del repo.
 | Selección de filas (hook) | `web-ui/src/features/time-tracker/hooks/useEntrySelection.ts` |
 | Sesión de registro de tiempos: datos, selección, editor y Timer activo (hook) | `web-ui/src/features/time-tracker/hooks/useTimeTrackingSession.ts` |
 | Caché de procesos y tareas locales pendientes (sin VPN) | `web-ui/src/features/time-tracker/hooks/useProcessCache.ts`, `services/localTasksService.ts` |
+| Horas por tarea y desglose de sus Registros | `web-ui/src/features/time-tracker/lib/computeTaskHours.ts`, `components/TaskEntriesDrawer.tsx` |
 | Navegación por teclado de la tabla (hook) | `web-ui/src/features/time-tracker/hooks/useEntryTableNavigation.ts` |
 | Acciones del command palette (hook) | `web-ui/src/features/time-tracker/hooks/useTimeTrackerCommandActions.tsx` |
 | Timer activo (estado y ciclo de vida) | `web-ui/src/features/time-tracker/hooks/useTimer.ts` |

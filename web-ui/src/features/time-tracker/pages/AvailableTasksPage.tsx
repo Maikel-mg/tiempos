@@ -9,8 +9,12 @@ import { SQLPreviewModal } from '@/components/SQLPreviewModal';
 import { useCreateProcess } from '@/features/process-management/mutations/useCreateProcess';
 import type { CreateProcessDTO } from '@/features/process-management/types';
 import { useProcessCache } from '../hooks/useProcessCache';
-import { deleteLocalTask, saveLocalTask } from '../services/localTasksService';
+import { useTimeEntries } from '../hooks/useTimeEntries';
+import { deleteLocalTask, saveLocalTask, TaskHasEntriesError } from '../services/localTasksService';
+import { computeTaskHours } from '../lib/computeTaskHours';
+import { resolvePeriodRange } from '../lib/periodRange';
 import { CreatePendingTaskDialog } from '../components/CreatePendingTaskDialog';
+import { TaskEntriesDrawer, type TaskEntriesScope } from '../components/TaskEntriesDrawer';
 import { useCommandActions } from '@/components/CommandActionsContext';
 import { useTableKeyboardNavigation } from '@/hooks/useTableKeyboardNavigation';
 import { wizardConfig } from '@/config/stores';
@@ -21,6 +25,7 @@ const MY_DEPARTMENT_ID = 5;
 const columnDefinitions = [
   { id: 'proceso', label: 'ID', visible: true },
   { id: 'nombre', label: 'Nombre', visible: true },
+  { id: 'horas', label: 'Horas', visible: true },
   { id: 'faseNombre', label: 'Fase', visible: true },
   { id: 'proyectoNombre', label: 'Proyecto', visible: true },
   { id: 'clienteNombre', label: 'Cliente', visible: true },
@@ -28,10 +33,28 @@ const columnDefinitions = [
   { id: 'disciplinaId', label: 'Disciplina', visible: true },
 ];
 
-const buildColumns = (
-  onCreatePending: (proceso: Proceso) => void,
-  onDeletePending: (proceso: Proceso) => void
-): ColumnDef<Proceso, any>[] => [
+/** `HH:MM` sin cero a la izquierda en las horas: una tarea puede pasar de 100 h. */
+function formatHoursMinutes(totalSeconds: number): string {
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  return `${hours}:${String(minutes).padStart(2, '0')}`;
+}
+
+interface ColumnHandlers {
+  onCreatePending: (proceso: Proceso) => void;
+  onDeletePending: (proceso: Proceso) => void;
+  onShowEntries: (proceso: Proceso) => void;
+  hoursByTaskId: Map<number, { totalSeconds: number }>;
+  grandTotalSeconds: number;
+}
+
+const buildColumns = ({
+  onCreatePending,
+  onDeletePending,
+  onShowEntries,
+  hoursByTaskId,
+  grandTotalSeconds,
+}: ColumnHandlers): ColumnDef<Proceso, any>[] => [
   {
     accessorKey: 'proceso',
     header: 'ID',
@@ -73,6 +96,38 @@ const buildColumns = (
     ),
   },
   {
+    id: 'horas',
+    header: 'Horas',
+    accessorFn: (row) => hoursByTaskId.get(row.proceso)?.totalSeconds ?? 0,
+    cell: ({ row }) => {
+      const totalSeconds = hoursByTaskId.get(row.original.proceso)?.totalSeconds;
+      if (!totalSeconds) {
+        return (
+          <button
+            type="button"
+            onClick={() => onShowEntries(row.original)}
+            className="text-muted-foreground"
+            title="Ver registros de la tarea"
+          >
+            —
+          </button>
+        );
+      }
+      const pct = grandTotalSeconds > 0 ? (totalSeconds / grandTotalSeconds) * 100 : 0;
+      return (
+        <button
+          type="button"
+          onClick={() => onShowEntries(row.original)}
+          className="whitespace-nowrap font-mono tabular-nums hover:underline"
+          title="Ver registros de la tarea"
+        >
+          {formatHoursMinutes(totalSeconds)}{' '}
+          <span className="text-muted-foreground">({pct.toFixed(1)}%)</span>
+        </button>
+      );
+    },
+  },
+  {
     accessorKey: 'faseNombre',
     header: 'Fase',
     cell: ({ row }) => <span>{row.getValue('faseNombre') ?? '—'}</span>,
@@ -107,8 +162,16 @@ export function AvailableTasksPage() {
   );
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [creatingTask, setCreatingTask] = useState<Proceso | null>(null);
+  const [entriesTask, setEntriesTask] = useState<Proceso | null>(null);
+  const [entriesScope, setEntriesScope] = useState<TaskEntriesScope>('month');
   const createProcess = useCreateProcess();
   const tableRef = useRef<HTMLTableElement>(null);
+  const { entries, updateEntry, deleteEntry } = useTimeEntries();
+
+  const showEntries = useCallback((proceso: Proceso, scope: TaskEntriesScope) => {
+    setEntriesTask(proceso);
+    setEntriesScope(scope);
+  }, []);
 
   const handleDeletePending = useCallback(async (proceso: Proceso) => {
     if (!window.confirm(`¿Eliminar la tarea local "${proceso.nombre}"?`)) return;
@@ -117,13 +180,35 @@ export function AvailableTasksPage() {
       await refresh();
       toast.success('Tarea local eliminada');
     } catch (err) {
+      // Los Registros que bloquean el borrado se muestran en el acto: la tarea
+      // puede tenerlos en fechas que ya no están a la vista.
+      if (err instanceof TaskHasEntriesError) {
+        showEntries(proceso, 'all');
+        return;
+      }
       toast.error(err instanceof Error ? err.message : 'No se pudo eliminar la tarea');
     }
-  }, [refresh]);
+  }, [refresh, showEntries]);
+
+  // Las horas se calculan sobre el mes en curso, igual que las tareas listadas.
+  const { byTaskId: hoursByTaskId, grandTotalSeconds } = useMemo(() => {
+    const month = resolvePeriodRange('month');
+    const monthEntries = entries.filter(
+      (e) => e.date >= month.startStr && e.date <= month.endStr
+    );
+    return computeTaskHours(monthEntries);
+  }, [entries]);
 
   const columns = useMemo(
-    () => buildColumns(setCreatingTask, handleDeletePending),
-    [handleDeletePending]
+    () =>
+      buildColumns({
+        onCreatePending: setCreatingTask,
+        onDeletePending: handleDeletePending,
+        onShowEntries: (proceso) => showEntries(proceso, 'month'),
+        hoursByTaskId,
+        grandTotalSeconds,
+      }),
+    [handleDeletePending, hoursByTaskId, grandTotalSeconds, showEntries]
   );
 
   const filteredProcesses = useMemo(() => {
@@ -289,6 +374,15 @@ export function AvailableTasksPage() {
             />
         </div>
       )}
+
+      <TaskEntriesDrawer
+        task={entriesTask}
+        entries={entries}
+        initialScope={entriesScope}
+        onOpenChange={(open) => { if (!open) setEntriesTask(null); }}
+        updateEntry={updateEntry}
+        deleteEntry={deleteEntry}
+      />
 
       <CreatePendingTaskDialog
         proceso={creatingTask?.proceso ?? null}
