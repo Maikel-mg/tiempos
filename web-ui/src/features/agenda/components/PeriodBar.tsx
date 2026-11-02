@@ -1,8 +1,11 @@
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { ChevronLeft, ChevronRight, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { formatDurationShort } from '@/lib/format';
-import { formatDayLong, formatWeekLabel, totalSeconds, type PlanMode } from '../lib/planRange';
+import { formatDurationShort, formatHHMM } from '@/lib/format';
+import { formatDayLong, formatWeekLabel, todayKey, totalSeconds, type PlanMode } from '../lib/planRange';
+import { estimateExit } from '../lib/estimatedExit';
+import { getDailyTarget } from '@/features/time-tracker/lib/schedule';
 import type { TimeEntry } from '@/features/time-tracker/types';
 
 interface PeriodBarProps {
@@ -18,6 +21,17 @@ interface PeriodBarProps {
   children?: React.ReactNode;
 }
 
+/** Reloj del bar: refresca el reloj para que la salida estimada no se congele. */
+function useNowMinute(enabled: boolean): Date {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    if (!enabled) return;
+    const id = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(id);
+  }, [enabled]);
+  return now;
+}
+
 /** Título del período, su total y el paginador día/semana. */
 export function PeriodBar({
   mode,
@@ -30,6 +44,18 @@ export function PeriodBar({
   onJump,
   children,
 }: PeriodBarProps) {
+  // Sólo el día de hoy tiene salida estimada: en días pasados el dato sobra y
+  // en la semana no hay una sola hora de salida que enseñar.
+  const isToday = mode === 'day' && cursor === todayKey();
+  const now = useNowMinute(isToday);
+  const exit = isToday
+    ? estimateExit(
+        getDailyTarget(cursor) * 3600,
+        entries.filter((entry) => !entry.recoverable).reduce((sum, entry) => sum + entry.duration, 0),
+        now,
+      )
+    : null;
+
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div className="flex items-center gap-1">
@@ -40,9 +66,23 @@ export function PeriodBar({
           <h2 className="text-lg font-semibold capitalize leading-tight">
             {mode === 'week' ? formatWeekLabel(cursor) : formatDayLong(cursor)}
           </h2>
-          <p className="text-xs text-muted-foreground">
-            {entries.length} {entries.length === 1 ? 'registro' : 'registros'} ·{' '}
-            {formatDurationShort(totalSeconds(entries))}
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+            <span className="whitespace-nowrap">
+              {entries.length} {entries.length === 1 ? 'registro' : 'registros'} ·{' '}
+              {formatDurationShort(totalSeconds(entries))}
+            </span>
+            {exit && (
+              <span
+                title={`Objetivo ${formatDurationShort(getDailyTarget(cursor) * 3600)} · faltan ${formatDurationShort(
+                  exit.remainingMinutes * 60,
+                )}`}
+                className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-primary"
+              >
+                <Clock className="h-3 w-3" />
+                <span className="font-medium">salida ~{formatHHMM(exit.exitMinutes)}</span>
+                <span className="opacity-70">· faltan {formatDurationShort(exit.remainingMinutes * 60)}</span>
+              </span>
+            )}
           </p>
         </div>
         <Button variant="ghost" size="icon" onClick={onNext} aria-label="Período siguiente">
