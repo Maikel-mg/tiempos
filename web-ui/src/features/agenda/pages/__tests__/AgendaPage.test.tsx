@@ -102,7 +102,7 @@ describe('AgendaPage — Timeline del día laborable', () => {
     mockSession([entry('a', '2026-06-10', '09:45', '11:00', 'Clasificador')]);
 
     const { container } = renderPage();
-    await userEvent.click(screen.getByRole('tab', { name: 'Timeline' }));
+    await userEvent.click(screen.getByRole('tab', { name: 'Calendario' }));
 
     // La Hora de entrada por defecto de Settings es 09:00.
     expect(container.textContent).toContain('09:00');
@@ -152,7 +152,7 @@ describe('AgendaPage — período navegable', () => {
     mockSession([entry('a', '2026-06-10', '09:00', '10:00', 'Del miércoles')]);
     const { container } = renderPage();
 
-    await userEvent.click(screen.getByRole('tab', { name: 'Timeline' }));
+    await userEvent.click(screen.getByRole('tab', { name: 'Calendario' }));
     await userEvent.click(screen.getByRole('button', { name: 'Semana' }));
 
     expect(container.textContent).toContain('8 – 12 jun');
@@ -166,7 +166,7 @@ describe('AgendaPage — período navegable', () => {
     mockSession([]);
     const { container } = renderPage();
 
-    await userEvent.click(screen.getByRole('tab', { name: 'Timeline' }));
+    await userEvent.click(screen.getByRole('tab', { name: 'Calendario' }));
     await userEvent.click(screen.getByLabelText('Período siguiente'));
     await userEvent.click(screen.getByRole('button', { name: 'Hoy' }));
 
@@ -220,21 +220,21 @@ describe('AgendaPage — vista Agenda, píldoras y preferencias', () => {
     await userEvent.click(screen.getByLabelText('Período siguiente'));
     expect(container.textContent).toContain('jueves 11 jun 2026');
 
-    await userEvent.click(screen.getByRole('tab', { name: 'Timeline' }));
+    await userEvent.click(screen.getByRole('tab', { name: 'Calendario' }));
     expect(container.textContent).toContain('jueves 11 jun 2026');
-    expect(screen.getByRole('tab', { name: 'Timeline' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: 'Calendario' })).toHaveAttribute('aria-selected', 'true');
   });
 
   it('recuerda la vista y el modo entre sesiones', async () => {
     mockSession(dayEntries());
     const first = renderPage();
 
-    await userEvent.click(screen.getByRole('tab', { name: 'Timeline' }));
+    await userEvent.click(screen.getByRole('tab', { name: 'Calendario' }));
     await userEvent.click(screen.getByRole('button', { name: 'Semana' }));
     first.unmount();
 
     const second = renderPage();
-    expect(screen.getByRole('tab', { name: 'Timeline' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: 'Calendario' })).toHaveAttribute('aria-selected', 'true');
     expect(second.container.textContent).toContain('8 – 12 jun');
   });
 
@@ -247,7 +247,7 @@ describe('AgendaPage — vista Agenda, píldoras y preferencias', () => {
   });
 });
 
-describe('AgendaPage — vista Calendario por Tarea', () => {
+describe('AgendaPage — vista Timeline por Tarea', () => {
   beforeEach(() => {
     localStorage.clear();
     vi.useFakeTimers({ shouldAdvanceTime: true });
@@ -269,7 +269,7 @@ describe('AgendaPage — vista Calendario por Tarea', () => {
     mockSession(laneEntries());
     const { container } = renderPage();
 
-    await userEvent.click(screen.getByRole('tab', { name: 'Calendario' }));
+    await userEvent.click(screen.getByRole('tab', { name: 'Timeline' }));
 
     const text = container.textContent ?? '';
     expect(text.indexOf('Larga')).toBeLessThan(text.indexOf('Corta'));
@@ -282,7 +282,7 @@ describe('AgendaPage — vista Calendario por Tarea', () => {
     mockSession(laneEntries());
     const { container } = renderPage();
 
-    await userEvent.click(screen.getByRole('tab', { name: 'Calendario' }));
+    await userEvent.click(screen.getByRole('tab', { name: 'Timeline' }));
     await userEvent.click(screen.getByRole('button', { name: 'Semana' }));
 
     expect(container.textContent).toContain('Lun 8');
@@ -295,7 +295,7 @@ describe('AgendaPage — vista Calendario por Tarea', () => {
     mockSession([]);
     const { container } = renderPage();
 
-    await userEvent.click(screen.getByRole('tab', { name: 'Calendario' }));
+    await userEvent.click(screen.getByRole('tab', { name: 'Timeline' }));
 
     expect(container.textContent).toContain('reparte el tiempo por Tarea');
   });
@@ -348,7 +348,7 @@ describe('AgendaPage — Timer activo', () => {
     mockRunningTimer();
     const { container } = renderPage();
 
-    await userEvent.click(screen.getByRole('tab', { name: 'Timeline' }));
+    await userEvent.click(screen.getByRole('tab', { name: 'Calendario' }));
     const live = Array.from(container.querySelectorAll('[role="button"]')).find((node) =>
       node.textContent?.includes('Timer en curso'),
     );

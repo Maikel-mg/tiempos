@@ -149,7 +149,7 @@ export function AgendaPage() {
           onJump={(day) => setCursor(toWorkday(day))}
         >
           <ViewPills value={view} available={IMPLEMENTED_AGENDA_VIEWS} onChange={setView} />
-          {view === 'calendar' && <SyncDayButton entries={visibleEntries} onSyncDay={syncMany} label="Sincronizar período" />}
+          {view === 'timeline' && <SyncDayButton entries={visibleEntries} onSyncDay={syncMany} label="Sincronizar período" />}
         </PeriodBar>
         {sync.syncPanelOpen && (
           <SyncPanel
@@ -168,7 +168,9 @@ export function AgendaPage() {
             timerEntryId={liveTimerEntry?.id}
             activeEntryId={activeEntryId}
             actions={actions}
-            onAdd={(day, startTime) => openComposer(day, startTime)}
+            onAddAt={(day, startTime) => openComposer(day, startTime)}
+            onAddAfterDay={openComposerAfterDay}
+            onSyncDay={syncMany}
             onPickDay={(day) => {
               setCursor(toWorkday(day));
               setMode('day');
@@ -199,9 +201,7 @@ export function AgendaPage() {
             activeEntryId={activeEntryId}
             workdayStart={workdayStart}
             actions={actions}
-            onAddAt={(day, startTime) => openComposer(day, startTime)}
-            onAddAfterDay={openComposerAfterDay}
-            onSyncDay={syncMany}
+            onAdd={(day, startTime) => openComposer(day, startTime)}
             onPickDay={(day) => {
               setCursor(toWorkday(day));
               setMode('day');

@@ -3,20 +3,21 @@ import { Plus } from 'lucide-react';
 import { formatDurationShort, parseHHMM } from '@/lib/format';
 import { taskColor } from '../lib/taskColor';
 import { EntryActionsMenu, type EntryActions } from './EntryActionsMenu';
-import { SyncDayButton } from './SyncDayButton';
 import {
-  formatDayLong,
+  endOfDay,
   formatDayShort,
   hourBounds,
   minutesToHHMM,
   sortByStart,
   todayKey,
   totalSeconds,
-  type PlanMode,
+  taskLanes,
 } from '../lib/planRange';
-import type { TimeEntry } from '@/features/time-tracker/types';
+import type { PlanMode } from '../lib/planRange';
+import type { Proceso, TimeEntry } from '@/features/time-tracker/types';
 
-const HOUR_PX = 64;
+/** Referencia honesta para el ancho de la barra en modo semana: 8 h = celda llena. */
+const DAY_REFERENCE_SECONDS = 8 * 3600;
 
 interface TimelineViewProps {
   entries: TimeEntry[];
@@ -24,18 +25,22 @@ interface TimelineViewProps {
   mode: PlanMode;
   /** Hora de entrada de la jornada, en minutos desde medianoche. */
   workdayStart: number | null;
-  /** Registro virtual del Timer activo: se pinta como bloque vivo, no editable. */
   timerEntryId?: string;
-  /** Registro de tiempo resaltado por la navegación de teclado. */
   activeEntryId?: string;
   actions?: EntryActions;
   onPickDay?: (day: string) => void;
-  /** Abre el compositor en el hueco pulsado (hora ya calculada desde el puntero). */
-  onAddAt?: (day: string, startTime: string) => void;
-  onAddAfterDay?: (day: string) => void;
-  onSyncDay?: (ids: string[]) => void;
+  /** Abre el compositor con la Tarea del carril ya elegida. */
+  onAdd?: (day: string, startTime: string, preset?: Proceso) => void;
 }
 
+/**
+ * Timeline: el reparto del tiempo por Tarea.
+ *
+ * Filas por Tarea de mayor a menor tiempo. En modo día el eje horizontal son las
+ * horas y cada Registro de tiempo se sitúa en su posición real; en modo semana
+ * las columnas son los días laborables y cada celda resume el tiempo dedicado a
+ * esa Tarea ese día.
+ */
 export function TimelineView({
   entries,
   days,
@@ -45,161 +50,175 @@ export function TimelineView({
   activeEntryId,
   actions,
   onPickDay,
-  onAddAt,
-  onAddAfterDay,
-  onSyncDay,
+  onAdd,
 }: TimelineViewProps) {
+  const lanes = useMemo(() => taskLanes(entries), [entries]);
   const { from, to } = useMemo(() => hourBounds(entries, workdayStart), [entries, workdayStart]);
-  const height = ((to - from) / 60) * HOUR_PX;
-  const hours = Array.from({ length: Math.round((to - from) / 60) }, (_, index) => from / 60 + index);
+  const span = Math.max(1, to - from);
+  const hours = Array.from({ length: Math.round(span / 60) }, (_, index) => from / 60 + index);
   const today = todayKey();
-  const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
-  const showNowLine = nowMinutes >= from && nowMinutes <= to;
+  const pct = (minutes: number) => ((minutes - from) / span) * 100;
 
-  const topOf = (minutes: number) => ((minutes - from) / 60) * HOUR_PX;
+  if (lanes.length === 0) {
+    return (
+      <div className="rounded-xl border bg-card px-6 py-10 text-center">
+        <p className="text-sm font-medium">No hay Registros de tiempo en este período</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Esta vista reparte el tiempo por Tarea: aparece en cuanto registres el primero.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="overflow-hidden rounded-xl border bg-card">
-      <div className="flex max-h-[70vh] overflow-y-auto">
-        <div className="w-14 shrink-0 border-r bg-muted/30">
-          <div className="h-11 border-b" />
-          <div className="relative" style={{ height }}>
-            {hours.map((hour) => (
-              <span
-                key={hour}
-                className="absolute right-1.5 -translate-y-1/2 font-mono text-[10px] text-muted-foreground"
-                style={{ top: topOf(hour * 60) }}
-              >
-                {String(hour).padStart(2, '0')}:00
-              </span>
-            ))}
-          </div>
+      <div className="flex border-b bg-muted/20">
+        <div className="w-48 shrink-0 border-r px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          Tarea
         </div>
-
-        <div className="flex min-w-0 flex-1">
-          {days.map((day) => {
-            const dayEntries = sortByStart(entries.filter((entry) => entry.date === day));
-            const isToday = day === today;
-            return (
-              <div key={day} className="min-w-0 flex-1 border-r last:border-r-0">
-                <div
-                  className={`flex h-11 items-center gap-1 border-b px-1 ${
-                    isToday ? 'bg-primary/5' : 'bg-muted/20'
+        <div className="relative h-7 flex-1">
+          {mode === 'week'
+            ? days.map((day, index) => (
+                <button
+                  key={day}
+                  onClick={() => onPickDay?.(day)}
+                  className={`absolute top-1 -translate-x-1/2 text-[10px] capitalize hover:underline ${
+                    day === today ? 'font-semibold text-primary' : 'text-muted-foreground'
                   }`}
+                  style={{ left: `${((index + 0.5) / days.length) * 100}%` }}
                 >
-                  <button
-                    onClick={() => onPickDay?.(day)}
-                    className="min-w-0 text-left text-xs font-medium capitalize hover:underline"
-                    title="Ver este día"
-                  >
-                    <span className="block truncate">
-                      {mode === 'week' ? formatDayShort(day) : formatDayLong(day)}
-                    </span>
-                    <span className="block font-mono text-[10px] font-normal text-muted-foreground">
-                      {formatDurationShort(totalSeconds(dayEntries))}
-                    </span>
-                  </button>
-                  <button
-                    onClick={() => onAddAfterDay?.(day)}
-                    title="Añadir Registro de tiempo"
-                    aria-label={`Añadir Registro de tiempo el ${formatDayShort(day)}`}
-                    className="ml-auto shrink-0 rounded p-0.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                  </button>
-                  {onSyncDay && <SyncDayButton entries={dayEntries} onSyncDay={onSyncDay} label="" />}
-                </div>
+                  {formatDayShort(day)}
+                </button>
+              ))
+            : hours.map((hour) => (
+                <span
+                  key={hour}
+                  className="absolute top-1 -translate-x-1/2 font-mono text-[10px] text-muted-foreground"
+                  style={{ left: `${pct(hour * 60)}%` }}
+                >
+                  {String(hour).padStart(2, '0')}
+                </span>
+              ))}
+        </div>
+      </div>
 
-                <div
-                  className="relative"
-                  style={{ height }}
-                  onClick={(event) => {
-                    const rect = event.currentTarget.getBoundingClientRect();
-                    const minutes = from + ((event.clientY - rect.top) / HOUR_PX) * 60;
-                    onAddAt?.(day, minutesToHHMM(Math.round(minutes / 15) * 15));
-                  }}
-                >
-                  {hours.map((hour) => (
+      {lanes.map((lane) => {
+        const color = taskColor(lane.taskName);
+        return (
+          <div key={lane.taskName} className="flex border-b last:border-b-0">
+            <div className="flex w-48 shrink-0 items-center justify-between gap-2 border-r px-3 py-2">
+              <span className={`min-w-0 truncate text-xs font-medium ${color.text}`} title={lane.taskName}>
+                {lane.taskName}
+              </span>
+              <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
+                {formatDurationShort(lane.total)}
+              </span>
+              <button
+                onClick={() =>
+                  onAdd?.(days[0], endOfDay(lane.byDay.get(days[0]) ?? []), {
+                    proceso: lane.taskId,
+                    nombre: lane.taskName,
+                  })
+                }
+                title={`Añadir Registro de tiempo de ${lane.taskName}`}
+                aria-label={`Añadir Registro de tiempo de ${lane.taskName}`}
+                className="shrink-0 rounded p-0.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+              >
+                <Plus className="h-3 w-3" />
+              </button>
+            </div>
+
+            <div
+              className="relative h-12 flex-1"
+              onClick={(event) => {
+                if (mode !== 'day') return;
+                const rect = event.currentTarget.getBoundingClientRect();
+                const minutes = from + ((event.clientX - rect.left) / rect.width) * span;
+                onAdd?.(days[0], minutesToHHMM(Math.round(minutes / 15) * 15), {
+                  proceso: lane.taskId,
+                  nombre: lane.taskName,
+                });
+              }}
+            >
+              {mode === 'week'
+                ? days.map((day, index) => (
+                    <div
+                      key={day}
+                      className={`absolute inset-y-0 border-l border-border/40 ${index === 0 ? 'border-l-0' : ''}`}
+                      style={{ left: `${(index / days.length) * 100}%` }}
+                    />
+                  ))
+                : hours.map((hour) => (
                     <div
                       key={hour}
-                      className={`absolute inset-x-0 border-t ${hour % 6 === 0 ? 'border-border/60' : 'border-border/25'}`}
-                      style={{ top: topOf(hour * 60) }}
+                      className="absolute inset-y-0 border-l border-border/30"
+                      style={{ left: `${pct(hour * 60)}%` }}
                     />
                   ))}
 
-                  {isToday && showNowLine && (
-                    <div
-                      className="absolute inset-x-0 z-20 border-t-2 border-red-500/80"
-                      style={{ top: topOf(nowMinutes) }}
-                    >
-                      <span className="absolute -left-1 -top-1 h-2 w-2 rounded-full bg-red-500" />
-                    </div>
-                  )}
-
-                  {dayEntries.map((entry) => {
+              {mode === 'week'
+                ? days.map((day, index) => {
+                    const dayEntries = lane.byDay.get(day) ?? [];
+                    if (dayEntries.length === 0) return null;
+                    const seconds = totalSeconds(dayEntries);
+                    const width = Math.min(100, Math.max(12, (seconds / DAY_REFERENCE_SECONDS) * 100));
+                    return (
+                      <button
+                        key={day}
+                        onClick={() => actions?.onEdit?.(sortByStart(dayEntries)[0])}
+                        title={`${formatDayShort(day)} · ${formatDurationShort(seconds)}`}
+                        className="absolute inset-y-1.5 -translate-x-1/2 rounded-md px-1 text-[10px] font-medium text-white"
+                        style={{
+                          left: `${((index + 0.5) / days.length) * 100}%`,
+                          width: `${width}%`,
+                          maxWidth: `${100 / days.length}%`,
+                        }}
+                      >
+                        <span className={`flex h-full items-center justify-center rounded-md ${color.bar} px-1`}>
+                          {formatDurationShort(seconds)}
+                        </span>
+                      </button>
+                    );
+                  })
+                : sortByStart(lane.byDay.get(days[0]) ?? []).map((entry) => {
                     const isLive = entry.id === timerEntryId;
                     const isActive = entry.id === activeEntryId;
                     const start = parseHHMM(entry.startTime);
                     const end = parseHHMM(entry.endTime);
-                    const blockHeight = Math.max(20, ((end - start) / 60) * HOUR_PX - 2);
-                    const color = taskColor(entry.taskName);
                     return (
-                      <div
+                      <button
                         key={entry.id}
-                        role="button"
                         data-plan-active={isActive ? 'true' : undefined}
-                        tabIndex={isActive ? 0 : -1}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          if (!isLive) actions?.onEdit?.(entry);
-                        }}
-                        onKeyDown={(event) => {
-                          if (!isLive && (event.key === 'Enter' || event.key === ' ')) {
-                            event.preventDefault();
-                            actions?.onEdit?.(entry);
-                          }
-                        }}
+                        onClick={(event) => { event.stopPropagation(); if (!isLive) actions?.onEdit?.(entry); }}
                         title={`${entry.startTime}–${entry.endTime} · ${entry.taskName}\n${entry.description ?? ''}`}
-                        className={`group absolute inset-x-1 z-10 overflow-hidden rounded-md border px-1.5 py-1 text-left transition hover:z-30 hover:ring-2 hover:ring-ring ${color.block} ${
-                          isLive ? 'border-2 border-dashed border-red-500/70 ring-1 ring-red-500/20' : ''
-                        } ${isActive ? 'z-30 ring-2 ring-primary ring-offset-1 ring-offset-background' : ''}`}
-                        style={{ top: topOf(start), height: blockHeight }}
+                        className={`group absolute inset-y-1.5 overflow-hidden rounded-md px-2 text-left text-[10px] font-medium text-white transition hover:brightness-110 ${color.bar} ${
+                          isLive ? 'border-2 border-dashed border-red-300 ring-2 ring-red-500/50' : ''
+                        } ${isActive ? 'ring-2 ring-primary ring-offset-1 ring-offset-background' : ''}`}
+                        style={{ left: `${pct(start)}%`, width: `${Math.max(1.5, pct(end) - pct(start))}%` }}
                       >
-                        <span className="block font-mono text-[10px] leading-none opacity-70">
+                        <span className="block truncate">
                           {entry.startTime}–{entry.endTime}
-                          {isLive ? (
-                            <span className="ml-1 font-sans text-[9px] font-semibold uppercase text-red-600 dark:text-red-400">
-                              en curso
-                            </span>
-                          ) : (
-                            !entry.synced && <span className="ml-1 text-[9px]">●</span>
-                          )}
                         </span>
-                        <span className="mt-0.5 block truncate text-[11px] font-medium leading-tight">
-                          {entry.taskName}
-                        </span>
+                        {entry.description && <span className="block truncate opacity-80">{entry.description}</span>}
                         {!isLive && (
                           <div
-                            className="absolute right-0 top-0 opacity-0 transition group-hover:opacity-100"
+                            className="absolute right-0 top-1/2 -translate-y-1/2 opacity-0 transition group-hover:opacity-100"
                             onClick={(event) => event.stopPropagation()}
                           >
-                            <EntryActionsMenu entry={entry} actions={actions ?? {}} className="h-5 w-5" />
+                            <EntryActionsMenu
+                              entry={entry}
+                              actions={actions ?? {}}
+                              className="h-5 w-5 text-white/80 hover:bg-black/20 hover:text-white"
+                            />
                           </div>
                         )}
-                        {blockHeight > 52 && entry.description && (
-                          <span className="mt-0.5 block overflow-hidden text-[10px] leading-tight opacity-75 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
-                            {entry.description}
-                          </span>
-                        )}
-                      </div>
+                      </button>
                     );
                   })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
