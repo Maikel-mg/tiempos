@@ -23,12 +23,9 @@ import { useEntryTableNavigation } from '../hooks/useEntryTableNavigation';
 import { useTimeTrackerCommandActions } from '../hooks/useTimeTrackerCommandActions';
 import { wizardConfig } from '@/config/stores';
 import { TaskProposalModal } from '@/features/proposal-ui/components/TaskProposalModal';
-import { PrototypePlanView } from '../prototype/PrototypePlanView';
 
 export function TimeTrackingPage() {
   const session = useTimeTrackingSession();
-  // PROTOTIPO (temporal): vista de plan día/semana en /time-tracker?variant=A|B|C
-  const isPrototype = Boolean(new URLSearchParams(window.location.search).get('variant'));
   const { entries, createEntry, updateEntry, markSynced } = session;
   const { timer } = session;
 
@@ -111,7 +108,6 @@ export function TimeTrackingPage() {
     tableRef,
     items: visibleEntries ?? filteredByPeriod,
     activeTab,
-    isEnabled: !isPrototype,
     editingEntry,
     trackerBarRef,
     onEdit: handleEditEntry,
@@ -142,65 +138,6 @@ export function TimeTrackingPage() {
     setSyncPanelOpen,
     pendingDescription,
   });
-
-  if (isPrototype) {
-    return (
-      <main className="w-full">
-        <div className="sticky top-0 z-40 bg-background border-b border-border/50 backdrop-blur-sm">
-          <div className="px-4 sm:px-6 py-3">
-            <TimeTrackerBar
-              onSubmit={handleCreateEntry}
-              disabled={false}
-              onSplitTimer={liveTimerEntry ? handleSplitTimer : undefined}
-              splitDisabledReason={timerSplitDisabledReason}
-              timer={timer}
-            />
-          </div>
-        </div>
-        <TimeEntryEditorDialog
-          open={isEditorOpen}
-          mode={editingEntry ? 'edit' : 'create'}
-          entry={editingEntry}
-          onOpenChange={handleOpenChange}
-          onSubmit={handleEditorSubmit}
-        />
-        <SplitEntryDialog
-          open={splittingEntry !== null}
-          entry={splittingEntry}
-          live={splittingTimer}
-          onOpenChange={handleSplitDialogOpenChange}
-          onConfirm={handleSplitConfirm}
-        />
-        {syncPanelOpen && (
-          <div className="px-4 pt-4 sm:px-6">
-            <SyncPanel
-              selectedEntries={entriesToSync}
-              totalPendingCount={pendingEntries.length}
-              blockedCount={blockedEntries.length}
-              onSyncComplete={markSynced}
-            />
-          </div>
-        )}
-        <PrototypePlanView
-          entries={entries}
-          timerEntry={liveTimerEntry}
-          onEdit={(entry) => handleEditEntry(entry)}
-          onPlay={(entry) => handlePlayEntry(entry)}
-          onDuplicate={(entry) => handleDuplicateEntry(entry)}
-          onSplit={(entry) => handleSplitEntry(entry)}
-          onSync={(entry) => handleSyncEntry(entry)}
-          onDelete={(id) => handleDeleteEntry(id)}
-          onSyncDay={(ids) => {
-            setSelectedIds(new Set(ids));
-            setSyncPanelOpen(true);
-          }}
-          onCreate={async (draft) => {
-            await createEntry(draft);
-          }}
-        />
-      </main>
-    );
-  }
 
   return (
     <main className="w-full">
