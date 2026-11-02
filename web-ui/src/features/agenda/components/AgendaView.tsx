@@ -1,3 +1,4 @@
+import { Plus } from 'lucide-react';
 import { formatDurationShort } from '@/lib/format';
 import { taskColor } from '../lib/taskColor';
 import {
@@ -18,6 +19,10 @@ interface AgendaViewProps {
   activeEntryId?: string;
   onEdit?: (entry: TimeEntry) => void;
   onPickDay?: (day: string) => void;
+  /** Abre el compositor en un hueco concreto (horas ya puestas). */
+  onAdd?: (day: string, startTime: string, endTime: string) => void;
+  /** Abre el compositor al final del día. */
+  onAddAfterDay?: (day: string) => void;
 }
 
 function formatGap(minutes: number): string {
@@ -38,6 +43,8 @@ export function AgendaView({
   activeEntryId,
   onEdit,
   onPickDay,
+  onAdd,
+  onAddAfterDay,
 }: AgendaViewProps) {
   const today = todayKey();
   const visibleDays = days.filter((day) => mode === 'day' || entries.some((entry) => entry.date === day));
@@ -71,9 +78,18 @@ export function AgendaView({
                   </span>
                 )}
               </h3>
-              <span className="font-mono text-xs text-muted-foreground">
-                {dayEntries.length} reg · {formatDurationShort(totalSeconds(dayEntries))}
-              </span>
+              <div className="flex items-baseline gap-2">
+                <span className="font-mono text-xs text-muted-foreground">
+                  {dayEntries.length} reg · {formatDurationShort(totalSeconds(dayEntries))}
+                </span>
+                <button
+                  onClick={() => onAddAfterDay?.(day)}
+                  className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                  title="Añadir Registro de tiempo a este día"
+                >
+                  <Plus className="h-3 w-3" /> añadir
+                </button>
+              </div>
             </header>
 
             {dayEntries.length === 0 && (
@@ -81,7 +97,7 @@ export function AgendaView({
             )}
 
             <ul>
-              {dayEntries.map((entry) => {
+              {dayEntries.map((entry, index) => {
                 const gap = gaps.get(entry.id);
                 const color = taskColor(entry.taskName);
                 const isLive = entry.id === timerEntryId;
@@ -89,9 +105,15 @@ export function AgendaView({
                 return (
                   <li key={entry.id}>
                     {gap !== undefined && (
-                      <p className="my-0.5 py-1 pl-[76px] text-[11px] text-muted-foreground/80">
-                        · {formatGap(gap)} sin registrar
-                      </p>
+                      <button
+                        onClick={() =>
+                          onAdd?.(day, dayEntries[index - 1].endTime, entry.startTime)
+                        }
+                        className="my-0.5 flex w-full items-center gap-1 rounded py-1 pl-[76px] text-left text-[11px] text-muted-foreground/80 transition hover:bg-muted/60 hover:text-foreground"
+                      >
+                        <Plus className="h-3 w-3" />
+                        {formatGap(gap)} sin registrar
+                      </button>
                     )}
                     <div
                       data-plan-active={isActive ? 'true' : undefined}

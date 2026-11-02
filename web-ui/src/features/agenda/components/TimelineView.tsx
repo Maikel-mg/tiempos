@@ -6,6 +6,7 @@ import {
   formatDayLong,
   formatDayShort,
   hourBounds,
+  minutesToHHMM,
   sortByStart,
   todayKey,
   totalSeconds,
@@ -27,7 +28,9 @@ interface TimelineViewProps {
   activeEntryId?: string;
   onEdit?: (entry: TimeEntry) => void;
   onPickDay?: (day: string) => void;
+  /** Abre el compositor en el hueco pulsado (hora ya calculada desde el puntero). */
   onAddAt?: (day: string, startTime: string) => void;
+  onAddAfterDay?: (day: string) => void;
 }
 
 export function TimelineView({
@@ -40,6 +43,7 @@ export function TimelineView({
   onEdit,
   onPickDay,
   onAddAt,
+  onAddAfterDay,
 }: TimelineViewProps) {
   const { from, to } = useMemo(() => hourBounds(entries, workdayStart), [entries, workdayStart]);
   const height = ((to - from) / 60) * HOUR_PX;
@@ -92,7 +96,7 @@ export function TimelineView({
                     </span>
                   </button>
                   <button
-                    onClick={() => onAddAt?.(day, '09:00')}
+                    onClick={() => onAddAfterDay?.(day)}
                     title="Añadir Registro de tiempo"
                     aria-label={`Añadir Registro de tiempo el ${formatDayShort(day)}`}
                     className="ml-auto shrink-0 rounded p-0.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
@@ -101,7 +105,15 @@ export function TimelineView({
                   </button>
                 </div>
 
-                <div className="relative" style={{ height }}>
+                <div
+                  className="relative"
+                  style={{ height }}
+                  onClick={(event) => {
+                    const rect = event.currentTarget.getBoundingClientRect();
+                    const minutes = from + ((event.clientY - rect.top) / HOUR_PX) * 60;
+                    onAddAt?.(day, minutesToHHMM(Math.round(minutes / 15) * 15));
+                  }}
+                >
                   {hours.map((hour) => (
                     <div
                       key={hour}
@@ -132,7 +144,10 @@ export function TimelineView({
                         role="button"
                         data-plan-active={isActive ? 'true' : undefined}
                         tabIndex={isActive ? 0 : -1}
-                        onClick={() => !isLive && onEdit?.(entry)}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          if (!isLive) onEdit?.(entry);
+                        }}
                         onKeyDown={(event) => {
                           if (!isLive && (event.key === 'Enter' || event.key === ' ')) {
                             event.preventDefault();

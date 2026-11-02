@@ -1,9 +1,19 @@
 import { useMemo } from 'react';
+import { Plus } from 'lucide-react';
 import { formatDurationShort, parseHHMM } from '@/lib/format';
 import { taskColor } from '../lib/taskColor';
-import { formatDayShort, hourBounds, sortByStart, todayKey, totalSeconds, taskLanes } from '../lib/planRange';
+import {
+  endOfDay,
+  formatDayShort,
+  hourBounds,
+  minutesToHHMM,
+  sortByStart,
+  todayKey,
+  totalSeconds,
+  taskLanes,
+} from '../lib/planRange';
 import type { PlanMode } from '../lib/planRange';
-import type { TimeEntry } from '@/features/time-tracker/types';
+import type { Proceso, TimeEntry } from '@/features/time-tracker/types';
 
 /** Referencia honesta para el ancho de la barra en modo semana: 8 h = celda llena. */
 const DAY_REFERENCE_SECONDS = 8 * 3600;
@@ -18,6 +28,8 @@ interface CalendarViewProps {
   activeEntryId?: string;
   onEdit?: (entry: TimeEntry) => void;
   onPickDay?: (day: string) => void;
+  /** Abre el compositor con la Tarea del carril ya elegida. */
+  onAdd?: (day: string, startTime: string, preset?: Proceso) => void;
 }
 
 /**
@@ -37,6 +49,7 @@ export function CalendarView({
   activeEntryId,
   onEdit,
   onPickDay,
+  onAdd,
 }: CalendarViewProps) {
   const lanes = useMemo(() => taskLanes(entries), [entries]);
   const { from, to } = useMemo(() => hourBounds(entries, workdayStart), [entries, workdayStart]);
@@ -99,9 +112,33 @@ export function CalendarView({
               <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
                 {formatDurationShort(lane.total)}
               </span>
+              <button
+                onClick={() =>
+                  onAdd?.(days[0], endOfDay(lane.byDay.get(days[0]) ?? []), {
+                    proceso: lane.taskId,
+                    nombre: lane.taskName,
+                  })
+                }
+                title={`Añadir Registro de tiempo de ${lane.taskName}`}
+                aria-label={`Añadir Registro de tiempo de ${lane.taskName}`}
+                className="shrink-0 rounded p-0.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+              >
+                <Plus className="h-3 w-3" />
+              </button>
             </div>
 
-            <div className="relative h-12 flex-1">
+            <div
+              className="relative h-12 flex-1"
+              onClick={(event) => {
+                if (mode !== 'day') return;
+                const rect = event.currentTarget.getBoundingClientRect();
+                const minutes = from + ((event.clientX - rect.left) / rect.width) * span;
+                onAdd?.(days[0], minutesToHHMM(Math.round(minutes / 15) * 15), {
+                  proceso: lane.taskId,
+                  nombre: lane.taskName,
+                });
+              }}
+            >
               {mode === 'week'
                 ? days.map((day, index) => (
                     <div

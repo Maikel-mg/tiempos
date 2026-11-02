@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { TimeTrackerBar } from '@/features/time-tracker/components/TimeTrackerBar';
 import { TimeEntryEditorDialog } from '@/features/time-tracker/components/TimeEntryEditorDialog';
 import { useTimeTrackingSession } from '@/features/time-tracker/hooks/useTimeTrackingSession';
@@ -8,11 +8,15 @@ import { PeriodBar } from '../components/PeriodBar';
 import { ViewPills } from '../components/ViewPills';
 import { AgendaView } from '../components/AgendaView';
 import { CalendarView } from '../components/CalendarView';
+import { InlineComposer, type ComposerSlot, type EntryDraft } from '../components/InlineComposer';
 import { TimelineView } from '../components/TimelineView';
 import { useAgendaPreferences } from '../hooks/useAgendaPreferences';
 import { IMPLEMENTED_AGENDA_VIEWS } from '../lib/agendaViews';
 import {
   addDays,
+  addMinutesToTime,
+  DEFAULT_ENTRY_MINUTES,
+  endOfDay,
   entriesOfDays,
   nextWorkday,
   todayKey,
@@ -32,6 +36,7 @@ export function AgendaPage() {
   const { entries, createEntry, timer, editor } = session;
 
   const [cursor, setCursor] = useState(() => toWorkday(todayKey()));
+  const [composer, setComposer] = useState<ComposerSlot | null>(null);
   const { view, setView, mode, setMode } = useAgendaPreferences();
 
   const days = useMemo(() => visibleDays(mode, cursor), [mode, cursor]);
@@ -43,6 +48,41 @@ export function AgendaPage() {
   );
   const visibleEntries = useMemo(() => entriesOfDays(allEntries, days), [allEntries, days]);
   const workdayStart = useMemo(() => getWorkdayStart(cursor), [cursor]);
+
+  /** Abre el compositor en un hueco del día visible. */
+  const openComposer = useCallback(
+    (date: string, startTime?: string, endTime?: string, preset?: ComposerSlot['preset']) => {
+      const start = startTime ?? '09:00';
+      setComposer({ date, startTime: start, endTime: endTime ?? addMinutesToTime(start, DEFAULT_ENTRY_MINUTES), preset });
+    },
+    [],
+  );
+
+  const openComposerAfterDay = useCallback(
+    (date: string) => {
+      const start = endOfDay(visibleEntries.filter((entry) => entry.date === date));
+      setComposer({ date, startTime: start, endTime: addMinutesToTime(start, DEFAULT_ENTRY_MINUTES) });
+    },
+    [visibleEntries],
+  );
+
+  const handleCreate = async (draft: EntryDraft) => {
+    await createEntry(draft);
+    setComposer(null);
+  };
+
+  // Atajo N: alta al final del día visible.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'n' || event.altKey || event.ctrlKey || event.metaKey) return;
+      const target = event.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
+      event.preventDefault();
+      openComposerAfterDay(cursor);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [cursor, openComposerAfterDay]);
 
   const step = (direction: 1 | -1) =>
     setCursor((current) => (mode === 'day' ? nextWorkday(current, direction) : addDays(current, direction * 7)));
@@ -56,6 +96,16 @@ export function AgendaPage() {
       </div>
 
       <div className="space-y-4 px-4 py-5 sm:px-6">
+        {composer && (
+          <InlineComposer
+            date={composer.date}
+            startTime={composer.startTime}
+            endTime={composer.endTime}
+            preset={composer.preset}
+            onCancel={() => setComposer(null)}
+            onSubmit={handleCreate}
+          />
+        )}
         <PeriodBar
           mode={mode}
           cursor={cursor}
@@ -76,6 +126,7 @@ export function AgendaPage() {
             workdayStart={workdayStart}
             timerEntryId={liveTimerEntry?.id}
             onEdit={(entry) => editor.openEdit(entry)}
+            onAdd={(day, startTime) => openComposer(day, startTime)}
             onPickDay={(day) => {
               setCursor(toWorkday(day));
               setMode('day');
@@ -88,6 +139,8 @@ export function AgendaPage() {
             mode={mode}
             timerEntryId={liveTimerEntry?.id}
             onEdit={(entry) => editor.openEdit(entry)}
+            onAdd={openComposer}
+            onAddAfterDay={openComposerAfterDay}
             onPickDay={(day) => {
               setCursor(toWorkday(day));
               setMode('day');
@@ -101,6 +154,8 @@ export function AgendaPage() {
             timerEntryId={liveTimerEntry?.id}
             workdayStart={workdayStart}
             onEdit={(entry) => editor.openEdit(entry)}
+            onAddAt={(day, startTime) => openComposer(day, startTime)}
+            onAddAfterDay={openComposerAfterDay}
             onPickDay={(day) => {
               setCursor(toWorkday(day));
               setMode('day');

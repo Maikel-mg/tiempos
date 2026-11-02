@@ -4,6 +4,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AgendaPage } from '../AgendaPage';
+import { InlineComposer } from '../../components/InlineComposer';
 import { useTimeEntries } from '@/features/time-tracker/hooks/useTimeEntries';
 import { useTimer } from '@/features/time-tracker/hooks/useTimer';
 import type { TimeEntry } from '@/features/time-tracker/types';
@@ -378,5 +379,77 @@ describe('AgendaPage — Timer activo', () => {
     await userEvent.click(screen.getByLabelText('Período siguiente'));
     // La barra del Timer lo sigue mostrando, pero las vistas del plan no.
     expect(container.textContent).not.toContain('timer activo');
+  });
+});
+
+describe('AgendaPage — alta manual en línea', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date('2026-06-10T10:00:00'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.clearAllMocks();
+  });
+
+  it('abre el compositor con las horas del hueco pulsado', async () => {
+    mockSession([
+      entry('a', '2026-06-10', '09:00', '10:00', 'Clasificador'),
+      entry('b', '2026-06-10', '10:30', '11:00', 'Revisión'),
+    ]);
+    renderPage();
+
+    await userEvent.click(screen.getByText(/30m sin registrar/));
+
+    expect(screen.getByLabelText('Hora de inicio')).toHaveValue('10:00');
+    expect(screen.getByLabelText('Hora de fin')).toHaveValue('10:30');
+  });
+
+  it('guarda el Registro de tiempo con la Tarea y las horas del compositor', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(
+      <QueryClientProvider client={queryClient}>
+        <InlineComposer
+          date="2026-06-10"
+          startTime="10:00"
+          endTime="10:30"
+          preset={{ proceso: 7, nombre: 'Clasificador' }}
+          onCancel={() => {}}
+          onSubmit={onSubmit}
+        />
+      </QueryClientProvider>,
+    );
+
+    await userEvent.type(screen.getByLabelText('Descripción del Registro de tiempo'), 'Repasar PRDs');
+    fireEvent.keyDown(screen.getByLabelText('Descripción del Registro de tiempo'), { key: 'Enter' });
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      taskId: 7,
+      taskName: 'Clasificador',
+      date: '2026-06-10',
+      startTime: '10:00',
+      endTime: '10:30',
+      description: 'Repasar PRDs',
+    });
+  });
+
+  it('no deja guardar sin Tarea elegida', () => {
+    mockSession([entry('a', '2026-06-10', '09:00', '10:00', 'Clasificador')]);
+    renderPage();
+
+    fireEvent.keyDown(window, { key: 'n' });
+
+    expect(screen.getByRole('button', { name: /Guardar/i })).toBeDisabled();
+  });
+
+  it('el atajo N abre el compositor al final del día visible', async () => {
+    mockSession([entry('a', '2026-06-10', '09:00', '11:30', 'Clasificador')]);
+    renderPage();
+
+    fireEvent.keyDown(window, { key: 'n' });
+
+    expect(screen.getByLabelText('Hora de inicio')).toHaveValue('11:30');
   });
 });
