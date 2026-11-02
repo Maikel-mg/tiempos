@@ -16,6 +16,8 @@ export interface UseEntryTableNavigationParams {
   activeTab: EntryViewTab;
   /** Registro en edición: mientras el editor está abierto no se navega. */
   editingEntry: TimeEntry | null;
+  /** Apaga la navegación y los atajos de fila (p. ej. cuando la lista no se pinta). */
+  isEnabled?: boolean;
   /** Barra del timer: sus atajos no aplican mientras se edita la hora de inicio. */
   trackerBarRef: RefObject<TimeTrackerBarHandle>;
   onEdit: (entry: TimeEntry) => void;
@@ -45,6 +47,7 @@ export function useEntryTableNavigation({
   items,
   activeTab,
   editingEntry,
+  isEnabled = true,
   trackerBarRef,
   onEdit,
   onDuplicate,
@@ -56,7 +59,7 @@ export function useEntryTableNavigation({
     containerRef: tableRef,
     items,
     getRowId: (entry) => entry.id,
-    isEnabled: activeTab === 'table' && !editingEntry,
+    isEnabled: isEnabled && activeTab === 'table' && !editingEntry,
   });
 
   useTableRowShortcuts({
@@ -70,11 +73,13 @@ export function useEntryTableNavigation({
         onDelete(entry.id);
       }
     },
-    isEnabled: () => activeTab === 'table' && !editingEntry && !trackerBarRef.current?.isEditingStartTime,
+    isEnabled: () =>
+      isEnabled && activeTab === 'table' && !editingEntry && !trackerBarRef.current?.isEditingStartTime,
   });
 
   // Auto-foco de la primera fila al montar (sólo en la vista de tabla).
   useEffect(() => {
+    if (!isEnabled) return;
     if (activeTab !== 'table') return;
     if (items.length === 0) return;
     if (document.activeElement && (
@@ -86,7 +91,7 @@ export function useEntryTableNavigation({
     if (document.querySelector('[role="dialog"][data-state="open"]')) return;
     if (document.querySelector('[cmdk-dialog]')) return;
     focusFirst();
-  }, [activeTab, items.length, focusFirst]);
+  }, [isEnabled, activeTab, items.length, focusFirst]);
 
   return { getRowProps, focusFirst, activeItem };
 }

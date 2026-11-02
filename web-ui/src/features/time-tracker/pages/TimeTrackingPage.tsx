@@ -13,28 +13,26 @@ import type { OverlapFix } from '../lib/overlaps';
 import type { EntryViewTab, TimeEntry } from '../types';
 import { SyncPanel } from '../components/SyncPanel';
 import { PeriodProgressPanel } from '../components/PeriodProgressPanel';
-import { useTimeEntries } from '../hooks/useTimeEntries';
-import { useTimer } from '../hooks/useTimer';
 import { useTimerView } from '../hooks/useTimerView';
 import { usePeriodFilter } from '../hooks/usePeriodFilter';
-import { useEntryEditor } from '../hooks/useEntryEditor';
-import { useEntrySync } from '../hooks/useEntrySync';
+import { useTimeTrackingSession, useTimeTrackingFlows } from '../hooks/useTimeTrackingSession';
 import { useBulkReassign } from '../hooks/useBulkReassign';
 import { BulkReassignDialog } from '../components/BulkReassignDialog';
-import { useSplitFlow } from '../hooks/useSplitFlow';
 import { useProposals } from '../hooks/useProposals';
-import { useEntrySelection } from '../hooks/useEntrySelection';
 import { useEntryTableNavigation } from '../hooks/useEntryTableNavigation';
 import { useTimeTrackerCommandActions } from '../hooks/useTimeTrackerCommandActions';
 import { wizardConfig } from '@/config/stores';
 import { TaskProposalModal } from '@/features/proposal-ui/components/TaskProposalModal';
+import { PrototypePlanView } from '../prototype/PrototypePlanView';
 
 export function TimeTrackingPage() {
-  const { entries, createEntry, updateEntry, deleteEntry, splitEntry, splitRunningTimer, markSynced } = useTimeEntries();
+  const session = useTimeTrackingSession();
+  // PROTOTIPO (temporal): vista de plan día/semana en /time-tracker?variant=A|B|C
+  const isPrototype = Boolean(new URLSearchParams(window.location.search).get('variant'));
+  const { entries, createEntry, updateEntry, markSynced } = session;
+  const { timer } = session;
 
-  const timer = useTimer();
-
-  const { selectedIds, setSelectedIds, tableRef, handleEntryDeleted } = useEntrySelection();
+  const { selectedIds, setSelectedIds, tableRef } = session.selection;
 
   // Lista que la tabla está pintando (con sus filtros y orden): la comparten los
   // atajos de fila para no actuar sobre otro registro. Null hasta el primer render.
@@ -50,13 +48,7 @@ export function TimeTrackingPage() {
     create: handleCreateEntry,
     duplicate: handleDuplicateEntry,
     remove: handleDeleteEntry,
-  } = useEntryEditor({
-    entries,
-    createEntry,
-    updateEntry,
-    deleteEntry,
-    onEntryDeleted: handleEntryDeleted,
-  });
+  } = session.editor;
 
   const {
     period,
@@ -80,6 +72,8 @@ export function TimeTrackingPage() {
     handlePlayEntry,
   } = useTimerView({ createEntry, timer, todayInRange });
 
+  const { split: splitFlow, sync: syncState } = useTimeTrackingFlows(session, { liveTimerEntry });
+
   const {
     splittingEntry,
     splittingTimer,
@@ -87,20 +81,10 @@ export function TimeTrackingPage() {
     handleSplitTimer,
     handleSplitDialogOpenChange,
     handleSplitConfirm,
-    invalidateSplitUndo,
-  } = useSplitFlow({
-    splitEntry,
-    splitRunningTimer,
-    deleteEntry,
-    updateEntry,
-    timer,
-    liveTimerEntry,
-    selectedIds,
-    setSelectedIds,
-  });
+  } = splitFlow;
 
   const { syncPanelOpen, setSyncPanelOpen, pendingEntries, blockedEntries, entriesToSync, handleSyncEntry } =
-    useEntrySync({ entries, selectedIds, markSynced, onEntriesSynced: invalidateSplitUndo });
+    syncState;
 
   const {
     reassignOpen,
@@ -127,6 +111,7 @@ export function TimeTrackingPage() {
     tableRef,
     items: visibleEntries ?? filteredByPeriod,
     activeTab,
+    isEnabled: !isPrototype,
     editingEntry,
     trackerBarRef,
     onEdit: handleEditEntry,
@@ -157,6 +142,65 @@ export function TimeTrackingPage() {
     setSyncPanelOpen,
     pendingDescription,
   });
+
+  if (isPrototype) {
+    return (
+      <main className="w-full">
+        <div className="sticky top-0 z-40 bg-background border-b border-border/50 backdrop-blur-sm">
+          <div className="px-4 sm:px-6 py-3">
+            <TimeTrackerBar
+              onSubmit={handleCreateEntry}
+              disabled={false}
+              onSplitTimer={liveTimerEntry ? handleSplitTimer : undefined}
+              splitDisabledReason={timerSplitDisabledReason}
+              timer={timer}
+            />
+          </div>
+        </div>
+        <TimeEntryEditorDialog
+          open={isEditorOpen}
+          mode={editingEntry ? 'edit' : 'create'}
+          entry={editingEntry}
+          onOpenChange={handleOpenChange}
+          onSubmit={handleEditorSubmit}
+        />
+        <SplitEntryDialog
+          open={splittingEntry !== null}
+          entry={splittingEntry}
+          live={splittingTimer}
+          onOpenChange={handleSplitDialogOpenChange}
+          onConfirm={handleSplitConfirm}
+        />
+        {syncPanelOpen && (
+          <div className="px-4 pt-4 sm:px-6">
+            <SyncPanel
+              selectedEntries={entriesToSync}
+              totalPendingCount={pendingEntries.length}
+              blockedCount={blockedEntries.length}
+              onSyncComplete={markSynced}
+            />
+          </div>
+        )}
+        <PrototypePlanView
+          entries={entries}
+          timerEntry={liveTimerEntry}
+          onEdit={(entry) => handleEditEntry(entry)}
+          onPlay={(entry) => handlePlayEntry(entry)}
+          onDuplicate={(entry) => handleDuplicateEntry(entry)}
+          onSplit={(entry) => handleSplitEntry(entry)}
+          onSync={(entry) => handleSyncEntry(entry)}
+          onDelete={(id) => handleDeleteEntry(id)}
+          onSyncDay={(ids) => {
+            setSelectedIds(new Set(ids));
+            setSyncPanelOpen(true);
+          }}
+          onCreate={async (draft) => {
+            await createEntry(draft);
+          }}
+        />
+      </main>
+    );
+  }
 
   return (
     <main className="w-full">
