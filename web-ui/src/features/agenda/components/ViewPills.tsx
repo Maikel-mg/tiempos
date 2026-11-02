@@ -1,4 +1,5 @@
-import { AGENDA_VIEWS, type AgendaViewKind } from '../lib/agendaViews';
+import { AGENDA_VIEWS } from '../lib/agendaViews';
+import type { AgendaViewKind } from '../types';
 
 interface ViewPillsProps {
   value: AgendaViewKind;

@@ -1,6 +1,6 @@
-/** Vistas del plan: la misma información del período, tres lecturas distintas. */
+import type { AgendaViewKind } from '../types';
 
-export type AgendaViewKind = 'calendar' | 'agenda' | 'timeline';
+/** Vistas del plan en el orden de las píldoras. */
 
 export const AGENDA_VIEWS: ReadonlyArray<{ key: AgendaViewKind; label: string }> = [
   { key: 'calendar', label: 'Calendario' },
@@ -10,5 +10,5 @@ export const AGENDA_VIEWS: ReadonlyArray<{ key: AgendaViewKind; label: string }>
 
 export const DEFAULT_AGENDA_VIEW: AgendaViewKind = 'agenda';
 
-/** Vistas ya construidas; crece a medida que cada una se entrega. */
-export const IMPLEMENTED_AGENDA_VIEWS: ReadonlyArray<AgendaViewKind> = ['calendar', 'agenda', 'timeline'];
+/** Orden de las vistas, como lista de claves. */
+export const AGENDA_VIEW_ORDER: ReadonlyArray<AgendaViewKind> = AGENDA_VIEWS.map((view) => view.key);

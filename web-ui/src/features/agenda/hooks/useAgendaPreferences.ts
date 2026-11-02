@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { DEFAULT_AGENDA_VIEW, type AgendaViewKind } from '../lib/agendaViews';
+import { DEFAULT_AGENDA_VIEW } from '../lib/agendaViews';
+import type { AgendaViewKind } from '../types';
 import type { PlanMode } from '../lib/planRange';
 
 const STORAGE_KEY = 'agenda.preferences';

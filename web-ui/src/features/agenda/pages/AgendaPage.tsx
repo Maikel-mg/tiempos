@@ -13,13 +13,14 @@ import { ViewPills } from '../components/ViewPills';
 import { AgendaShortcutsDialog } from '../components/AgendaShortcutsDialog';
 import { AgendaView } from '../components/AgendaView';
 import { CalendarView } from '../components/CalendarView';
-import { InlineComposer, type ComposerSlot, type EntryDraft } from '../components/InlineComposer';
+import { InlineComposer } from '../components/InlineComposer';
+import type { ComposerSlot, EntryDraft } from '../types';
 import { TimelineView } from '../components/TimelineView';
 import { useAgendaPreferences } from '../hooks/useAgendaPreferences';
 import { useAgendaShortcuts } from '../hooks/useAgendaShortcuts';
 import { useEntryKeyboardNavigation } from '../hooks/useEntryKeyboardNavigation';
 import { useEntryActionShortcuts } from '../hooks/useEntryActionShortcuts';
-import { IMPLEMENTED_AGENDA_VIEWS } from '../lib/agendaViews';
+import { AGENDA_VIEW_ORDER } from '../lib/agendaViews';
 import {
   addDays,
   addMinutesToTime,
@@ -111,7 +112,7 @@ export function AgendaPage() {
   const { activeEntry, activeEntryId } = useEntryKeyboardNavigation({ items: dayItems, isEnabled: mode === 'day' });
   useEntryActionShortcuts({ activeEntry, actions, isEnabled: mode === 'day' });
   const selectViewByPosition = (position: number) => {
-    const target = IMPLEMENTED_AGENDA_VIEWS[position - 1];
+    const target = AGENDA_VIEW_ORDER[position - 1];
     if (target) setView(target);
   };
 
@@ -137,8 +138,8 @@ export function AgendaPage() {
     onToggleMode: () => setMode(mode === 'day' ? 'week' : 'day'),
     onNew: () => openComposerAfterDay(cursor),
     onNextView: () => {
-      const index = IMPLEMENTED_AGENDA_VIEWS.indexOf(view);
-      setView(IMPLEMENTED_AGENDA_VIEWS[(index + 1) % IMPLEMENTED_AGENDA_VIEWS.length]);
+      const index = AGENDA_VIEW_ORDER.indexOf(view);
+      setView(AGENDA_VIEW_ORDER[(index + 1) % AGENDA_VIEW_ORDER.length]);
     },
     onSelectView: selectViewByPosition,
     onFocusDate: focusDateSelector,
@@ -177,7 +178,7 @@ export function AgendaPage() {
           onModeChange={setMode}
           onJump={(day) => setCursor(toWorkday(day))}
         >
-          <ViewPills value={view} available={IMPLEMENTED_AGENDA_VIEWS} onChange={setView} />
+          <ViewPills value={view} available={AGENDA_VIEW_ORDER} onChange={setView} />
           {view === 'timeline' && <SyncDayButton entries={visibleEntries} onSyncDay={syncMany} label="Sincronizar período" />}
         </PeriodBar>
         {sync.syncPanelOpen && (
@@ -210,6 +211,7 @@ export function AgendaPage() {
             entries={visibleEntries}
             days={days}
             mode={mode}
+            workdayStart={workdayStart}
             timerEntryId={liveTimerEntry?.id}
             activeEntryId={activeEntryId}
             actions={actions}

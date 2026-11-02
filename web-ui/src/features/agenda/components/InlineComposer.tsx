@@ -5,22 +5,13 @@ import { Input } from '@/components/ui/input';
 import { ProcessSelectorButton } from '@/features/time-tracker/components/ProcessSelectorButton';
 import { formatDurationShort, parseHHMM } from '@/lib/format';
 import type { Proceso } from '@/features/time-tracker/types';
-import { addMinutesToTime, DEFAULT_ENTRY_MINUTES, minutesToHHMM } from '../lib/planRange';
-
-export interface EntryDraft {
-  taskId: number;
-  taskName: string;
-  date: string;
-  startTime: string;
-  endTime: string;
-  description?: string;
-}
+import type { EntryDraft } from '../types';
 
 interface InlineComposerProps {
   date: string;
   startTime: string;
   endTime: string;
-  /** Tarea ya elegida cuando el alta viene de una fila del Calendario. */
+  /** Tarea ya elegida cuando el alta viene de una fila del Timeline. */
   preset?: Proceso;
   onCancel: () => void;
   onSubmit: (draft: EntryDraft) => Promise<void>;
@@ -112,18 +103,4 @@ export function InlineComposer({ date, startTime, endTime, preset, onCancel, onS
       </div>
     </div>
   );
-}
-
-/** Hueco de tiempo pulsado: el compositor se rellena con estas horas. */
-export interface ComposerSlot {
-  date: string;
-  startTime: string;
-  endTime: string;
-  preset?: Proceso;
-}
-
-export function slotFromMinutes(date: string, minutes: number, upperBound: number): ComposerSlot {
-  const snapped = Math.round(minutes / 15) * 15;
-  const start = minutesToHHMM(Math.min(snapped, Math.max(0, upperBound - DEFAULT_ENTRY_MINUTES)));
-  return { date, startTime: start, endTime: addMinutesToTime(start, DEFAULT_ENTRY_MINUTES) };
 }

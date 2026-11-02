@@ -22,8 +22,8 @@ src/
   domain/          Dominio puro: date-parser, db-config, tree-transformer, year-month-pairs
   shared/          Utilidades compartidas: date-helpers
 web-ui/            Frontend React (temporizador interno, dashboard, proyectos, sincronización SQL)
-  src/features/    Features por dominio: time-tracker, dashboard, projects, process-management,
-                   proposal-ui, db-connection, sync-validator
+  src/features/    Features por dominio: agenda (pantalla de entrada), time-tracker, dashboard,
+                   projects, process-management, proposal-ui, db-connection, sync-validator
   src/pages/       Páginas de composición: Home, Settings, Projects, ProjectDetail
   src/components/  UI: components/ui (shadcn) y components/shared (compartidos)
   src/hooks/       Hooks transversales (timer, atajos de teclado, tema)
@@ -43,11 +43,13 @@ web-ui/            Frontend React (temporizador interno, dashboard, proyectos, s
 
 ## Flujo principal
 
-1. Usuario registra tiempos con el temporizador interno o de forma manual
-2. Los registros se guardan localmente en el navegador (IndexedDB)
-3. Usuario sincroniza los registros con SQL Server
-4. Backend ejecuta las inserciones directamente contra la BD
-5. Dashboard y páginas de proyectos consultan los datos de la BD
+1. Usuario abre la app en la Agenda (`/`): el día laborable de hoy con sus Registros de tiempo
+   en tres lecturas (Calendario, Agenda, Timeline), paginable por día o semana
+2. Usuario registra tiempos con el temporizador interno o de forma manual
+3. Los registros se guardan localmente en el navegador (IndexedDB)
+4. Usuario sincroniza los registros con SQL Server
+5. Backend ejecuta las inserciones directamente contra la BD
+6. Dashboard y páginas de proyectos consultan los datos de la BD
 
 ## Convenciones
 

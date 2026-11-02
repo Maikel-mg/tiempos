@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { shouldInterceptTableKeys } from '@/lib/keyboard-utils';
 import { SHORTCUT_PRIORITY, bareKey, normalizeKey, registerShortcut } from '@/lib/keyboard/shortcutDispatcher';
 import { splitAffordance } from '@/features/time-tracker/lib/splitEntry';
-import type { EntryActions } from '../components/EntryActionsMenu';
+import type { EntryActions } from '../types';
 import type { TimeEntry } from '@/features/time-tracker/types';
 
 interface UseEntryActionShortcutsParams {

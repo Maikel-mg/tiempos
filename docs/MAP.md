@@ -29,6 +29,7 @@ inventario exhaustivo. Rutas relativas a la raíz del repo.
 | Sincronización de Registros (hook) | `web-ui/src/features/time-tracker/hooks/useEntrySync.ts` |
 | Propuestas de tarea (hook) | `web-ui/src/features/time-tracker/hooks/useProposals.ts` |
 | Selección de filas (hook) | `web-ui/src/features/time-tracker/hooks/useEntrySelection.ts` |
+| Sesión de registro de tiempos: datos, selección, editor y Timer activo (hook) | `web-ui/src/features/time-tracker/hooks/useTimeTrackingSession.ts` |
 | Caché de procesos y tareas locales pendientes (sin VPN) | `web-ui/src/features/time-tracker/hooks/useProcessCache.ts`, `services/localTasksService.ts` |
 | Navegación por teclado de la tabla (hook) | `web-ui/src/features/time-tracker/hooks/useEntryTableNavigation.ts` |
 | Acciones del command palette (hook) | `web-ui/src/features/time-tracker/hooks/useTimeTrackerCommandActions.tsx` |
@@ -46,6 +47,23 @@ inventario exhaustivo. Rutas relativas a la raíz del repo.
 | Sincronización con SQL Server (UI) | `web-ui/src/features/time-tracker/components/SyncPanel.tsx` |
 | Sincronización con SQL Server (validación) | `web-ui/src/features/sync-validator/index.ts` |
 | Guard de configuración | `web-ui/src/features/time-tracker/hooks/useConfigGuard.ts` |
+
+## Frontend — Agenda (pantalla de entrada)
+
+| Concepto | Archivo |
+|----------|---------|
+| Página de la Agenda (calendario, agenda y timeline del período) | `web-ui/src/features/agenda/pages/AgendaPage.tsx` |
+| Rango y geometría del plan: días laborables, banda horaria, huecos, carriles | `web-ui/src/features/agenda/lib/planRange.ts` |
+| Tipos de la Agenda: vistas, alta, acciones, props comunes de las vistas | `web-ui/src/features/agenda/types.ts` |
+| Vista Calendario (rejilla con regla horaria) | `web-ui/src/features/agenda/components/CalendarView.tsx` |
+| Vista Agenda (lista cronológica con descripción completa) | `web-ui/src/features/agenda/components/AgendaView.tsx` |
+| Vista Timeline (reparto por Tarea) | `web-ui/src/features/agenda/components/TimelineView.tsx` |
+| Paginador del período: flechas, hoy, salto a fecha, modo | `web-ui/src/features/agenda/components/PeriodBar.tsx` |
+| Píldoras de vista y preferencias recordadas | `web-ui/src/features/agenda/components/ViewPills.tsx`, `hooks/useAgendaPreferences.ts` |
+| Alta manual en el hueco (compositor) | `web-ui/src/features/agenda/components/InlineComposer.tsx` |
+| Acciones por Registro de tiempo en las vistas | `web-ui/src/features/agenda/components/EntryActionsMenu.tsx` |
+| Sincronizar el día o el período | `web-ui/src/features/agenda/components/SyncDayButton.tsx` |
+| Atajos de la Agenda (período, vistas, entradas) y chuleta | `web-ui/src/features/agenda/hooks/useAgendaShortcuts.ts`, `useEntryKeyboardNavigation.ts`, `useEntryActionShortcuts.ts`, `components/AgendaShortcutsDialog.tsx` |
 
 ## Frontend — otras features
 
@@ -76,5 +94,5 @@ inventario exhaustivo. Rutas relativas a la raíz del repo.
 
 | Concepto | Archivo |
 |----------|---------|
-| Definición de rutas | `web-ui/src/App.tsx` |
+| Definición de rutas (`/` es la Agenda, `/inicio` la bienvenida) | `web-ui/src/App.tsx` |
 | Punto de entrada | `web-ui/src/main.tsx` |

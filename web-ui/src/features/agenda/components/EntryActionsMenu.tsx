@@ -9,16 +9,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { splitAffordance } from '@/features/time-tracker/lib/splitEntry';
 import type { TimeEntry } from '@/features/time-tracker/types';
-
-/** Acciones disponibles sobre un Registro de tiempo, iguales que en la tabla. */
-export interface EntryActions {
-  onEdit?: (entry: TimeEntry) => void;
-  onPlay?: (entry: TimeEntry) => void;
-  onDuplicate?: (entry: TimeEntry) => void;
-  onSplit?: (entry: TimeEntry) => void;
-  onSync?: (entry: TimeEntry) => void;
-  onDelete?: (id: string) => void;
-}
+import type { EntryActions } from '../types';
 
 interface EntryActionsMenuProps {
   entry: TimeEntry;
