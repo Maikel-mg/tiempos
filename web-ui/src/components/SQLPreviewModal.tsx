@@ -13,7 +13,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { formatISOToSQLDate } from '@/lib/sql-utils';
+import { formatISOToSQLDate, isValidDDMMYYYY } from '@/lib/sql-utils';
 import { SinFasesSelector } from './SinFasesSelector';
 import { apiClient } from '@/lib/api/client';
 import type { Project } from '@/features/projects/types';
@@ -175,10 +175,7 @@ export function SQLPreviewModal({
         handleParamChange('minutos', mins);
     };
 
-    const isDateValid = (dateStr: string | undefined | null) => {
-        if (!dateStr) return false;
-        return /^\d{2}\/\d{2}\/\d{4}$/.test(dateStr);
-    };
+    const isDateValid = (dateStr: string | undefined | null) => isValidDDMMYYYY(dateStr);
 
     const isValid = editedTask && 
                     isDateValid(editedTask.fechaInicio) && 

@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { buildProjectsQuery, buildProjectsTreeQuery, buildProcessesQuery, buildExecuteTimeEntriesSQL, type TimeEntry } from './sp-builder';
+import { buildProjectsQuery, buildProjectsTreeQuery, buildProcessesQuery, buildCreateProcessSQL, buildExecuteTimeEntriesSQL, type TimeEntry } from './sp-builder';
 
 describe('sp-builder', () => {
   describe('buildProjectsQuery', () => {
@@ -83,6 +83,52 @@ describe('sp-builder', () => {
     test('trims whitespace from usured', () => {
       const query = buildProcessesQuery({ usured: '  MG01  ' });
       expect(query).toContain("@pUsured = 'MG01'");
+    });
+  });
+
+  describe('buildCreateProcessSQL', () => {
+    const dto = {
+      nombre: 'Tarea',
+      fechaInicio: '17/03/2026',
+      fechaFin: '31/03/2026',
+      fechaEstimacion: '01/04/2026',
+      minutos: 60,
+      usuario: 'BR00',
+      fase: 'DES',
+    };
+
+    test('convierte DD/MM/YYYY a YYYYMMDD', () => {
+      const sql = buildCreateProcessSQL(dto);
+      expect(sql).toContain("@pFechaIniPrevista = '20260317'");
+      expect(sql).toContain("@pFechaFinPrevista = '20260331'");
+      expect(sql).toContain("@pFechaEstimacion = '20260401'");
+    });
+
+    // Tareas guardadas sin conexión por versiones viejas: fechas ISO con hora.
+    test('convierte ISO con y sin hora a YYYYMMDD', () => {
+      const sql = buildCreateProcessSQL({
+        ...dto,
+        fechaInicio: '2026-03-17T00:00:00.000Z',
+        fechaFin: '2026-03-31',
+        fechaEstimacion: '2026-04-01T09:30:00',
+      });
+      expect(sql).toContain("@pFechaIniPrevista = '20260317'");
+      expect(sql).toContain("@pFechaFinPrevista = '20260331'");
+      expect(sql).toContain("@pFechaEstimacion = '20260401'");
+    });
+
+    test('nunca emite una fecha que SQL Server no pueda convertir', () => {
+      const sql = buildCreateProcessSQL({ ...dto, fechaInicio: 'sin fecha', fechaFin: '' });
+      expect(sql).toContain("@pFechaIniPrevista = ''");
+      expect(sql).toContain("@pFechaFinPrevista = ''");
+      expect(sql).not.toContain('sin fecha');
+    });
+
+    // El bug real: el modal solo validaba el formato, no el calendario.
+    test('descarta fechas que no existen (31/11) en vez de mandarlas al SP', () => {
+      const sql = buildCreateProcessSQL({ ...dto, fechaFin: '31/11/2026' });
+      expect(sql).toContain("@pFechaFinPrevista = ''");
+      expect(sql).not.toContain('20261131');
     });
   });
 

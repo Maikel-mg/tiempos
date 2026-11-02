@@ -69,6 +69,19 @@ export function parseISO8601DurationToMinutes(isoDuration: string | undefined | 
   return hours * 60 + minutes + Math.ceil(seconds / 60);
 }
 
+/**
+ * ¿Es una fecha DD/MM/YYYY que existe en el calendario? El formato solo no basta:
+ * 31/11/2026 pasa el regex y SQL Server la rechaza al convertirla a datetime.
+ */
+export function isValidDDMMYYYY(value: string | undefined | null): boolean {
+  const match = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(value ?? '');
+  if (!match) return false;
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  const date = new Date(Number(match[3]), month - 1, day);
+  return date.getDate() === day && date.getMonth() === month - 1;
+}
+
 export function formatISOToSQLDate(isoDateString: string | undefined | null): string {
   if (!isoDateString) return '';
   const date = new Date(isoDateString);

@@ -2,7 +2,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { CreatePendingTaskDialog } from '../CreatePendingTaskDialog';
-import { materializeLocalTask } from '../../services/localTasksService';
+import { getLocalTask, materializeLocalTask } from '../../services/localTasksService';
 
 const { mockOnTaskChange } = vi.hoisted(() => ({ mockOnTaskChange: vi.fn() }));
 
@@ -25,7 +25,23 @@ vi.mock('@/components/SinFasesSelector', () => ({
 
 vi.mock('../../services/localTasksService', () => ({
   materializeLocalTask: vi.fn(),
+  getLocalTask: vi.fn(),
 }));
+
+const LOCAL_TASK = {
+  proceso: -1,
+  nombre: 'Tarea sin conexión',
+  dto: {
+    nombre: 'Tarea sin conexión',
+    fechaInicio: '01/10/2026',
+    fechaFin: '31/10/2026',
+    fechaEstimacion: '01/10/2026',
+    minutos: 60,
+    usuario: 'MG01',
+    fase: '',
+  },
+  creadoEn: '2026-10-01T09:00:00Z',
+};
 
 vi.mock('@/config/stores', () => ({
   wizardConfig: { get: () => ({ usuario: 'MG01', fase: '' }) },
@@ -37,6 +53,7 @@ describe('CreatePendingTaskDialog', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(getLocalTask).mockResolvedValue(LOCAL_TASK as never);
   });
 
   const renderDialog = (proceso: number | null = -1) =>
@@ -66,8 +83,26 @@ describe('CreatePendingTaskDialog', () => {
     fireEvent.click(createButton);
 
     await waitFor(() => expect(onCreated).toHaveBeenCalled());
-    expect(materializeLocalTask).toHaveBeenCalledWith(-1, 'DES');
+    expect(materializeLocalTask).toHaveBeenCalledWith(-1, {
+      fase: 'DES',
+      fechaInicio: '01/10/2026',
+      fechaFin: '31/10/2026',
+    });
     expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it('no permite crear si la tarea guardada trae una fecha que no existe', async () => {
+    vi.mocked(getLocalTask).mockResolvedValue({
+      ...LOCAL_TASK,
+      dto: { ...LOCAL_TASK.dto, fechaFin: '31/11/2026' },
+    } as never);
+    renderDialog();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Elegir fase' }));
+    await waitFor(() =>
+      expect(screen.getByLabelText('Fin previsto')).toHaveValue('31/11/2026')
+    );
+    expect(screen.getByRole('button', { name: /^Crear tarea$/i })).toBeDisabled();
   });
 
   it('si falla, muestra el error y no cierra el diálogo', async () => {
@@ -75,7 +110,9 @@ describe('CreatePendingTaskDialog', () => {
     renderDialog();
 
     fireEvent.click(screen.getByRole('button', { name: 'Elegir fase' }));
-    fireEvent.click(screen.getByRole('button', { name: /^Crear tarea$/i }));
+    const createButton = screen.getByRole('button', { name: /^Crear tarea$/i });
+    await waitFor(() => expect(createButton).toBeEnabled());
+    fireEvent.click(createButton);
 
     expect(await screen.findByText('El SP no devolvió el id de la tarea creada')).toBeInTheDocument();
     expect(onOpenChange).not.toHaveBeenCalledWith(false);

@@ -72,14 +72,24 @@ export interface CreateProcessDTO {
   fase: string;
 }
 
-function parseDDMMYYYYToYYYYMMDD(dateStr: string): string {
-  if (!dateStr) return '';
-  const parts = dateStr.split('/');
-  if (parts.length === 3) {
-    const [day, month, year] = parts;
-    return `${year}${month.padStart(2, '0')}${day.padStart(2, '0')}`;
-  }
-  return dateStr;
+/**
+ * Fecha en YYYYMMDD: el único formato que SQL Server interpreta igual con
+ * cualquier DATEFORMAT. Acepta DD/MM/YYYY (lo que manda el formulario) e ISO
+ * `YYYY-MM-DD`, con o sin hora: así están guardadas las tareas creadas sin
+ * conexión por versiones anteriores. Una fecha que no existe en el calendario
+ * (31/11/2026) o que no se reconoce va como cadena vacía: el alta no puede
+ * morir con "Error al convertir el tipo de datos varchar a datetime".
+ */
+function toSQLDate(value: string | undefined): string {
+  const raw = (value ?? '').slice(0, 10).trim();
+  if (!raw) return '';
+  const parsed = parseAmbiguousDate(raw);
+  if (!parsed) return '';
+  const day = Number(parsed.day);
+  const month = Number(parsed.month);
+  const date = new Date(Number(parsed.year), month - 1, day);
+  const existe = date.getDate() === day && date.getMonth() === month - 1;
+  return existe ? parsed.yyyymmdd : '';
 }
 
 export function buildCreateProcessSQL(dto: CreateProcessDTO): string {
@@ -87,11 +97,11 @@ export function buildCreateProcessSQL(dto: CreateProcessDTO): string {
   const usured = escapeSQL(dto.usuario);
   const fase = escapeSQL(dto.fase);
   const minutos = dto.minutos;
-  const fechaInicio = parseDDMMYYYYToYYYYMMDD(dto.fechaInicio);
-  const fechaFin = parseDDMMYYYYToYYYYMMDD(dto.fechaFin);
-  const fechaEstimacion = parseDDMMYYYYToYYYYMMDD(dto.fechaEstimacion);
+  const fechaInicio = toSQLDate(dto.fechaInicio);
+  const fechaFin = toSQLDate(dto.fechaFin);
+  const fechaEstimacion = toSQLDate(dto.fechaEstimacion);
 
-  return `SET LANGUAGE Spanish;\nSET DATEFORMAT dmy;\n\nDECLARE @p38 VARCHAR(200)\nSET @p38 = NULL\n\nEXEC spNETTiempos_Procesos_Mantenimiento\n    @pAccion = 'I',\n    @pProceso = NULL,\n    @pNombre = '${nombre}',\n    @pFechaIniPrevista = '${fechaInicio}',\n    @pFechaFinPrevista = '${fechaFin}',\n    @pFechaIniReal = NULL,\n    @pFechaFinReal = NULL,\n    @pTiempoPrevisto = ${minutos},\n    @pTecnicoPrev = ${minutos},\n    @pObservaciones = NULL,\n    @pRutaDOC = NULL,\n    @pTipoDeHora = 1,\n    @pPresencial = 1,\n    @pDisponible = 1,\n    @pCosteEmpresa = 1,\n    @pFechaAviso = NULL,\n    @pHoraAviso = NULL,\n    @pUsuredAviso = NULL,\n    @pUsuredResp = 'BR00',\n    @pUsuredRespRev = 'BR00',\n    @pRecursos = NULL,\n    @pDiseño = 'N',\n    @pTecnicos = '${usured}',\n    @pIdDpto = 5,\n    @pFase = '${fase}',\n    @pComentarioOblig = 0,\n    @pCliente = 'ELECNOR',\n    @pIdDptoClte = NULL,\n    @pIdAplicacion = NULL,\n    @pFechaEstimacion = '${fechaEstimacion}',\n    @pTareaTecnica = 1,\n    @pObservacionEstExt = NULL,\n    @pHito = 0,\n    @pDesplazamientoPS = 0,\n    @pHerramienta = NULL,\n    @pProtegida = 0,\n    @pFaseAnterior = NULL,\n    @Resultado = @p38 OUTPUT;\n\nSELECT @p38 AS Resultado;`;
+  return `SET LANGUAGE Spanish;\nSET DATEFORMAT dmy;\n\nDECLARE @p38 VARCHAR(200)\nSET @p38 = NULL\n\nEXEC spNETTiempos_Procesos_Mantenimiento\n    @pAccion = 'I',\n    @pProceso = NULL,\n    @pNombre = '${nombre}',\n    @pFechaIniPrevista = '${fechaInicio}',\n    @pFechaFinPrevista = '${fechaFin}',\n    @pFechaIniReal = NULL,\n    @pFechaFinReal = NULL,\n    @pTiempoPrevisto = ${minutos},\n    @pTecnicoPrev = ${minutos},\n    @pObservaciones = NULL,\n    @pRutaDOC = NULL,\n    @pTipoDeHora = 1,\n    @pPresencial = 1,\n    @pDisponible = 1,\n    @pCosteEmpresa = 1,\n    @pFechaAviso = NULL,\n    @pHoraAviso = NULL,\n    @pUsuredAviso = NULL,\n    @pUsuredResp = 'BR00',\n    @pUsuredRespRev = 'BR00',\n    @pRecursos = NULL,\n    @pDiseño = 'N',\n    @pTecnicos = '${usured}',\n    @pIdDpto = 5,\n    @pFase = '${fase}',\n    @pComentarioOblig = 0,\n    @pCliente = 'ELECNOR',\n    @pIdDptoClte = NULL,\n    @pIdAplicacion = NULL,\n    @pFechaEstimacion = '${fechaEstimacion}',\n    @pTareaTecnica = 1,\n    @pObservacionEstExt = NULL,\n    @pHito = 0,\n    @pDesplazamientoPS = 0,\n    @pHerramienta = NULL,\n    @pProtegida = 0,\n    @pFaseAnterior = NULL,\n    @Resultado = @p38 OUTPUT;\n\n-- El SP no devuelve el id: usa @Resultado como canal de resultado\n-- ('0|<mensaje>' si fue bien, '<código>|<error>' y ROLLBACK si no). El id se\n-- recupera por Fase + Nombre, que es la fila que acaba de insertar (Proceso es identidad).\n-- Ojo: @pFase y @pNombre son parámetros del SP, no variables de este batch.\nSELECT\n    CASE WHEN @p38 LIKE '0|%' THEN\n        (SELECT MAX(Proceso) FROM ProyectosFasesProcesos WHERE Fase = '${fase}' AND Nombre = '${nombre}')\n    END AS Proceso,\n    @p38 AS Mensaje;`;
 }
 
 export function buildExecuteTimeEntriesSQL(entries: TimeEntry[]): string {

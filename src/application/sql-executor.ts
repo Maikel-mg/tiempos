@@ -54,19 +54,36 @@ export async function executeQueryRaw(
 export async function executeStatements(
   params: DbConnectionParams,
   statements: string[]
-): Promise<{ success: boolean; rowsAffected: number; recordset?: any[] }[]> {
+): Promise<
+  { success: boolean; rowsAffected: number; recordset?: any[]; recordsets?: any[][] }[]
+> {
   const config = createDbConfig(params);
   const pool = new sql.ConnectionPool(config);
   let connected = false;
   try {
     await pool.connect();
     connected = true;
-    const results: { success: boolean; rowsAffected: number; recordset?: any[] }[] = [];
+    const results: {
+      success: boolean;
+      rowsAffected: number;
+      recordset?: any[];
+      recordsets?: any[][];
+    }[] = [];
     for (const statement of statements) {
       const result = await pool.request().query(statement);
       const rowsAffected = result.rowsAffected[0] || 0;
-      // recordset: lo usa /api/create-process para devolver el id que genera el SP
-      results.push({ success: true, rowsAffected, recordset: result.recordset });
+      const recordsets: any[][] = Array.isArray(result.recordsets)
+        ? result.recordsets
+        : Object.values(result.recordsets ?? {});
+      // recordset/recordsets: los usa /api/create-process para devolver el id que
+      // genera el SP. Un batch con SET LANGUAGE devuelve antes el recordset del
+      // SET, así que el SELECT del id no está en el primero.
+      results.push({
+        success: true,
+        rowsAffected,
+        recordset: result.recordset,
+        recordsets,
+      });
     }
     return results;
   } finally {

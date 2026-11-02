@@ -47,7 +47,15 @@ EXEC spNETTiempos_Procesos_Mantenimiento
     @pFaseAnterior = NULL,
     @Resultado = @p38 OUTPUT;
 
-SELECT @p38 AS Resultado;"
+-- El SP no devuelve el id: usa @Resultado como canal de resultado
+-- ('0|<mensaje>' si fue bien, '<código>|<error>' y ROLLBACK si no). El id se
+-- recupera por Fase + Nombre, que es la fila que acaba de insertar (Proceso es identidad).
+-- Ojo: @pFase y @pNombre son parámetros del SP, no variables de este batch.
+SELECT
+    CASE WHEN @p38 LIKE '0|%' THEN
+        (SELECT MAX(Proceso) FROM ProyectosFasesProcesos WHERE Fase = 'DES' AND Nombre = 'Tarea O''Brien')
+    END AS Proceso,
+    @p38 AS Mensaje;"
 `;
 
 exports[`gate SQL — batches de escritura > batch de alta de tiempos (2 entradas, comillas y default de pTipoHora) 1`] = `

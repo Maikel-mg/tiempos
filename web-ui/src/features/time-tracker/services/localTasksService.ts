@@ -37,11 +37,18 @@ export async function saveLocalTask(dto: CreateProcessDTO): Promise<Proceso> {
 }
 
 /**
+ * Tarea guardada sin conexión, para poder corregirla antes de crearla en la BD.
+ */
+export async function getLocalTask(proceso: number): Promise<LocalProcess | undefined> {
+  return (await indexedDBStorage.getLocalProcesses()).find((p) => p.proceso === proceso);
+}
+
+/**
  * Borra una tarea creada sin conexión. Se niega si tiene Registros: nunca se
  * sincronizaron, así que borrarla los dejaría huérfanos y sin traza.
  */
 export async function deleteLocalTask(proceso: number): Promise<void> {
-  const local = (await indexedDBStorage.getLocalProcesses()).find((p) => p.proceso === proceso);
+  const local = await getLocalTask(proceso);
   if (!local) {
     throw new Error('La tarea pendiente ya no existe en este equipo');
   }
@@ -60,19 +67,35 @@ export async function deleteLocalTask(proceso: number): Promise<void> {
  * Crea en la BD una tarea guardada en local (spNETTiempos_Procesos_Mantenimiento
  * vía /create-process) con la fase real elegida, y reapunta a su id los Registros
  * que la usaban. Si algo falla lanza: la tarea se conserva en local para reintentar.
+ * Las fechas previstas se pueden corregir aquí: la tarea se creó sin conexión y
+ * una fecha imposible (31/11/2026) haría fallar la conversión en SQL Server.
  */
-export async function materializeLocalTask(proceso: number, fase: string): Promise<{ movidos: number }> {
+export interface MaterializeChanges {
+  fase: string;
+  fechaInicio?: string;
+  fechaFin?: string;
+}
+
+export async function materializeLocalTask(
+  proceso: number,
+  changes: MaterializeChanges
+): Promise<{ movidos: number }> {
   const config = dbConfig.get();
   if (!config || !config.server || !config.database) {
     throw new Error('Falta la configuración de base de datos');
   }
 
-  const local = (await indexedDBStorage.getLocalProcesses()).find((p) => p.proceso === proceso);
+  const local = await getLocalTask(proceso);
   if (!local) {
     throw new Error('La tarea pendiente ya no existe en este equipo');
   }
 
-  const dto: CreateProcessDTO = { ...local.dto, fase };
+  const dto: CreateProcessDTO = {
+    ...local.dto,
+    fase: changes.fase,
+    fechaInicio: changes.fechaInicio ?? local.dto.fechaInicio,
+    fechaFin: changes.fechaFin ?? local.dto.fechaFin,
+  };
   const response = await apiClient.post<{
     success: boolean;
     message?: string;
@@ -92,7 +115,7 @@ export async function materializeLocalTask(proceso: number, fase: string): Promi
     proceso: idReal,
     nombre: local.nombre,
     departamentoId: MY_DEPARTMENT_ID,
-    faseNombre: fase,
+    faseNombre: changes.fase,
   };
 
   const movidos = await indexedDBStorage.remapTaskId(local.proceso, real);

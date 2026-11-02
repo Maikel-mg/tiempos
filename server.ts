@@ -268,19 +268,30 @@ app.post('/api/create-process', async (req: Request, res: Response) => {
     return res.status(400).json({ success: false, message: 'dto with nombre, usuario, and fase is required' });
   }
 
+  let sql = '';
   try {
-    const sql = buildCreateProcessSQL(dto);
+    sql = buildCreateProcessSQL(dto);
     const results = await executeStatements(
       { server, database, username, password: password || '' } as DbConnectionParams,
       [sql]
     );
     const totalRowsAffected = results.reduce((sum, r) => sum + r.rowsAffected, 0);
-    // El SP devuelve el id del proceso creado en su parámetro OUTPUT (@p38).
-    // Lo necesitamos para remapear los Registros que apuntaban a una tarea local.
-    const rawResultado = results[0]?.recordset?.[0]?.Resultado;
-    const resultado = rawResultado === null || rawResultado === undefined || rawResultado === ''
-      ? null
-      : Number(rawResultado);
+    // El SP no devuelve el id: informa en @Resultado ('0|<mensaje>' tras el alta, o
+    // '<código>|<error>' y ROLLBACK). El id lo trae el SELECT del batch, que lo busca
+    // por Fase + Nombre. No sirve leer el primer recordset: el batch empieza con
+    // SET LANGUAGE, que devuelve el suyo.
+    const fila = results[0]?.recordsets
+      ?.map((recordset) => recordset[0])
+      .find((f) => f && 'Mensaje' in f);
+    const [codigo, mensajeSp] = String(fila?.Mensaje ?? '').split('|');
+    if (codigo !== '0') {
+      // El SP hizo ROLLBACK: esto sí es un fallo aunque el SQL no lanzara error.
+      return res.status(400).json({
+        success: false,
+        message: mensajeSp || 'No se pudo crear la tarea',
+      });
+    }
+    const resultado = fila?.Proceso == null ? null : Number(fila.Proceso);
 
     res.json({
       success: true,
@@ -290,7 +301,15 @@ app.post('/api/create-process', async (req: Request, res: Response) => {
       results
     });
   } catch (error: any) {
-    console.error('Create Process Error:', error.message);
+    // Diagnóstico: número/procedimiento/línea dicen si el fallo es en el EXEC o
+    // dentro del SP, y el SQL enseña los literales exactos que se enviaron.
+    console.error(
+      'Create Process Error:',
+      error.message,
+      `[nº ${error.number}, proc ${error.procName}, línea ${error.lineNumber}]`,
+      '\ndto:', JSON.stringify(dto),
+      '\nSQL:', sql
+    );
     res.status(500).json({
       success: false,
       message: error.message,

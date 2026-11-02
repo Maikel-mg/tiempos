@@ -58,7 +58,7 @@ describe('localTasksService', () => {
     mockPost.mockResolvedValue({ success: true, data: { success: true, resultado: '4242' } });
     mockStorage.remapTaskId.mockResolvedValue(2);
 
-    const result = await materializeLocalTask(-1, 'DES');
+    const result = await materializeLocalTask(-1, { fase: 'DES' });
 
     expect(mockPost).toHaveBeenCalledWith(
       '/create-process',
@@ -72,11 +72,29 @@ describe('localTasksService', () => {
     expect(result).toEqual({ movidos: 2 });
   });
 
+  it('materializeLocalTask usa las fechas corregidas en el diálogo', async () => {
+    mockStorage.getLocalProcesses.mockResolvedValue([local()]);
+    mockPost.mockResolvedValue({ success: true, data: { success: true, resultado: '4242' } });
+
+    await materializeLocalTask(-1, {
+      fase: 'DES',
+      fechaInicio: '01/10/2026',
+      fechaFin: '31/10/2026',
+    });
+
+    expect(mockPost).toHaveBeenCalledWith(
+      '/create-process',
+      expect.objectContaining({
+        dto: { ...DTO, fase: 'DES', fechaInicio: '01/10/2026', fechaFin: '31/10/2026' },
+      })
+    );
+  });
+
   it('si el SP no devuelve id, lanza y conserva la tarea en local', async () => {
     mockStorage.getLocalProcesses.mockResolvedValue([local()]);
     mockPost.mockResolvedValue({ success: true, data: { success: true, resultado: null } });
 
-    await expect(materializeLocalTask(-1, 'DES')).rejects.toThrow(
+    await expect(materializeLocalTask(-1, { fase: 'DES' })).rejects.toThrow(
       'El SP no devolvió el id de la tarea creada'
     );
     expect(mockStorage.deleteLocalProcess).not.toHaveBeenCalled();
@@ -87,13 +105,13 @@ describe('localTasksService', () => {
     mockStorage.getLocalProcesses.mockResolvedValue([local()]);
     mockPost.mockResolvedValue({ success: false, message: 'Fase inválida' });
 
-    await expect(materializeLocalTask(-1, 'XXX')).rejects.toThrow('Fase inválida');
+    await expect(materializeLocalTask(-1, { fase: 'XXX' })).rejects.toThrow('Fase inválida');
   });
 
   it('si la tarea local ya no existe, no llama al backend', async () => {
     mockStorage.getLocalProcesses.mockResolvedValue([]);
 
-    await expect(materializeLocalTask(-9, 'DES')).rejects.toThrow(
+    await expect(materializeLocalTask(-9, { fase: 'DES' })).rejects.toThrow(
       'La tarea pendiente ya no existe en este equipo'
     );
     expect(mockPost).not.toHaveBeenCalled();
