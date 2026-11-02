@@ -147,6 +147,10 @@ export const TimeTrackerBar = forwardRef<TimeTrackerBarHandle, TimeTrackerBarPro
           ref={inputRef}
           value={description}
           onChange={(event) => setDescription(event.target.value)}
+          onKeyDown={(event) => {
+            // Esc suelta el foco: los atajos de la pantalla vuelven a responder.
+            if (event.key === 'Escape') event.currentTarget.blur();
+          }}
           placeholder="¿En qué estás trabajando?"
           disabled={disabled}
           className="min-w-0 flex-1 border-border bg-background"

@@ -10,6 +10,7 @@ import type { TimeEntry } from '@/features/time-tracker/types';
 import { useTimerView } from '@/features/time-tracker/hooks/useTimerView';
 import { PeriodBar } from '../components/PeriodBar';
 import { ViewPills } from '../components/ViewPills';
+import { AgendaShortcutsDialog } from '../components/AgendaShortcutsDialog';
 import { AgendaView } from '../components/AgendaView';
 import { CalendarView } from '../components/CalendarView';
 import { InlineComposer, type ComposerSlot, type EntryDraft } from '../components/InlineComposer';
@@ -45,6 +46,7 @@ export function AgendaPage() {
 
   const [cursor, setCursor] = useState(() => toWorkday(todayKey()));
   const [composer, setComposer] = useState<ComposerSlot | null>(null);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const { view, setView, mode, setMode } = useAgendaPreferences();
 
   const days = useMemo(() => visibleDays(mode, cursor), [mode, cursor]);
@@ -140,6 +142,7 @@ export function AgendaPage() {
     },
     onSelectView: selectViewByPosition,
     onFocusDate: focusDateSelector,
+    onShowHelp: () => setShortcutsOpen(true),
   });
 
   const step = (direction: 1 | -1) =>
@@ -235,6 +238,8 @@ export function AgendaPage() {
           />
         )}
       </div>
+
+      <AgendaShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
 
       <SplitEntryDialog
         open={split.splittingEntry !== null}

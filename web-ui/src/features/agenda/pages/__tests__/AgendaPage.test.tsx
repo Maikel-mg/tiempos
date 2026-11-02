@@ -661,6 +661,28 @@ describe('AgendaPage — teclado', () => {
     expect(document.activeElement).toBe(screen.getByLabelText('Ir a fecha'));
   });
 
+  it('? abre la chuleta de atajos', async () => {
+    mockSession(twoEntries());
+    renderPage();
+
+    fireEvent.keyDown(window, { key: '?' });
+
+    expect(await screen.findByText('Atajos de la Agenda')).toBeInTheDocument();
+  });
+
+  it('Esc sale del campo de la barra del Timer y los atajos vuelven', async () => {
+    mockSession(twoEntries());
+    renderPage();
+
+    const bar = screen.getByPlaceholderText('¿En qué estás trabajando?');
+    await userEvent.click(bar);
+    fireEvent.keyDown(bar, { key: 'Escape' });
+    expect(document.activeElement).not.toBe(bar);
+
+    fireEvent.keyDown(window, { key: 'v' });
+    expect(screen.getByRole('tab', { name: 'Timeline' })).toHaveAttribute('aria-selected', 'true');
+  });
+
   it('las letras no se disparan mientras se escribe en un campo', async () => {
     mockSession(twoEntries());
     renderPage();

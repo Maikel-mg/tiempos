@@ -14,6 +14,8 @@ export interface AgendaShortcutHandlers {
   onSelectView: (position: number) => void;
   /** Lleva el foco al selector de fechas del paginador. */
   onFocusDate: () => void;
+  /** Abre la chuleta de atajos. */
+  onShowHelp: () => void;
 }
 
 /**
@@ -26,6 +28,7 @@ export interface AgendaShortcutHandlers {
  *   V      rota a la siguiente vista del período
  *   1 2 3  elige vista: Calendario, Agenda, Timeline
  *   F      lleva el foco al selector de fechas
+ *   ?      chuleta de atajos
  *
  * Registrados en el despachador central del proyecto, con prioridad de tabla y
  * sin dispararse mientras se escribe en un campo ni con un diálogo abierto.
@@ -39,7 +42,7 @@ export function useAgendaShortcuts(handlers: AgendaShortcutHandlers) {
       id: 'agenda.period',
       priority: SHORTCUT_PRIORITY.table,
       when: () => shouldInterceptTableKeys(),
-      match: bareKey('arrowleft', 'arrowright', 't', 'w', 'n', 'v', 'f', '1', '2', '3'),
+      match: bareKey('arrowleft', 'arrowright', 't', 'w', 'n', 'v', 'f', '?', '1', '2', '3'),
       run: (event) => {
         const current = handlersRef.current;
         switch (normalizeKey(event)) {
@@ -68,6 +71,9 @@ export function useAgendaShortcuts(handlers: AgendaShortcutHandlers) {
             return;
           case 'f':
             current.onFocusDate();
+            return;
+          case '?':
+            current.onShowHelp();
         }
       },
     });
