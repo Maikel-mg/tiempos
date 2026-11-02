@@ -3,6 +3,7 @@ import { TimeTrackerBar } from '@/features/time-tracker/components/TimeTrackerBa
 import { TimeEntryEditorDialog } from '@/features/time-tracker/components/TimeEntryEditorDialog';
 import { useTimeTrackingSession } from '@/features/time-tracker/hooks/useTimeTrackingSession';
 import { getWorkdayStart } from '@/features/time-tracker/lib/schedule';
+import { useTimerView } from '@/features/time-tracker/hooks/useTimerView';
 import { PeriodBar } from '../components/PeriodBar';
 import { ViewPills } from '../components/ViewPills';
 import { AgendaView } from '../components/AgendaView';
@@ -28,13 +29,19 @@ import {
  */
 export function AgendaPage() {
   const session = useTimeTrackingSession();
-  const { entries, timer, editor } = session;
+  const { entries, createEntry, timer, editor } = session;
 
   const [cursor, setCursor] = useState(() => toWorkday(todayKey()));
   const { view, setView, mode, setMode } = useAgendaPreferences();
 
   const days = useMemo(() => visibleDays(mode, cursor), [mode, cursor]);
-  const visibleEntries = useMemo(() => entriesOfDays(entries, days), [entries, days]);
+
+  const { liveTimerEntry } = useTimerView({ createEntry, timer, todayInRange: days.includes(todayKey()) });
+  const allEntries = useMemo(
+    () => (liveTimerEntry ? [...entries, liveTimerEntry] : entries),
+    [entries, liveTimerEntry],
+  );
+  const visibleEntries = useMemo(() => entriesOfDays(allEntries, days), [allEntries, days]);
   const workdayStart = useMemo(() => getWorkdayStart(cursor), [cursor]);
 
   const step = (direction: 1 | -1) =>
@@ -67,6 +74,7 @@ export function AgendaPage() {
             days={days}
             mode={mode}
             workdayStart={workdayStart}
+            timerEntryId={liveTimerEntry?.id}
             onEdit={(entry) => editor.openEdit(entry)}
             onPickDay={(day) => {
               setCursor(toWorkday(day));
@@ -78,6 +86,7 @@ export function AgendaPage() {
             entries={visibleEntries}
             days={days}
             mode={mode}
+            timerEntryId={liveTimerEntry?.id}
             onEdit={(entry) => editor.openEdit(entry)}
             onPickDay={(day) => {
               setCursor(toWorkday(day));
@@ -89,6 +98,7 @@ export function AgendaPage() {
             entries={visibleEntries}
             days={days}
             mode={mode}
+            timerEntryId={liveTimerEntry?.id}
             workdayStart={workdayStart}
             onEdit={(entry) => editor.openEdit(entry)}
             onPickDay={(day) => {

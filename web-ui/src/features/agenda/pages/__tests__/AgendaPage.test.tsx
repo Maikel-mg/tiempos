@@ -296,3 +296,87 @@ describe('AgendaPage — vista Calendario por Tarea', () => {
     expect(container.textContent).toContain('reparte el tiempo por Tarea');
   });
 });
+
+describe('AgendaPage — Timer activo', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date('2026-06-10T10:00:00'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.clearAllMocks();
+  });
+
+  function mockRunningTimer() {
+    mockSession([entry('a', '2026-06-10', '08:00', '09:00', 'Registro previo')]);
+    vi.mocked(useTimer).mockReturnValue({
+      isRunning: true,
+      elapsed: 3600,
+      timerState: {
+        isRunning: true,
+        taskId: 99,
+        taskName: 'Timer en curso',
+        startTime: new Date(2026, 5, 10, 9, 0, 0).toISOString(),
+        elapsed: 3600,
+      },
+      start: vi.fn(),
+      stop: vi.fn(),
+      updateStartTime: vi.fn(),
+      updateDescription: vi.fn(),
+      cancel: vi.fn(),
+    } as unknown as ReturnType<typeof useTimer>);
+  }
+
+  it('se pinta como bloque vivo en las tres vistas', async () => {
+    mockRunningTimer();
+    const { container } = renderPage();
+
+    for (const pill of ['Agenda', 'Timeline', 'Calendario']) {
+      await userEvent.click(screen.getByRole('tab', { name: pill }));
+      expect(container.textContent).toContain('Timer en curso');
+      expect(container.textContent).toContain('en curso');
+    }
+  });
+
+  it('no abre el editor al pulsarlo', async () => {
+    mockRunningTimer();
+    const { container } = renderPage();
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Timeline' }));
+    const live = Array.from(container.querySelectorAll('[role="button"]')).find((node) =>
+      node.textContent?.includes('Timer en curso'),
+    );
+    expect(live).toBeDefined();
+    await userEvent.click(live as HTMLElement);
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('no aparece si su día no es el visible', async () => {
+    mockRunningTimer();
+    mockSession([entry('a', '2026-06-09', '08:00', '09:00', 'Otro día')]);
+    vi.mocked(useTimer).mockReturnValue({
+      isRunning: true,
+      elapsed: 3600,
+      timerState: {
+        isRunning: true,
+        taskId: 99,
+        taskName: 'Timer en curso',
+        startTime: new Date(2026, 5, 10, 9, 0, 0).toISOString(),
+        elapsed: 3600,
+      },
+      start: vi.fn(),
+      stop: vi.fn(),
+      updateStartTime: vi.fn(),
+      updateDescription: vi.fn(),
+      cancel: vi.fn(),
+    } as unknown as ReturnType<typeof useTimer>);
+    const { container } = renderPage();
+
+    await userEvent.click(screen.getByLabelText('Período siguiente'));
+    // La barra del Timer lo sigue mostrando, pero las vistas del plan no.
+    expect(container.textContent).not.toContain('timer activo');
+  });
+});
