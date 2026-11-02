@@ -65,6 +65,7 @@ function renderPage() {
 
 describe('AgendaPage — Timeline del día laborable', () => {
   beforeEach(() => {
+    localStorage.clear();
     vi.useFakeTimers({ shouldAdvanceTime: true });
     vi.setSystemTime(new Date('2026-06-10T10:00:00')); // miércoles
   });
@@ -93,10 +94,11 @@ describe('AgendaPage — Timeline del día laborable', () => {
     expect(container.textContent).toContain('2 registros');
   });
 
-  it('el eje horario arranca en la Hora de entrada configurada', () => {
+  it('el eje horario arranca en la Hora de entrada configurada', async () => {
     mockSession([entry('a', '2026-06-10', '09:45', '11:00', 'Clasificador')]);
 
     const { container } = renderPage();
+    await userEvent.click(screen.getByRole('tab', { name: 'Timeline' }));
 
     // La Hora de entrada por defecto de Settings es 09:00.
     expect(container.textContent).toContain('09:00');
@@ -116,6 +118,7 @@ describe('AgendaPage — Timeline del día laborable', () => {
 
 describe('AgendaPage — período navegable', () => {
   beforeEach(() => {
+    localStorage.clear();
     vi.useFakeTimers({ shouldAdvanceTime: true });
     vi.setSystemTime(new Date('2026-06-10T10:00:00'));
   });
@@ -145,6 +148,7 @@ describe('AgendaPage — período navegable', () => {
     mockSession([entry('a', '2026-06-10', '09:00', '10:00', 'Del miércoles')]);
     const { container } = renderPage();
 
+    await userEvent.click(screen.getByRole('tab', { name: 'Timeline' }));
     await userEvent.click(screen.getByRole('button', { name: 'Semana' }));
 
     expect(container.textContent).toContain('8 – 12 jun');
@@ -158,6 +162,7 @@ describe('AgendaPage — período navegable', () => {
     mockSession([]);
     const { container } = renderPage();
 
+    await userEvent.click(screen.getByRole('tab', { name: 'Timeline' }));
     await userEvent.click(screen.getByLabelText('Período siguiente'));
     await userEvent.click(screen.getByRole('button', { name: 'Hoy' }));
 
@@ -173,5 +178,67 @@ describe('AgendaPage — período navegable', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Semana' }));
     expect(container.textContent).toContain('15 – 19 jun');
+  });
+});
+
+describe('AgendaPage — vista Agenda, píldoras y preferencias', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date('2026-06-10T10:00:00'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.clearAllMocks();
+  });
+
+  const dayEntries = () => [
+    entry('a', '2026-06-10', '09:00', '10:00', 'Clasificador', 'Detección de duplicados al reimportar el CSV'),
+    entry('b', '2026-06-10', '10:30', '11:00', 'Revisión de PR'),
+  ];
+
+  it('abre en Agenda por defecto y muestra la descripción completa y los huecos', () => {
+    mockSession(dayEntries());
+
+    const { container } = renderPage();
+
+    expect(screen.getByRole('tab', { name: 'Agenda' })).toHaveAttribute('aria-selected', 'true');
+    expect(container.textContent).toContain('Detección de duplicados al reimportar el CSV');
+    expect(container.textContent).toContain('30m sin registrar');
+    expect(container.textContent).toContain('Sin descripción');
+  });
+
+  it('las píldoras cambian de vista sin cambiar el período', async () => {
+    mockSession(dayEntries());
+    const { container } = renderPage();
+
+    await userEvent.click(screen.getByLabelText('Período siguiente'));
+    expect(container.textContent).toContain('jueves 11 jun 2026');
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Timeline' }));
+    expect(container.textContent).toContain('jueves 11 jun 2026');
+    expect(screen.getByRole('tab', { name: 'Timeline' })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('recuerda la vista y el modo entre sesiones', async () => {
+    mockSession(dayEntries());
+    const first = renderPage();
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Timeline' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Semana' }));
+    first.unmount();
+
+    const second = renderPage();
+    expect(screen.getByRole('tab', { name: 'Timeline' })).toHaveAttribute('aria-selected', 'true');
+    expect(second.container.textContent).toContain('8 – 12 jun');
+  });
+
+  it('un día sin Registros de tiempo explica cómo empezar', () => {
+    mockSession([]);
+
+    const { container } = renderPage();
+
+    expect(container.textContent).toContain('No hay Registros de tiempo en este período');
   });
 });

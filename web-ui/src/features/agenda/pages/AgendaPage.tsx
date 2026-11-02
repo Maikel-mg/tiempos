@@ -4,7 +4,11 @@ import { TimeEntryEditorDialog } from '@/features/time-tracker/components/TimeEn
 import { useTimeTrackingSession } from '@/features/time-tracker/hooks/useTimeTrackingSession';
 import { getWorkdayStart } from '@/features/time-tracker/lib/schedule';
 import { PeriodBar } from '../components/PeriodBar';
+import { ViewPills } from '../components/ViewPills';
+import { AgendaView } from '../components/AgendaView';
 import { TimelineView } from '../components/TimelineView';
+import { useAgendaPreferences } from '../hooks/useAgendaPreferences';
+import { IMPLEMENTED_AGENDA_VIEWS } from '../lib/agendaViews';
 import {
   addDays,
   entriesOfDays,
@@ -12,7 +16,6 @@ import {
   todayKey,
   toWorkday,
   visibleDays,
-  type PlanMode,
 } from '../lib/planRange';
 
 /**
@@ -27,7 +30,7 @@ export function AgendaPage() {
   const { entries, timer, editor } = session;
 
   const [cursor, setCursor] = useState(() => toWorkday(todayKey()));
-  const [mode, setMode] = useState<PlanMode>('day');
+  const { view, setView, mode, setMode } = useAgendaPreferences();
 
   const days = useMemo(() => visibleDays(mode, cursor), [mode, cursor]);
   const visibleEntries = useMemo(() => entriesOfDays(entries, days), [entries, days]);
@@ -54,18 +57,33 @@ export function AgendaPage() {
           onToday={() => setCursor(toWorkday(todayKey()))}
           onModeChange={setMode}
           onJump={(day) => setCursor(toWorkday(day))}
-        />
-        <TimelineView
-          entries={visibleEntries}
-          days={days}
-          mode={mode}
-          workdayStart={workdayStart}
-          onEdit={(entry) => editor.openEdit(entry)}
-          onPickDay={(day) => {
-            setCursor(toWorkday(day));
-            setMode('day');
-          }}
-        />
+        >
+          <ViewPills value={view} available={IMPLEMENTED_AGENDA_VIEWS} onChange={setView} />
+        </PeriodBar>
+        {view === 'agenda' ? (
+          <AgendaView
+            entries={visibleEntries}
+            days={days}
+            mode={mode}
+            onEdit={(entry) => editor.openEdit(entry)}
+            onPickDay={(day) => {
+              setCursor(toWorkday(day));
+              setMode('day');
+            }}
+          />
+        ) : (
+          <TimelineView
+            entries={visibleEntries}
+            days={days}
+            mode={mode}
+            workdayStart={workdayStart}
+            onEdit={(entry) => editor.openEdit(entry)}
+            onPickDay={(day) => {
+              setCursor(toWorkday(day));
+              setMode('day');
+            }}
+          />
+        )}
       </div>
 
       <TimeEntryEditorDialog
