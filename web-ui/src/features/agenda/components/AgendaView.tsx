@@ -121,9 +121,17 @@ export function AgendaView({
                       </button>
                     )}
                     <div
+                      role="button"
+                      aria-label={`Editar ${entry.taskName}`}
                       data-plan-active={isActive ? 'true' : undefined}
                       tabIndex={isActive ? 0 : -1}
                       onClick={() => !isLive && actions?.onEdit?.(entry)}
+                      onKeyDown={(event) => {
+                        if (!isLive && (event.key === 'Enter' || event.key === ' ')) {
+                          event.preventDefault();
+                          actions?.onEdit?.(entry);
+                        }
+                      }}
                       className={`group -mx-2 flex gap-3 rounded-lg px-2 py-2.5 ${
                         isActive ? 'bg-primary/5 ring-2 ring-primary' : ''
                       } ${isLive ? '' : 'cursor-pointer hover:bg-muted/40'}`}
