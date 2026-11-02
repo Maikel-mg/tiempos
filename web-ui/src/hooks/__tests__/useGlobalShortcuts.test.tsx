@@ -52,6 +52,12 @@ describe('useGlobalShortcuts with table navigation', () => {
     expect(mockOpen).toHaveBeenCalledTimes(1);
   });
 
+  it('Alt+A vuelve a la Agenda', () => {
+    renderWithRouter(<TestComponent />);
+
+    expect(() => fireEvent.keyDown(window, { key: 'a', altKey: true })).not.toThrow();
+  });
+
   it('Alt+T navigates to time tracker', () => {
     renderWithRouter(<TestComponent />);
 

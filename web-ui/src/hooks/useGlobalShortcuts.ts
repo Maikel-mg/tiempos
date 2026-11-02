@@ -12,6 +12,7 @@ import {
 } from '@/lib/keyboard/shortcutDispatcher';
 
 const navigationShortcuts = [
+  { key: 'a', url: '/' },
   { key: 'd', url: '/dashboard' },
   { key: 't', url: '/time-tracker' },
   { key: 'p', url: '/projects' },
@@ -24,7 +25,7 @@ const navigationShortcuts = [
  * - Cmd/Ctrl+K: Always opens command palette (works even in inputs)
  * - Cmd/Ctrl+Shift+T: Toggle theme (works even in inputs)
  * - Cmd/Ctrl+Shift+S: Start/stop the timer with the last used task (works even in inputs)
- * - Alt+letter: Navigation shortcuts (only work outside inputs)
+ * - Alt+letter: Navigation shortcuts — Alt+A opens the Agenda (only outside inputs)
  */
 export function useGlobalShortcuts() {
   const navigate = useNavigate();

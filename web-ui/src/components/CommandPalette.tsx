@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import {
+  CalendarRange,
   LayoutDashboard,
   Clock,
   FolderOpen,
@@ -30,6 +31,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { useTimerToggle } from '@/hooks/useTimerToggle';
 
 const navigationActions = [
+  { id: 'go-agenda', label: 'Ir a Agenda', icon: CalendarRange, url: '/', shortcut: 'Alt+A' },
   { id: 'go-dashboard', label: 'Ir a Dashboard', icon: LayoutDashboard, url: '/dashboard', shortcut: 'Alt+D' },
   { id: 'go-timetracker', label: 'Ir a TimeTracker', icon: Clock, url: '/time-tracker', shortcut: 'Alt+T' },
   { id: 'go-projects', label: 'Ir a Proyectos', icon: FolderOpen, url: '/projects', shortcut: 'Alt+P' },
