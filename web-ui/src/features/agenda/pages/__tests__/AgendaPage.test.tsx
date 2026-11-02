@@ -3,6 +3,7 @@ import '@testing-library/jest-dom';
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter } from 'react-router-dom';
 import { AgendaPage } from '../AgendaPage';
 import { InlineComposer } from '../../components/InlineComposer';
 import { useTimeEntries } from '@/features/time-tracker/hooks/useTimeEntries';
@@ -58,9 +59,11 @@ function mockSession(entries: TimeEntry[]) {
 
 function renderPage() {
   return render(
-    <QueryClientProvider client={queryClient}>
-      <AgendaPage />
-    </QueryClientProvider>,
+    <MemoryRouter>
+      <QueryClientProvider client={queryClient}>
+        <AgendaPage />
+      </QueryClientProvider>
+    </MemoryRouter>,
   );
 }
 
@@ -499,5 +502,42 @@ describe('AgendaPage — acciones por Registro de tiempo', () => {
     );
     // Sincronizado: la acción no se ofrece.
     expect(screen.queryByRole('menuitem', { name: 'Sincronizar' })).not.toBeInTheDocument();
+  });
+});
+
+describe('AgendaPage — sincronizar el día', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date('2026-06-10T10:00:00'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.clearAllMocks();
+  });
+
+  it('solo ofrece el botón cuando hay pendientes y cuenta los del día', () => {
+    mockSession([entry('a', '2026-06-10', '09:00', '10:00', 'Pendiente')]);
+    const { container } = renderPage();
+
+    expect(container.textContent).toContain('Sincronizar día (1)');
+  });
+
+  it('no aparece si todo el día está sincronizado', () => {
+    mockSession([{ ...entry('a', '2026-06-10', '09:00', '10:00', 'Hecho'), synced: true }]);
+    const { container } = renderPage();
+
+    expect(container.textContent).not.toContain('Sincronizar día');
+  });
+
+  it('abre el panel de sincronización existente', async () => {
+    mockSession([entry('a', '2026-06-10', '09:00', '10:00', 'En la base de datos')]);
+    renderPage();
+
+    await userEvent.click(screen.getByRole('button', { name: /Sincronizar día/i }));
+
+    // El título del panel cuenta lo que se va a sincronizar.
+    expect(await screen.findByText(/Sincronizar 1 registros/i)).toBeInTheDocument();
   });
 });

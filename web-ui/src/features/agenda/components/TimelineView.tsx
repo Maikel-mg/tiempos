@@ -3,6 +3,7 @@ import { Plus } from 'lucide-react';
 import { formatDurationShort, parseHHMM } from '@/lib/format';
 import { taskColor } from '../lib/taskColor';
 import { EntryActionsMenu, type EntryActions } from './EntryActionsMenu';
+import { SyncDayButton } from './SyncDayButton';
 import {
   formatDayLong,
   formatDayShort,
@@ -32,6 +33,7 @@ interface TimelineViewProps {
   /** Abre el compositor en el hueco pulsado (hora ya calculada desde el puntero). */
   onAddAt?: (day: string, startTime: string) => void;
   onAddAfterDay?: (day: string) => void;
+  onSyncDay?: (ids: string[]) => void;
 }
 
 export function TimelineView({
@@ -45,6 +47,7 @@ export function TimelineView({
   onPickDay,
   onAddAt,
   onAddAfterDay,
+  onSyncDay,
 }: TimelineViewProps) {
   const { from, to } = useMemo(() => hourBounds(entries, workdayStart), [entries, workdayStart]);
   const height = ((to - from) / 60) * HOUR_PX;
@@ -104,6 +107,7 @@ export function TimelineView({
                   >
                     <Plus className="h-3.5 w-3.5" />
                   </button>
+                  {onSyncDay && <SyncDayButton entries={dayEntries} onSyncDay={onSyncDay} label="" />}
                 </div>
 
                 <div

@@ -2,6 +2,7 @@ import { Plus } from 'lucide-react';
 import { formatDurationShort } from '@/lib/format';
 import { taskColor } from '../lib/taskColor';
 import { EntryActionsMenu, type EntryActions } from './EntryActionsMenu';
+import { SyncDayButton } from './SyncDayButton';
 import {
   formatDayLong,
   gapsOf,
@@ -24,6 +25,7 @@ interface AgendaViewProps {
   onAdd?: (day: string, startTime: string, endTime: string) => void;
   /** Abre el compositor al final del día. */
   onAddAfterDay?: (day: string) => void;
+  onSyncDay?: (ids: string[]) => void;
 }
 
 function formatGap(minutes: number): string {
@@ -46,6 +48,7 @@ export function AgendaView({
   onPickDay,
   onAdd,
   onAddAfterDay,
+  onSyncDay,
 }: AgendaViewProps) {
   const today = todayKey();
   const visibleDays = days.filter((day) => mode === 'day' || entries.some((entry) => entry.date === day));
@@ -90,6 +93,7 @@ export function AgendaView({
                 >
                   <Plus className="h-3 w-3" /> añadir
                 </button>
+                {onSyncDay && <SyncDayButton entries={dayEntries} onSyncDay={onSyncDay} />}
               </div>
             </header>
 

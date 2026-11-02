@@ -3,6 +3,8 @@ import { TimeTrackerBar } from '@/features/time-tracker/components/TimeTrackerBa
 import { TimeEntryEditorDialog } from '@/features/time-tracker/components/TimeEntryEditorDialog';
 import { useTimeTrackingSession, useTimeTrackingFlows } from '@/features/time-tracker/hooks/useTimeTrackingSession';
 import { SplitEntryDialog } from '@/features/time-tracker/components/SplitEntryDialog';
+import { SyncPanel } from '@/features/time-tracker/components/SyncPanel';
+import { SyncDayButton } from '../components/SyncDayButton';
 import { getWorkdayStart } from '@/features/time-tracker/lib/schedule';
 import type { TimeEntry } from '@/features/time-tracker/types';
 import { useTimerView } from '@/features/time-tracker/hooks/useTimerView';
@@ -48,7 +50,7 @@ export function AgendaPage() {
     timer,
     todayInRange: days.includes(todayKey()),
   });
-  const { split, sync } = useTimeTrackingFlows(session, { liveTimerEntry });
+  const { split, sync, syncMany } = useTimeTrackingFlows(session, { liveTimerEntry });
 
   const actions = {
     onEdit: (entry: TimeEntry) => editor.openEdit(entry),
@@ -133,7 +135,16 @@ export function AgendaPage() {
           onJump={(day) => setCursor(toWorkday(day))}
         >
           <ViewPills value={view} available={IMPLEMENTED_AGENDA_VIEWS} onChange={setView} />
+          {view === 'calendar' && <SyncDayButton entries={visibleEntries} onSyncDay={syncMany} label="Sincronizar período" />}
         </PeriodBar>
+        {sync.syncPanelOpen && (
+          <SyncPanel
+            selectedEntries={sync.entriesToSync}
+            totalPendingCount={sync.pendingEntries.length}
+            blockedCount={sync.blockedEntries.length}
+            onSyncComplete={session.markSynced}
+          />
+        )}
         {view === 'calendar' ? (
           <CalendarView
             entries={visibleEntries}
@@ -157,6 +168,7 @@ export function AgendaPage() {
             actions={actions}
             onAdd={openComposer}
             onAddAfterDay={openComposerAfterDay}
+            onSyncDay={syncMany}
             onPickDay={(day) => {
               setCursor(toWorkday(day));
               setMode('day');
@@ -172,6 +184,7 @@ export function AgendaPage() {
             actions={actions}
             onAddAt={(day, startTime) => openComposer(day, startTime)}
             onAddAfterDay={openComposerAfterDay}
+            onSyncDay={syncMany}
             onPickDay={(day) => {
               setCursor(toWorkday(day));
               setMode('day');
