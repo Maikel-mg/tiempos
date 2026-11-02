@@ -11,4 +11,4 @@ export const AGENDA_VIEWS: ReadonlyArray<{ key: AgendaViewKind; label: string }>
 export const DEFAULT_AGENDA_VIEW: AgendaViewKind = 'agenda';
 
 /** Vistas ya construidas; crece a medida que cada una se entrega. */
-export const IMPLEMENTED_AGENDA_VIEWS: ReadonlyArray<AgendaViewKind> = ['agenda', 'timeline'];
+export const IMPLEMENTED_AGENDA_VIEWS: ReadonlyArray<AgendaViewKind> = ['calendar', 'agenda', 'timeline'];

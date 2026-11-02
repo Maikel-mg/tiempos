@@ -6,6 +6,7 @@ import { getWorkdayStart } from '@/features/time-tracker/lib/schedule';
 import { PeriodBar } from '../components/PeriodBar';
 import { ViewPills } from '../components/ViewPills';
 import { AgendaView } from '../components/AgendaView';
+import { CalendarView } from '../components/CalendarView';
 import { TimelineView } from '../components/TimelineView';
 import { useAgendaPreferences } from '../hooks/useAgendaPreferences';
 import { IMPLEMENTED_AGENDA_VIEWS } from '../lib/agendaViews';
@@ -60,7 +61,19 @@ export function AgendaPage() {
         >
           <ViewPills value={view} available={IMPLEMENTED_AGENDA_VIEWS} onChange={setView} />
         </PeriodBar>
-        {view === 'agenda' ? (
+        {view === 'calendar' ? (
+          <CalendarView
+            entries={visibleEntries}
+            days={days}
+            mode={mode}
+            workdayStart={workdayStart}
+            onEdit={(entry) => editor.openEdit(entry)}
+            onPickDay={(day) => {
+              setCursor(toWorkday(day));
+              setMode('day');
+            }}
+          />
+        ) : view === 'agenda' ? (
           <AgendaView
             entries={visibleEntries}
             days={days}

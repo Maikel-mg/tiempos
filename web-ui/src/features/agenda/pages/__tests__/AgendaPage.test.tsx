@@ -242,3 +242,57 @@ describe('AgendaPage — vista Agenda, píldoras y preferencias', () => {
     expect(container.textContent).toContain('No hay Registros de tiempo en este período');
   });
 });
+
+describe('AgendaPage — vista Calendario por Tarea', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date('2026-06-10T10:00:00'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.clearAllMocks();
+  });
+
+  const laneEntries = () => [
+    entry('a', '2026-06-10', '09:00', '10:00', 'Corta'),
+    entry('b', '2026-06-10', '10:00', '13:00', 'Larga'),
+    entry('c', '2026-06-09', '09:00', '11:00', 'Larga'),
+  ];
+
+  it('muestra una fila por Tarea ordenada de mayor a menor tiempo', async () => {
+    mockSession(laneEntries());
+    const { container } = renderPage();
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Calendario' }));
+
+    const text = container.textContent ?? '';
+    expect(text.indexOf('Larga')).toBeLessThan(text.indexOf('Corta'));
+    // En modo día solo cuentan los Registros de tiempo de hoy.
+    expect(text).toContain('3h 0m');
+    expect(text).toContain('1h 0m');
+  });
+
+  it('en modo semana reparte por día laborable sin fin de semana', async () => {
+    mockSession(laneEntries());
+    const { container } = renderPage();
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Calendario' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Semana' }));
+
+    expect(container.textContent).toContain('Lun 8');
+    expect(container.textContent).toContain('Vie 12');
+    expect(container.textContent).not.toContain('Sáb');
+    expect(container.textContent).not.toContain('Dom');
+  });
+
+  it('sin Registros de tiempo explica para qué sirve la vista', async () => {
+    mockSession([]);
+    const { container } = renderPage();
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Calendario' }));
+
+    expect(container.textContent).toContain('reparte el tiempo por Tarea');
+  });
+});
