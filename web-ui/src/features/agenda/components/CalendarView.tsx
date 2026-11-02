@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Plus } from 'lucide-react';
 import { formatDurationShort, parseHHMM } from '@/lib/format';
 import { taskColor } from '../lib/taskColor';
+import { EntryActionsMenu, type EntryActions } from './EntryActionsMenu';
 import {
   endOfDay,
   formatDayShort,
@@ -26,7 +27,7 @@ interface CalendarViewProps {
   workdayStart: number | null;
   timerEntryId?: string;
   activeEntryId?: string;
-  onEdit?: (entry: TimeEntry) => void;
+  actions?: EntryActions;
   onPickDay?: (day: string) => void;
   /** Abre el compositor con la Tarea del carril ya elegida. */
   onAdd?: (day: string, startTime: string, preset?: Proceso) => void;
@@ -47,7 +48,7 @@ export function CalendarView({
   workdayStart,
   timerEntryId,
   activeEntryId,
-  onEdit,
+  actions,
   onPickDay,
   onAdd,
 }: CalendarViewProps) {
@@ -164,7 +165,7 @@ export function CalendarView({
                     return (
                       <button
                         key={day}
-                        onClick={() => onEdit?.(sortByStart(dayEntries)[0])}
+                        onClick={() => actions?.onEdit?.(sortByStart(dayEntries)[0])}
                         title={`${formatDayShort(day)} · ${formatDurationShort(seconds)}`}
                         className="absolute inset-y-1.5 -translate-x-1/2 rounded-md px-1 text-[10px] font-medium text-white"
                         style={{
@@ -188,9 +189,9 @@ export function CalendarView({
                       <button
                         key={entry.id}
                         data-plan-active={isActive ? 'true' : undefined}
-                        onClick={() => !isLive && onEdit?.(entry)}
+                        onClick={(event) => { event.stopPropagation(); if (!isLive) actions?.onEdit?.(entry); }}
                         title={`${entry.startTime}–${entry.endTime} · ${entry.taskName}\n${entry.description ?? ''}`}
-                        className={`absolute inset-y-1.5 overflow-hidden rounded-md px-2 text-left text-[10px] font-medium text-white transition hover:brightness-110 ${color.bar} ${
+                        className={`group absolute inset-y-1.5 overflow-hidden rounded-md px-2 text-left text-[10px] font-medium text-white transition hover:brightness-110 ${color.bar} ${
                           isLive ? 'border-2 border-dashed border-red-300 ring-2 ring-red-500/50' : ''
                         } ${isActive ? 'ring-2 ring-primary ring-offset-1 ring-offset-background' : ''}`}
                         style={{ left: `${pct(start)}%`, width: `${Math.max(1.5, pct(end) - pct(start))}%` }}
@@ -199,6 +200,18 @@ export function CalendarView({
                           {entry.startTime}–{entry.endTime}
                         </span>
                         {entry.description && <span className="block truncate opacity-80">{entry.description}</span>}
+                        {!isLive && (
+                          <div
+                            className="absolute right-0 top-1/2 -translate-y-1/2 opacity-0 transition group-hover:opacity-100"
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            <EntryActionsMenu
+                              entry={entry}
+                              actions={actions ?? {}}
+                              className="h-5 w-5 text-white/80 hover:bg-black/20 hover:text-white"
+                            />
+                          </div>
+                        )}
                       </button>
                     );
                   })}

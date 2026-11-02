@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Plus } from 'lucide-react';
 import { formatDurationShort, parseHHMM } from '@/lib/format';
 import { taskColor } from '../lib/taskColor';
+import { EntryActionsMenu, type EntryActions } from './EntryActionsMenu';
 import {
   formatDayLong,
   formatDayShort,
@@ -26,7 +27,7 @@ interface TimelineViewProps {
   timerEntryId?: string;
   /** Registro de tiempo resaltado por la navegación de teclado. */
   activeEntryId?: string;
-  onEdit?: (entry: TimeEntry) => void;
+  actions?: EntryActions;
   onPickDay?: (day: string) => void;
   /** Abre el compositor en el hueco pulsado (hora ya calculada desde el puntero). */
   onAddAt?: (day: string, startTime: string) => void;
@@ -40,7 +41,7 @@ export function TimelineView({
   workdayStart,
   timerEntryId,
   activeEntryId,
-  onEdit,
+  actions,
   onPickDay,
   onAddAt,
   onAddAfterDay,
@@ -146,16 +147,16 @@ export function TimelineView({
                         tabIndex={isActive ? 0 : -1}
                         onClick={(event) => {
                           event.stopPropagation();
-                          if (!isLive) onEdit?.(entry);
+                          if (!isLive) actions?.onEdit?.(entry);
                         }}
                         onKeyDown={(event) => {
                           if (!isLive && (event.key === 'Enter' || event.key === ' ')) {
                             event.preventDefault();
-                            onEdit?.(entry);
+                            actions?.onEdit?.(entry);
                           }
                         }}
                         title={`${entry.startTime}–${entry.endTime} · ${entry.taskName}\n${entry.description ?? ''}`}
-                        className={`absolute inset-x-1 z-10 overflow-hidden rounded-md border px-1.5 py-1 text-left transition hover:z-30 hover:ring-2 hover:ring-ring ${color.block} ${
+                        className={`group absolute inset-x-1 z-10 overflow-hidden rounded-md border px-1.5 py-1 text-left transition hover:z-30 hover:ring-2 hover:ring-ring ${color.block} ${
                           isLive ? 'border-2 border-dashed border-red-500/70 ring-1 ring-red-500/20' : ''
                         } ${isActive ? 'z-30 ring-2 ring-primary ring-offset-1 ring-offset-background' : ''}`}
                         style={{ top: topOf(start), height: blockHeight }}
@@ -173,6 +174,14 @@ export function TimelineView({
                         <span className="mt-0.5 block truncate text-[11px] font-medium leading-tight">
                           {entry.taskName}
                         </span>
+                        {!isLive && (
+                          <div
+                            className="absolute right-0 top-0 opacity-0 transition group-hover:opacity-100"
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            <EntryActionsMenu entry={entry} actions={actions ?? {}} className="h-5 w-5" />
+                          </div>
+                        )}
                         {blockHeight > 52 && entry.description && (
                           <span className="mt-0.5 block overflow-hidden text-[10px] leading-tight opacity-75 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
                             {entry.description}

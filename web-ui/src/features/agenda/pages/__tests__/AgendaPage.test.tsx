@@ -453,3 +453,51 @@ describe('AgendaPage — alta manual en línea', () => {
     expect(screen.getByLabelText('Hora de inicio')).toHaveValue('11:30');
   });
 });
+
+describe('AgendaPage — acciones por Registro de tiempo', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date('2026-06-10T10:00:00'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.clearAllMocks();
+  });
+
+  async function openMenu(taskName: string) {
+    await userEvent.click(screen.getByRole('button', { name: `Acciones de ${taskName}` }));
+  }
+
+  it('ofrece las acciones de la tabla y abre el editor', async () => {
+    mockSession([entry('a', '2026-06-10', '09:00', '10:00', 'Clasificador')]);
+    renderPage();
+
+    await openMenu('Clasificador');
+
+    expect(screen.getByRole('menuitem', { name: 'Editar' })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'Play' })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'Duplicar' })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'Dividir' })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'Sincronizar' })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'Eliminar' })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Editar' }));
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('explica por qué no se puede dividir un Registro de tiempo sincronizado', async () => {
+    mockSession([{ ...entry('a', '2026-06-10', '09:00', '10:00', 'Clasificador'), synced: true }]);
+    renderPage();
+
+    await openMenu('Clasificador');
+
+    expect(screen.getByRole('menuitem', { name: /Dividir · ya sincronizado/i })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+    // Sincronizado: la acción no se ofrece.
+    expect(screen.queryByRole('menuitem', { name: 'Sincronizar' })).not.toBeInTheDocument();
+  });
+});

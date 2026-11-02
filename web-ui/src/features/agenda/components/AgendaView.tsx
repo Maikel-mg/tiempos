@@ -1,6 +1,7 @@
 import { Plus } from 'lucide-react';
 import { formatDurationShort } from '@/lib/format';
 import { taskColor } from '../lib/taskColor';
+import { EntryActionsMenu, type EntryActions } from './EntryActionsMenu';
 import {
   formatDayLong,
   gapsOf,
@@ -17,7 +18,7 @@ interface AgendaViewProps {
   mode: PlanMode;
   timerEntryId?: string;
   activeEntryId?: string;
-  onEdit?: (entry: TimeEntry) => void;
+  actions?: EntryActions;
   onPickDay?: (day: string) => void;
   /** Abre el compositor en un hueco concreto (horas ya puestas). */
   onAdd?: (day: string, startTime: string, endTime: string) => void;
@@ -41,7 +42,7 @@ export function AgendaView({
   mode,
   timerEntryId,
   activeEntryId,
-  onEdit,
+  actions,
   onPickDay,
   onAdd,
   onAddAfterDay,
@@ -118,7 +119,7 @@ export function AgendaView({
                     <div
                       data-plan-active={isActive ? 'true' : undefined}
                       tabIndex={isActive ? 0 : -1}
-                      onClick={() => !isLive && onEdit?.(entry)}
+                      onClick={() => !isLive && actions?.onEdit?.(entry)}
                       className={`group -mx-2 flex gap-3 rounded-lg px-2 py-2.5 ${
                         isActive ? 'bg-primary/5 ring-2 ring-primary' : ''
                       } ${isLive ? '' : 'cursor-pointer hover:bg-muted/40'}`}
@@ -170,6 +171,11 @@ export function AgendaView({
                           >
                             {isLive ? 'timer activo' : entry.synced ? 'sincronizado' : 'pendiente'}
                           </span>
+                          {!isLive && (
+                            <div className="ml-auto opacity-0 transition group-hover:opacity-100">
+                              <EntryActionsMenu entry={entry} actions={actions ?? {}} />
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>

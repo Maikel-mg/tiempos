@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { TimeTrackerBar } from '@/features/time-tracker/components/TimeTrackerBar';
 import { TimeEntryEditorDialog } from '@/features/time-tracker/components/TimeEntryEditorDialog';
-import { useTimeTrackingSession } from '@/features/time-tracker/hooks/useTimeTrackingSession';
+import { useTimeTrackingSession, useTimeTrackingFlows } from '@/features/time-tracker/hooks/useTimeTrackingSession';
+import { SplitEntryDialog } from '@/features/time-tracker/components/SplitEntryDialog';
 import { getWorkdayStart } from '@/features/time-tracker/lib/schedule';
+import type { TimeEntry } from '@/features/time-tracker/types';
 import { useTimerView } from '@/features/time-tracker/hooks/useTimerView';
 import { PeriodBar } from '../components/PeriodBar';
 import { ViewPills } from '../components/ViewPills';
@@ -41,7 +43,21 @@ export function AgendaPage() {
 
   const days = useMemo(() => visibleDays(mode, cursor), [mode, cursor]);
 
-  const { liveTimerEntry } = useTimerView({ createEntry, timer, todayInRange: days.includes(todayKey()) });
+  const { liveTimerEntry, handlePlayEntry } = useTimerView({
+    createEntry,
+    timer,
+    todayInRange: days.includes(todayKey()),
+  });
+  const { split, sync } = useTimeTrackingFlows(session, { liveTimerEntry });
+
+  const actions = {
+    onEdit: (entry: TimeEntry) => editor.openEdit(entry),
+    onPlay: handlePlayEntry,
+    onDuplicate: editor.duplicate,
+    onSplit: split.handleSplitEntry,
+    onSync: sync.handleSyncEntry,
+    onDelete: editor.remove,
+  };
   const allEntries = useMemo(
     () => (liveTimerEntry ? [...entries, liveTimerEntry] : entries),
     [entries, liveTimerEntry],
@@ -125,7 +141,7 @@ export function AgendaPage() {
             mode={mode}
             workdayStart={workdayStart}
             timerEntryId={liveTimerEntry?.id}
-            onEdit={(entry) => editor.openEdit(entry)}
+            actions={actions}
             onAdd={(day, startTime) => openComposer(day, startTime)}
             onPickDay={(day) => {
               setCursor(toWorkday(day));
@@ -138,7 +154,7 @@ export function AgendaPage() {
             days={days}
             mode={mode}
             timerEntryId={liveTimerEntry?.id}
-            onEdit={(entry) => editor.openEdit(entry)}
+            actions={actions}
             onAdd={openComposer}
             onAddAfterDay={openComposerAfterDay}
             onPickDay={(day) => {
@@ -153,7 +169,7 @@ export function AgendaPage() {
             mode={mode}
             timerEntryId={liveTimerEntry?.id}
             workdayStart={workdayStart}
-            onEdit={(entry) => editor.openEdit(entry)}
+            actions={actions}
             onAddAt={(day, startTime) => openComposer(day, startTime)}
             onAddAfterDay={openComposerAfterDay}
             onPickDay={(day) => {
@@ -163,6 +179,14 @@ export function AgendaPage() {
           />
         )}
       </div>
+
+      <SplitEntryDialog
+        open={split.splittingEntry !== null}
+        entry={split.splittingEntry}
+        live={split.splittingTimer}
+        onOpenChange={split.handleSplitDialogOpenChange}
+        onConfirm={split.handleSplitConfirm}
+      />
 
       <TimeEntryEditorDialog
         open={editor.isEditorOpen}
