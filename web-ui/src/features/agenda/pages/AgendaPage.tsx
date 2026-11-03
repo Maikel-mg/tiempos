@@ -53,7 +53,7 @@ export function AgendaPage() {
 
   const days = useMemo(() => visibleDays(mode, cursor), [mode, cursor]);
 
-  const { liveTimerEntry, handlePlayEntry } = useTimerView({
+  const { liveTimerEntry, handlePlayEntry, timerSplitDisabledReason } = useTimerView({
     createEntry,
     timer,
     todayInRange: days.includes(todayKey()),
@@ -65,6 +65,8 @@ export function AgendaPage() {
     onPlay: handlePlayEntry,
     onDuplicate: editor.duplicate,
     onSplit: split.handleSplitEntry,
+    onSplitTimer: split.handleSplitTimer,
+    timerSplitReason: timerSplitDisabledReason,
     onSync: sync.handleSyncEntry,
     onDelete: editor.remove,
   };
@@ -154,7 +156,13 @@ export function AgendaPage() {
     <main className="w-full">
       <div className="sticky top-0 z-40 border-b border-border/50 bg-background backdrop-blur-sm">
         <div className="px-4 py-3 sm:px-6">
-          <TimeTrackerBar onSubmit={editor.create} disabled={false} timer={timer} />
+          <TimeTrackerBar
+            onSubmit={editor.create}
+            disabled={false}
+            onSplitTimer={liveTimerEntry ? split.handleSplitTimer : undefined}
+            splitDisabledReason={timerSplitDisabledReason}
+            timer={timer}
+          />
         </div>
       </div>
 

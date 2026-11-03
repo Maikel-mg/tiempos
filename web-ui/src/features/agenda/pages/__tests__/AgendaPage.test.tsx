@@ -358,6 +358,23 @@ describe('AgendaPage — Timer activo', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
+  it('se puede dividir desde la fila del día sin detener el Timer', async () => {
+    mockRunningTimer();
+    renderPage();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Dividir' }));
+
+    expect(await screen.findByText('Dividir y seguir')).toBeInTheDocument();
+    expect(vi.mocked(useTimer).mock.results[0].value.stop).not.toHaveBeenCalled();
+  });
+
+  it('la barra del Timer ofrece dividir el Timer activo', () => {
+    mockRunningTimer();
+    renderPage();
+
+    expect(screen.getByLabelText('Dividir el timer en curso')).toBeEnabled();
+  });
+
   it('no aparece si su día no es el visible', async () => {
     mockRunningTimer();
     mockSession([entry('a', '2026-06-09', '08:00', '09:00', 'Otro día')]);

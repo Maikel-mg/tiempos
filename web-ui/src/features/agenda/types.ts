@@ -29,6 +29,10 @@ export interface EntryActions {
   onPlay?: (entry: TimeEntry) => void;
   onDuplicate?: (entry: TimeEntry) => void;
   onSplit?: (entry: TimeEntry) => void;
+  /** Divide el Timer en curso: la fila viva de la Agenda. */
+  onSplitTimer?: () => void;
+  /** Motivo por el que el Timer en curso no se puede dividir. */
+  timerSplitReason?: string;
   onSync?: (entry: TimeEntry) => void;
   onDelete?: (id: string) => void;
 }

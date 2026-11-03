@@ -78,7 +78,19 @@ export function AgendaEntryRow({ entry, isLive, isActive, actions }: AgendaEntry
           >
             {isLive ? 'timer activo' : entry.synced ? 'sincronizado' : 'pendiente'}
           </span>
-          {!isLive && (
+          {isLive ? (
+            <button
+              onClick={(event) => {
+                event.stopPropagation();
+                actions?.onSplitTimer?.();
+              }}
+              disabled={!actions?.onSplitTimer || Boolean(actions.timerSplitReason)}
+              title={actions?.timerSplitReason ?? 'Dividir el timer en curso'}
+              className="ml-auto normal-case tracking-normal underline-offset-2 hover:text-foreground hover:underline disabled:opacity-50 disabled:hover:no-underline"
+            >
+              Dividir
+            </button>
+          ) : (
             <div className="ml-auto opacity-0 transition group-hover:opacity-100">
               <EntryActionsMenu entry={entry} actions={actions ?? {}} />
             </div>
