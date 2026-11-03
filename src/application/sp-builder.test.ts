@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { buildProjectsQuery, buildProjectsTreeQuery, buildProcessesQuery, buildCreateProcessSQL, buildExecuteTimeEntriesSQL, type TimeEntry } from './sp-builder';
+import { buildProjectsQuery, buildProjectsTreeQuery, buildProcessesQuery, buildMarcajesQuery, buildCreateProcessSQL, buildExecuteTimeEntriesSQL, type TimeEntry } from './sp-builder';
 
 describe('sp-builder', () => {
   describe('buildProjectsQuery', () => {
@@ -83,6 +83,31 @@ describe('sp-builder', () => {
     test('trims whitespace from usured', () => {
       const query = buildProcessesQuery({ usured: '  MG01  ' });
       expect(query).toContain("@pUsured = 'MG01'");
+    });
+  });
+
+  describe('buildMarcajesQuery', () => {
+    test('includes SET LANGUAGE Spanish and SET DATEFORMAT dmy', () => {
+      const query = buildMarcajesQuery({ fechaDesde: '2026-10-26', fechaHasta: '2026-11-03', usured: 'MG01' });
+      expect(query).toContain('SET LANGUAGE Spanish');
+      expect(query).toContain('SET DATEFORMAT dmy');
+    });
+
+    test('calls the marcajes SP with YYMMDD dates', () => {
+      const query = buildMarcajesQuery({ fechaDesde: '2026-10-26', fechaHasta: '2026-11-03', usured: 'MG01' });
+      expect(query).toContain('spControlHorario_VerUltimosMarcajesPersonal');
+      expect(query).toContain("@pFechaDesde = '261026'");
+      expect(query).toContain("@pFechaHasta = '261103'");
+      expect(query).toContain("@pUsers = 'MG01'");
+    });
+
+    test('escapes single quotes in usured', () => {
+      const query = buildMarcajesQuery({ fechaDesde: '2026-10-26', fechaHasta: '2026-11-03', usured: "O'Brien" });
+      expect(query).toContain("@pUsers = 'O''Brien'");
+    });
+
+    test('rejects a date that is not YYYY-MM-DD', () => {
+      expect(() => buildMarcajesQuery({ fechaDesde: "'--", fechaHasta: '2026-11-03', usured: 'MG01' })).toThrow();
     });
   });
 

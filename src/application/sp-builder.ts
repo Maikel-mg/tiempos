@@ -50,6 +50,22 @@ export function buildProcessesQuery(params: { usured: string }): string {
   return `SET LANGUAGE Spanish; SET DATEFORMAT dmy; EXEC spNETTiempos_SEL_TraerProcesos @pUsured = '${usuredSanitized}';`;
 }
 
+/** El SP de marcajes espera las fechas como YYMMDD sin separadores. */
+function toYYMMDD(key: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) throw new Error(`Fecha inválida: ${key}`);
+  return key.slice(2).replace(/-/g, '');
+}
+
+export function buildMarcajesQuery(params: {
+  fechaDesde: string; // YYYY-MM-DD
+  fechaHasta: string; // YYYY-MM-DD
+  usured: string;
+}): string {
+  return `SET LANGUAGE Spanish; SET DATEFORMAT dmy; EXEC [dbo].[spControlHorario_VerUltimosMarcajesPersonal] @pFechaDesde = '${toYYMMDD(
+    params.fechaDesde,
+  )}', @pFechaHasta = '${toYYMMDD(params.fechaHasta)}', @pUsers = '${escapeSQL(params.usured.trim())}';`;
+}
+
 export interface TimeEntry {
   entryId: string;
   Usured: string;

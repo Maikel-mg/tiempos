@@ -14,6 +14,7 @@ import { AgendaShortcutsDialog } from '../components/AgendaShortcutsDialog';
 import { AgendaView } from '../components/AgendaView';
 import { CalendarView } from '../components/CalendarView';
 import { InlineComposer } from '../components/InlineComposer';
+import { MarcajesButton } from '../components/MarcajesButton';
 import type { ComposerSlot, EntryDraft } from '../types';
 import { TimelineView } from '../components/TimelineView';
 import { useAgendaPreferences } from '../hooks/useAgendaPreferences';
@@ -179,6 +180,7 @@ export function AgendaPage() {
           onJump={(day) => setCursor(toWorkday(day))}
         >
           <ViewPills value={view} available={AGENDA_VIEW_ORDER} onChange={setView} />
+          <MarcajesButton days={days} entries={visibleEntries} />
           {view === 'timeline' && <SyncDayButton entries={visibleEntries} onSyncDay={syncMany} label="Sincronizar período" />}
         </PeriodBar>
         {sync.syncPanelOpen && (

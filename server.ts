@@ -10,7 +10,7 @@ import {
   executeForYearMonthPairs,
   executeTimeEntriesInTransaction,
 } from './src/application/sql-executor';
-import { buildProjectsQuery, buildProjectsTreeQuery, buildProcessesQuery, buildExecuteTimeEntriesSQL, buildCreateProcessSQL, type CreateProcessDTO } from './src/application/sp-builder';
+import { buildProjectsQuery, buildProjectsTreeQuery, buildProcessesQuery, buildMarcajesQuery, buildExecuteTimeEntriesSQL, buildCreateProcessSQL, type CreateProcessDTO } from './src/application/sp-builder';
 import { classifyEntries, type TimeEntry } from './src/application/entry-classifier';
 
 const app = express();
@@ -412,6 +412,65 @@ try {
     });
   } catch (error: any) {
     console.error('Processes Error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// ============================================
+// Endpoint /api/marcajes — marcajes de la intranet (fichajes del usuario)
+// ============================================
+
+interface MarcajesRequest extends DbConnectionParams {
+  startDate: string; // YYYY-MM-DD
+  endDate: string;   // YYYY-MM-DD
+  usured: string;
+}
+
+const pad2 = (value: number) => String(value).padStart(2, '0');
+
+/**
+ * El SP devuelve FechaMarcaje/HoraMarcaje según el tipo de columna: Date con
+ * `useUTC: false` o texto. Se normalizan aquí para que la Agenda reciba
+ * siempre `YYYY-MM-DD` y `HH:MM`.
+ */
+function toMarcaje(row: any): { date: string; time: string; origen: string } | null {
+  const fecha = row?.FechaMarcaje;
+  const hora = row?.HoraMarcaje;
+  const date = fecha instanceof Date
+    ? `${fecha.getFullYear()}-${pad2(fecha.getMonth() + 1)}-${pad2(fecha.getDate())}`
+    : String(fecha ?? '').slice(0, 10);
+  const time = hora instanceof Date
+    ? `${pad2(hora.getHours())}:${pad2(hora.getMinutes())}`
+    : String(hora ?? '').slice(0, 5);
+  if (!date || !time) return null;
+  return { date, time, origen: String(row?.OrigenMarcaje ?? '') };
+}
+
+app.post('/api/marcajes', async (req: Request, res: Response) => {
+  const { startDate, endDate, usured } = req.body as MarcajesRequest;
+
+  if (!startDate || !endDate || !usured || usured.trim() === '') {
+    res.status(400).json({
+      success: false,
+      message: 'Los parámetros "startDate", "endDate" y "usured" son requeridos'
+    });
+    return;
+  }
+
+  try {
+    const query = buildMarcajesQuery({ fechaDesde: startDate, fechaHasta: endDate, usured });
+
+    const result = await executeQueryRaw(req.body as DbConnectionParams, query);
+    const rows = Array.isArray(result) && Array.isArray(result[0]) ? result[0] : (Array.isArray(result) ? result : []);
+
+    const data = rows.map(toMarcaje).filter((marcaje): marcaje is { date: string; time: string; origen: string } => marcaje !== null);
+
+    res.json({ success: true, data });
+  } catch (error: any) {
+    console.error('Marcajes Error:', error.message);
     res.status(500).json({
       success: false,
       message: error.message
