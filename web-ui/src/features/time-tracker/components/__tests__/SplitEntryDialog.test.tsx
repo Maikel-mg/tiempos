@@ -5,6 +5,12 @@ import userEvent from '@testing-library/user-event';
 import { SplitEntryDialog } from '../SplitEntryDialog';
 import type { TimeEntry } from '../../types';
 
+// El selector de Tarea de la segunda mitad trae procesos por red; aquí basta con
+// que exista y no dispare consultas.
+vi.mock('../../hooks/useProcessCache', () => ({
+  useProcessCache: () => ({ processes: [], loading: false, error: null, refresh: vi.fn() }),
+}));
+
 function makeEntry(overrides: Partial<TimeEntry> = {}): TimeEntry {
   return {
     id: 'entry-1',
@@ -60,7 +66,24 @@ describe('SplitEntryDialog', () => {
       // Sin tocar nada, ambas mitades heredan la descripción del Registro.
       firstDescription: 'Revisión',
       secondDescription: 'Revisión',
+      secondTask: null,
     });
+  });
+
+  it('no ofrece cambiar de Tarea cuando se divide un Registro guardado', () => {
+    renderDialog(makeEntry());
+
+    expect(screen.queryByText('Desarrollo')).not.toBeInTheDocument();
+  });
+
+  it('ofrece la Tarea de la segunda mitad cuando se divide el Timer activo', () => {
+    render(
+      <SplitEntryDialog open live entry={makeEntry()} onOpenChange={vi.fn()} onConfirm={vi.fn()} />,
+    );
+
+    // El selector arranca en la Tarea del Registro; cambiarla es lo que viaja en
+    // `secondTask` al confirmar.
+    expect(screen.getByRole('button', { name: /Desarrollo/ })).toBeInTheDocument();
   });
 
   it('arranca con la descripción del Registro en las dos mitades', () => {

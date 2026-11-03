@@ -66,6 +66,10 @@ function setup({
       if (timerState) timerState.description = value;
       return Promise.resolve();
     }),
+    updateTask: vi.fn((taskId: number, taskName: string) => {
+      if (timerState) Object.assign(timerState, { taskId, taskName });
+      return Promise.resolve();
+    }),
   };
 
   const utils = renderHook(() => {
@@ -286,7 +290,52 @@ describe('useSplitFlow', () => {
       expect(splitRunningTimer).toHaveBeenCalledWith(liveEntry, '10:30', 'Primera');
       expect(timer.updateStartTime).toHaveBeenCalledWith('2026-06-10T10:30:00.000Z');
       expect(timer.updateDescription).toHaveBeenCalledWith('Segunda');
+      expect(timer.updateTask).not.toHaveBeenCalled();
       expect(splitEntry).not.toHaveBeenCalled();
+    });
+
+    it('cambia la tarea del timer cuando la segunda mitad es de otra tarea', async () => {
+      const { result, splitRunningTimer, timer } = setup({
+        liveTimerEntry: liveEntry,
+        timerDescription: 'Revisión',
+      });
+      splitRunningTimer.mockResolvedValue({
+        ok: true,
+        first: makeEntry({ id: 'first-1' }),
+        timerStartTime: '2026-06-10T10:30:00.000Z',
+      });
+
+      act(() => {
+        result.current.handleSplitTimer();
+      });
+      await act(async () => {
+        await result.current.handleSplitConfirm({
+          entryId: 'timer-activo',
+          cutTime: '10:30',
+          firstDescription: 'Primera',
+          secondDescription: 'Segunda',
+          secondTask: { proceso: 77, nombre: 'Otra tarea' },
+        });
+      });
+
+      expect(timer.updateTask).toHaveBeenCalledWith(77, 'Otra tarea');
+    });
+
+    it('no toca la tarea del timer si se divide el Registro guardado', async () => {
+      const { result, splitEntry, timer } = setup({ liveTimerEntry: liveEntry });
+      splitEntry.mockResolvedValue(savedSplitOutcome(liveEntry));
+
+      await act(async () => {
+        await result.current.handleSplitConfirm({
+          entryId: liveEntry.id,
+          cutTime: '10:30',
+          firstDescription: 'Primera',
+          secondDescription: 'Segunda',
+          secondTask: { proceso: 77, nombre: 'Otra tarea' },
+        });
+      });
+
+      expect(timer.updateTask).not.toHaveBeenCalled();
     });
 
     it('no toca el timer si no hay una entrada en curso que dividir', async () => {
@@ -335,7 +384,7 @@ describe('useSplitFlow', () => {
       expect(timer.updateDescription).not.toHaveBeenCalled();
     });
 
-    it('deshacer borra la primera mitad y restaura descripción y anclaje del timer', async () => {
+    it('deshacer borra la primera mitad y restaura descripción, tarea y anclaje del timer', async () => {
       const { result, splitRunningTimer, deleteEntry, timer } = setup({
         liveTimerEntry: liveEntry,
         timerDescription: 'Revisión',
@@ -355,6 +404,7 @@ describe('useSplitFlow', () => {
           cutTime: '10:30',
           firstDescription: 'Primera',
           secondDescription: 'Segunda',
+          secondTask: { proceso: 77, nombre: 'Otra tarea' },
         });
       });
       await act(async () => {
@@ -363,6 +413,7 @@ describe('useSplitFlow', () => {
 
       expect(deleteEntry).toHaveBeenCalledWith('first-1');
       expect(timer.updateDescription).toHaveBeenCalledWith('Revisión');
+      expect(timer.updateTask).toHaveBeenLastCalledWith(42, 'Diseño API');
       expect(timer.updateStartTime).toHaveBeenLastCalledWith('2026-06-10T09:00:00.000Z');
       expect(toast.success).toHaveBeenCalledWith('División deshecha');
     });

@@ -41,6 +41,8 @@ export interface SplitPreviewProps {
   onSecondDescriptionChange: (value: string) => void;
   onQuickCut: (ratio: number) => void;
   onNudge: (delta: number) => void;
+  /** Selector de Tarea de la segunda mitad; sólo cuando se divide el Timer activo. */
+  secondTaskField?: React.ReactNode;
 }
 
 export function SplitPreview({
@@ -56,6 +58,7 @@ export function SplitPreview({
   onSecondDescriptionChange,
   onQuickCut,
   onNudge,
+  secondTaskField,
 }: SplitPreviewProps) {
   const cut = cutTimeFromMinutes(cutMinutes);
 
@@ -97,6 +100,7 @@ export function SplitPreview({
             placeholder="Descripción de la segunda mitad"
             className="mt-2 h-8 text-sm"
           />
+          {secondTaskField}
         </div>
       </div>
 

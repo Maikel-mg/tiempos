@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter } from '@/components/ui/dialog';
 import { useSplitCut } from '../hooks/useSplitCut';
 import type { SplitCut } from '../hooks/useSplitCut';
+import { ProcessSelectorButton } from './ProcessSelectorButton';
 import type { TimeEntry } from '../types';
 import { SplitCutHeader } from './SplitCutHeader';
 import { SplitPreview, formatMinutes } from './SplitPreview';
@@ -103,6 +104,16 @@ export function SplitEntryDialog({ open, entry, live = false, onOpenChange, onCo
             onSecondDescriptionChange={cut.setSecondDescription}
             onQuickCut={(presetRatio) => cut.setCutMinutes(cut.clamp(cut.startMinutes + cut.span * presetRatio))}
             onNudge={cut.nudge}
+            // Al dividir el Timer, la mitad que sigue puede ser de otra tarea.
+            secondTaskField={
+              live ? (
+                <ProcessSelectorButton
+                  value={cut.secondTask ?? entry.proceso ?? { proceso: entry.taskId, nombre: entry.taskName }}
+                  onChange={cut.setSecondTask}
+                  className="mt-2 w-full"
+                />
+              ) : undefined
+            }
           />
 
           {!cut.availability.splittable && <p className="text-sm text-destructive">{cut.availability.reason}</p>}

@@ -98,6 +98,16 @@ export async function updateTimerDescription(description: string): Promise<void>
   }
 }
 
+export async function updateTimerTask(taskId: number, taskName: string): Promise<void> {
+  try {
+    await service.updateTimerTask(taskId, taskName);
+    runningTimer.retask(taskId, taskName);
+  } catch (error) {
+    console.error('Error updating timer task:', error);
+    throw error;
+  }
+}
+
 /**
  * Starts the timer on the task of the most recently created entry.
  *

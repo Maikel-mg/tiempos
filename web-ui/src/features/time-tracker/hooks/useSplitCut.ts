@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { cutTimeFromMinutes, planSplit, splitAvailability, toHHMM } from '../lib/splitEntry';
 import { useSplitDescriptions } from './useSplitDescriptions';
-import type { TimeEntry } from '../types';
+import type { Proceso, TimeEntry } from '../types';
 
 /**
  * Estado y reglas del diálogo de "Dividir": dónde está el corte, si el plan es
@@ -23,6 +23,11 @@ export interface SplitCut {
   cutTime: string;
   firstDescription: string;
   secondDescription: string;
+  /**
+   * Tarea de la mitad que sigue corriendo, cuando se divide el Timer en curso y se
+   * ha elegido otra. `null` o ausente = hereda la del Registro.
+   */
+  secondTask?: Proceso | null;
 }
 
 export interface UseSplitCutParams {
@@ -37,6 +42,7 @@ export function useSplitCut({ open, entry, onConfirm, onOpenChange }: UseSplitCu
   const [dragging, setDragging] = useState(false);
   const [draft, setDraft] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [secondTask, setSecondTask] = useState<Proceso | null>(null);
   const descriptions = useSplitDescriptions(open, entry?.description);
   const cancelEditRef = useRef(false);
   const barRef = useRef<HTMLDivElement>(null);
@@ -61,6 +67,7 @@ export function useSplitCut({ open, entry, onConfirm, onOpenChange }: UseSplitCu
     setDragging(false);
     setDraft(null);
     setIsSubmitting(false);
+    setSecondTask(null);
     const frame = requestAnimationFrame(() => barRef.current?.focus());
     return () => cancelAnimationFrame(frame);
   }, [open, entry, clamp, startMinutes, span]);
@@ -113,6 +120,7 @@ export function useSplitCut({ open, entry, onConfirm, onOpenChange }: UseSplitCu
         cutTime: toHHMM(cutMinutes),
         firstDescription: descriptions.first,
         secondDescription: descriptions.second,
+        secondTask,
       });
     } catch {
       // Quien confirma ya avisa del fallo; dejamos el diálogo abierto para no
@@ -122,7 +130,7 @@ export function useSplitCut({ open, entry, onConfirm, onOpenChange }: UseSplitCu
       setIsSubmitting(false);
     }
     onOpenChange(false);
-  }, [isValid, isSubmitting, entry, draft, cutMinutes, descriptions.first, descriptions.second, onConfirm, onOpenChange]);
+  }, [isValid, isSubmitting, entry, draft, cutMinutes, descriptions.first, descriptions.second, secondTask, onConfirm, onOpenChange]);
 
   /** Atajos del diálogo: las flechas mueven el corte, M lo centra, E lo escribe. */
   const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
@@ -181,6 +189,8 @@ export function useSplitCut({ open, entry, onConfirm, onOpenChange }: UseSplitCu
     setFirstDescription: descriptions.setFirst,
     secondDescription: descriptions.second,
     setSecondDescription: descriptions.setSecond,
+    secondTask,
+    setSecondTask,
     startMinutes,
     endMinutes,
     span,

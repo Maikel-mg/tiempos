@@ -73,6 +73,7 @@ function mockTimer(timerState: TimerState | null, elapsed: number, updateDescrip
     cancel: vi.fn(),
     updateStartTime: vi.fn(),
     updateDescription,
+    updateTask: vi.fn(),
   });
   return updateDescription;
 }

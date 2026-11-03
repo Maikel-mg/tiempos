@@ -77,6 +77,7 @@ function setupMocks(entries: TimeEntry[]) {
     cancel: vi.fn(),
     updateStartTime: vi.fn(),
     updateDescription: vi.fn(),
+    updateTask: vi.fn(),
   });
 
   vi.mocked(useTimeEntries).mockReturnValue({
@@ -258,6 +259,7 @@ describe('TimeTrackingPage row shortcuts target the highlighted row', () => {
       cancel: vi.fn(),
       updateStartTime: vi.fn(),
       updateDescription: vi.fn(),
+      updateTask: vi.fn(),
     });
 
     renderWithProviders(<TimeTrackingPage />);

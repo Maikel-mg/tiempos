@@ -324,6 +324,20 @@ export class TimeTrackingService {
   }
 
   /**
+   * Cambia la tarea del temporizador en ejecución.
+   *
+   * Lo usa dividir el Timer en curso cuando la mitad que sigue corriendo es de
+   * otra tarea. La hora de inicio ya se re-ancló al corte, así que la tarea nueva
+   * describe exactamente el tiempo que le queda por delante.
+   */
+  async updateTimerTask(taskId: number, taskName: string): Promise<void> {
+    const state = await this.storage.getTimerState();
+    if (!state || !state.isRunning) return;
+
+    await this.storage.saveTimerState({ ...state, taskId, taskName });
+  }
+
+  /**
    * Cancela el temporizador sin crear un registro.
    */
   async cancelTimer(): Promise<void> {

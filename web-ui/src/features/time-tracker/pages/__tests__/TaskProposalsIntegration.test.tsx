@@ -110,6 +110,7 @@ function setupMocks(entries: TimeEntry[]) {
     cancel: vi.fn(),
     updateStartTime: vi.fn(),
     updateDescription: vi.fn(),
+    updateTask: vi.fn(),
   });
 
   vi.mocked(useTimeEntries).mockReturnValue({

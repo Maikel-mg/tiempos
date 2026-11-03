@@ -89,6 +89,14 @@ export const runningTimer = {
     emit();
   },
 
+  /** Changes the running timer's task in place (the half that keeps running after a split). */
+  retask(taskId: number, taskName: string): void {
+    if (!snapshot.isRunning) return;
+    if (snapshot.taskId === taskId && snapshot.taskName === taskName) return;
+    snapshot = { ...snapshot, taskId, taskName };
+    emit();
+  },
+
   stop(): void {
     if (!snapshot.isRunning) return;
     snapshot = STOPPED;

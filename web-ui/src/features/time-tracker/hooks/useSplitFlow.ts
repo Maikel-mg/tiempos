@@ -15,6 +15,8 @@ export interface SplitTimerPort {
   timerState: TimerState | null;
   updateStartTime: (newStartTime: string) => Promise<void>;
   updateDescription: (description: string) => Promise<void>;
+  /** Cambia la tarea del timer en curso (la mitad que sigue tras dividir). */
+  updateTask: (taskId: number, taskName: string) => Promise<void>;
 }
 
 export interface UseSplitFlowParams {
@@ -144,6 +146,9 @@ export function useSplitFlow({
       if ((timer.timerState?.description ?? '') !== (undo.original.description ?? '')) {
         await timer.updateDescription(undo.original.description ?? '');
       }
+      if (timer.timerState?.taskId !== undo.original.taskId) {
+        await timer.updateTask(undo.original.taskId, undo.original.taskName);
+      }
     } else if (undo.firstId) {
       await updateEntry(undo.firstId, {
         endTime: undo.original.endTime,
@@ -174,7 +179,7 @@ export function useSplitFlow({
    * re-ancla al punto de corte, de modo que la segunda mitad sigue corriendo.
    */
   const handleSplitConfirm = useCallback(
-    async ({ entryId, cutTime, firstDescription, secondDescription }: SplitCut) => {
+    async ({ entryId, cutTime, firstDescription, secondDescription, secondTask }: SplitCut) => {
       const restoringTimerStart = splittingTimer ? timer.timerState?.startTime : undefined;
 
       let undo: SplitUndo;
@@ -192,6 +197,10 @@ export function useSplitFlow({
         // La segunda mitad ES el timer: su descripción se edita sobre él.
         if (secondDescription !== (target.description ?? '')) {
           await timer.updateDescription(secondDescription);
+        }
+        // Y su tarea también: el tiempo que queda por delante es de otra tarea.
+        if (secondTask && secondTask.proceso !== target.taskId) {
+          await timer.updateTask(secondTask.proceso, secondTask.nombre);
         }
         undo = {
           firstId: outcome.first.id,

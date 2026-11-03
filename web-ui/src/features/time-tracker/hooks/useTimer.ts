@@ -80,6 +80,13 @@ export function useTimer() {
     [],
   );
 
+  const updateTask = useCallback(
+    async (taskId: number, taskName: string): Promise<void> => {
+      await timerActions.updateTimerTask(taskId, taskName);
+    },
+    [],
+  );
+
   const cancel = useCallback(() => timerActions.cancelTimer(), []);
 
   return {
@@ -90,6 +97,7 @@ export function useTimer() {
     stop,
     updateStartTime,
     updateDescription,
+    updateTask,
     cancel,
   };
 }

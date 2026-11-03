@@ -42,6 +42,7 @@ function mockTimer(overrides: Partial<TimerMock> = {}): TimerMock {
     stop: vi.fn().mockResolvedValue(null),
     updateStartTime: vi.fn().mockResolvedValue(undefined),
     updateDescription: vi.fn().mockResolvedValue(undefined),
+    updateTask: vi.fn(),
     cancel: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };

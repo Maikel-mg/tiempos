@@ -54,6 +54,7 @@ function setupTimerRunning(elapsed = 2557) {
     cancel: vi.fn(),
     updateStartTime: vi.fn(),
     updateDescription: vi.fn(),
+    updateTask: vi.fn(),
   });
 
   vi.mocked(useTimeEntries).mockReturnValue({
@@ -82,6 +83,7 @@ function setupTimerNotRunning(entries: TimeEntry[] = []) {
     cancel: vi.fn(),
     updateStartTime: vi.fn(),
     updateDescription: vi.fn(),
+    updateTask: vi.fn(),
   });
 
   vi.mocked(useTimeEntries).mockReturnValue({
