@@ -38,7 +38,11 @@ export function TimelineLaneRow({
   return (
     <div className="flex border-b last:border-b-0">
       <div className="flex w-48 shrink-0 items-center justify-between gap-2 border-r px-3 py-2">
-        <span className={`min-w-0 truncate text-xs font-medium ${color.text}`} title={lane.taskName}>
+        <span
+          className={`min-w-0 truncate text-xs font-medium ${color.text}`}
+          style={color.style}
+          title={lane.taskName}
+        >
           {lane.taskName}
         </span>
         <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
@@ -85,7 +89,10 @@ export function TimelineLaneRow({
                   maxWidth: `${100 / days.length}%`,
                 }}
               >
-                <span className={`flex h-full items-center justify-center rounded-md ${color.bar} px-1`}>
+                <span
+                  className={`flex h-full items-center justify-center rounded-md ${color.bar} px-1`}
+                  style={color.style}
+                >
                   {formatDurationShort(seconds)}
                 </span>
               </button>

@@ -30,7 +30,11 @@ export function TimelineLaneBlock({ entry, axis, isLive, isActive, actions }: Ti
       className={`group absolute inset-y-1.5 overflow-hidden rounded-md px-2 text-left text-[10px] font-medium text-white transition hover:brightness-110 ${color.bar} ${
         isLive ? 'border-2 border-dashed border-red-300 ring-2 ring-red-500/50' : ''
       } ${isActive ? 'ring-2 ring-primary ring-offset-1 ring-offset-background' : ''}`}
-      style={{ left: `${axis.pct(start)}%`, width: `${Math.max(1.5, axis.pct(end) - axis.pct(start))}%` }}
+      style={{
+        ...color.style,
+        left: `${axis.pct(start)}%`,
+        width: `${Math.max(1.5, axis.pct(end) - axis.pct(start))}%`,
+      }}
     >
       <span className="block truncate pr-4">
         {entry.startTime}–{entry.endTime}

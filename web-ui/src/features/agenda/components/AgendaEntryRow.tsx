@@ -37,7 +37,7 @@ export function AgendaEntryRow({ entry, isLive, isActive, actions }: AgendaEntry
         <p className="font-mono text-[11px] tabular-nums leading-tight text-muted-foreground">{entry.endTime}</p>
       </div>
 
-      <div className={`min-w-0 flex-1 border-l-2 pl-3 ${color.accent}`}>
+      <div className={`min-w-0 flex-1 border-l-2 pl-3 ${color.accent}`} style={color.style}>
         <div className="flex items-baseline justify-between gap-3">
           <p className="truncate font-medium leading-snug">
             {entry.taskName}

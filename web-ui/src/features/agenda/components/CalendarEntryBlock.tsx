@@ -40,7 +40,7 @@ export function CalendarEntryBlock({ entry, axis, isLive, isActive, actions }: C
       className={`group absolute inset-x-1 z-10 overflow-hidden rounded-md border px-1.5 py-1 text-left transition hover:z-30 hover:ring-2 hover:ring-ring ${color.block} ${
         isLive ? 'border-2 border-dashed border-red-500/70 ring-1 ring-red-500/20' : ''
       } ${isActive ? 'z-30 ring-2 ring-primary ring-offset-1 ring-offset-background' : ''}`}
-      style={{ top: axis.topOf(start, HOUR_PX), height: blockHeight }}
+      style={{ ...color.style, top: axis.topOf(start, HOUR_PX), height: blockHeight }}
     >
       <span className="block pr-5 font-mono text-[10px] leading-none opacity-70">
         {entry.startTime}–{entry.endTime}
