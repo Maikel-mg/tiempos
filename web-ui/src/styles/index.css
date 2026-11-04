@@ -45,25 +45,25 @@
   }
 
   .dark {
-    /* Precision dark — deep charcoal, warm amber accent */
-    --background: 230 12% 7%;        /* #101218 deep canvas */
+    /* Precision dark — charcoal canvas with a visible surface ladder */
+    --background: 230 12% 11%;       /* canvas */
     --foreground: 240 6% 93%;        /* #ececef ink */
-    --card: 230 10% 9%;              /* #15171e surface-1 */
+    --card: 230 11% 14%;             /* #1f222c surface-1 */
     --card-foreground: 240 6% 93%;
-    --popover: 230 10% 9%;
+    --popover: 230 11% 14%;
     --popover-foreground: 240 6% 93%;
     --primary: 24 80% 52%;           /* #e88a2e warm amber — action, focus */
     --primary-foreground: 0 0% 100%;
-    --secondary: 230 10% 11%;        /* #1a1d26 surface-2 */
+    --secondary: 230 10% 17%;        /* surface-2 */
     --secondary-foreground: 240 6% 93%;
-    --muted: 230 10% 11%;            /* #1a1d26 surface-2 */
-    --muted-foreground: 225 6% 52%;  /* #7c8194 ink-subtle */
-    --accent: 230 10% 11%;           /* surface-2 for hover */
+    --muted: 230 10% 17%;            /* surface-2 */
+    --muted-foreground: 225 7% 62%;  /* ink-subtle */
+    --accent: 230 10% 19%;           /* surface-2 hover */
     --accent-foreground: 240 6% 93%;
     --destructive: 0 65% 52%;
     --destructive-foreground: 0 0% 100%;
-    --border: 230 10% 13%;           /* #1f222c hairline */
-    --input: 230 10% 9%;             /* surface-1 for inputs */
+    --border: 230 9% 23%;            /* hairline, visible at low ambient light */
+    --input: 230 10% 15%;            /* surface-1 for inputs */
     --ring: 24 80% 52%;              /* amber focus ring */
     --radius: 0.625rem;
     /* Semantic — desaturated for dark */
