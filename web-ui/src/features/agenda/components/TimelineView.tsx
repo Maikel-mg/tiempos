@@ -1,15 +1,24 @@
-import { formatDayShort, taskLanes, todayKey, totalSeconds } from '../lib/planRange';
 import { formatDurationShort } from '@/lib/format';
+import { computeDailyBalance } from '@/features/time-tracker/lib/balance';
 import { getDailyTarget } from '@/features/time-tracker/lib/schedule';
-
-/** Verde si se alcanza el objetivo del día o de la semana, ámbar si falta. */
-function goalColor(seconds: number, target: number): string {
-  if (target <= 0) return 'text-muted-foreground';
-  return seconds >= target ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400';
-}
 import { useHourAxis } from '../hooks/useHourAxis';
+import { formatDayShort, taskLanes, todayKey, totalSeconds } from '../lib/planRange';
 import type { PlanViewProps } from '../types';
 import { TimelineLaneRow } from './TimelineLaneRow';
+
+/**
+ * Estado de un total frente a su objetivo: clase de texto y etiqueta accesible.
+ * `balance` es lo trabajado menos el objetivo, sin los Registros de Permiso,
+ * igual que el agrupado del time tracker; con objetivo 0 no hay nada que cumplir.
+ */
+function goalTone(balance: number, target: number): { className: string; label: string } {
+  if (target <= 0) return { className: 'text-muted-foreground', label: 'sin objetivo' };
+  const reached = balance >= 0;
+  return {
+    className: reached ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400',
+    label: `${reached ? 'cumple' : 'no cumple'} el objetivo de ${formatDurationShort(target)}`,
+  };
+}
 
 interface TimelineViewProps extends PlanViewProps {
   /** Abre el compositor con la Tarea del carril ya elegida. */
@@ -29,10 +38,22 @@ export function TimelineView({ entries, days, mode, workdayStart, ...laneProps }
   const axis = useHourAxis(entries, workdayStart);
   const today = todayKey();
 
-  const secondsByDay = new Map(days.map((day) => [day, totalSeconds(entries.filter((e) => e.date === day))]));
-  const targetByDay = new Map(days.map((day) => [day, getDailyTarget(day) * 3600]));
+  const totals = days.map((day) => {
+    const target = getDailyTarget(day) * 3600;
+    const balance = computeDailyBalance(entries, day);
+    return {
+      day,
+      target,
+      balance,
+      tone: goalTone(balance, target),
+      // El número muestra todo lo registrado; el color, lo trabajado sin Permisos.
+      seconds: totalSeconds(entries.filter((entry) => entry.date === day)),
+    };
+  });
   const weekSeconds = totalSeconds(entries);
-  const weekTarget = [...targetByDay.values()].reduce((sum, target) => sum + target, 0);
+  const weekTarget = totals.reduce((sum, total) => sum + total.target, 0);
+  const weekBalance = totals.reduce((sum, total) => sum + total.balance, 0);
+  const weekTone = goalTone(weekBalance, weekTarget);
 
   if (lanes.length === 0) {
     return (
@@ -85,29 +106,24 @@ export function TimelineView({ entries, days, mode, workdayStart, ...laneProps }
         <div className="flex border-t bg-muted/20 font-mono text-[10px] text-muted-foreground">
           <div className="flex w-48 shrink-0 items-center justify-between gap-2 border-r px-3 py-1.5">
             <span className="font-sans font-semibold uppercase tracking-wider text-muted-foreground">Total</span>
-            <span
-              className={goalColor(weekSeconds, weekTarget)}
-              title={`Objetivo de la semana: ${formatDurationShort(weekTarget)}`}
-            >
+            <span className={weekTone.className} title={`Objetivo de la semana: ${formatDurationShort(weekTarget)}`}>
               {formatDurationShort(weekSeconds)}
+              <span className="sr-only">{weekTone.label}</span>
             </span>
           </div>
           <div className="flex flex-1">
-            {days.map((day, index) => {
-              const seconds = secondsByDay.get(day) ?? 0;
-              const target = targetByDay.get(day) ?? 0;
-              return (
-                <div
-                  key={day}
-                  title={`${formatDayShort(day)} · objetivo ${formatDurationShort(target)}`}
-                  className={`flex flex-1 items-center justify-center py-1.5 ${
-                    index === 0 ? '' : 'border-l border-border/40'
-                  } ${goalColor(seconds, target)}`}
-                >
-                  {formatDurationShort(seconds)}
-                </div>
-              );
-            })}
+            {totals.map(({ day, seconds, target, tone }, index) => (
+              <div
+                key={day}
+                title={`${formatDayShort(day)} · objetivo ${formatDurationShort(target)}`}
+                className={`flex flex-1 items-center justify-center py-1.5 ${
+                  index === 0 ? '' : 'border-l border-border/40'
+                } ${tone.className}`}
+              >
+                {formatDurationShort(seconds)}
+                <span className="sr-only">{tone.label}</span>
+              </div>
+            ))}
           </div>
         </div>
       )}
