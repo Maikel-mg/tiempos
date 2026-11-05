@@ -1,4 +1,12 @@
-import { formatDayShort, taskLanes, todayKey } from '../lib/planRange';
+import { formatDayShort, taskLanes, todayKey, totalSeconds } from '../lib/planRange';
+import { formatDurationShort } from '@/lib/format';
+import { getDailyTarget } from '@/features/time-tracker/lib/schedule';
+
+/** Verde si se alcanza el objetivo del día o de la semana, ámbar si falta. */
+function goalColor(seconds: number, target: number): string {
+  if (target <= 0) return 'text-muted-foreground';
+  return seconds >= target ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400';
+}
 import { useHourAxis } from '../hooks/useHourAxis';
 import type { PlanViewProps } from '../types';
 import { TimelineLaneRow } from './TimelineLaneRow';
@@ -20,6 +28,11 @@ export function TimelineView({ entries, days, mode, workdayStart, ...laneProps }
   const lanes = taskLanes(entries);
   const axis = useHourAxis(entries, workdayStart);
   const today = todayKey();
+
+  const secondsByDay = new Map(days.map((day) => [day, totalSeconds(entries.filter((e) => e.date === day))]));
+  const targetByDay = new Map(days.map((day) => [day, getDailyTarget(day) * 3600]));
+  const weekSeconds = totalSeconds(entries);
+  const weekTarget = [...targetByDay.values()].reduce((sum, target) => sum + target, 0);
 
   if (lanes.length === 0) {
     return (
@@ -67,6 +80,37 @@ export function TimelineView({ entries, days, mode, workdayStart, ...laneProps }
       {lanes.map((lane) => (
         <TimelineLaneRow key={lane.taskName} lane={lane} days={days} mode={mode} axis={axis} {...laneProps} />
       ))}
+
+      {mode === 'week' && (
+        <div className="flex border-t bg-muted/20 font-mono text-[10px] text-muted-foreground">
+          <div className="flex w-48 shrink-0 items-center justify-between gap-2 border-r px-3 py-1.5">
+            <span className="font-sans font-semibold uppercase tracking-wider text-muted-foreground">Total</span>
+            <span
+              className={goalColor(weekSeconds, weekTarget)}
+              title={`Objetivo de la semana: ${formatDurationShort(weekTarget)}`}
+            >
+              {formatDurationShort(weekSeconds)}
+            </span>
+          </div>
+          <div className="flex flex-1">
+            {days.map((day, index) => {
+              const seconds = secondsByDay.get(day) ?? 0;
+              const target = targetByDay.get(day) ?? 0;
+              return (
+                <div
+                  key={day}
+                  title={`${formatDayShort(day)} · objetivo ${formatDurationShort(target)}`}
+                  className={`flex flex-1 items-center justify-center py-1.5 ${
+                    index === 0 ? '' : 'border-l border-border/40'
+                  } ${goalColor(seconds, target)}`}
+                >
+                  {formatDurationShort(seconds)}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
