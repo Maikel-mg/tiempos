@@ -358,6 +358,18 @@ describe('AgendaPage — Timer activo', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
+  it('no se puede seleccionar con el teclado', () => {
+    mockRunningTimer();
+    const { container } = renderPage();
+
+    for (const key of ['ArrowDown', 'ArrowDown', 'ArrowUp', 'ArrowDown']) {
+      fireEvent.keyDown(window, { key });
+      const activa = Array.from(container.querySelectorAll('[data-plan-active="true"]'));
+      expect(activa).toHaveLength(1);
+      expect(activa[0].textContent).not.toContain('Timer en curso');
+    }
+  });
+
   it('se puede dividir desde la fila del día sin detener el Timer', async () => {
     mockRunningTimer();
     renderPage();
@@ -556,6 +568,22 @@ describe('AgendaPage — sincronizar el día', () => {
 
     // El título del panel cuenta lo que se va a sincronizar.
     expect(await screen.findByText(/Sincronizar 1 registros/i)).toBeInTheDocument();
+  });
+
+  it('excluye los Registros de tiempo con Tarea local', async () => {
+    mockSession([
+      entry('a', '2026-06-10', '09:00', '10:00', 'En la base de datos'),
+      { ...entry('b', '2026-06-10', '10:00', '11:00', 'Tarea local'), taskId: 0 },
+    ]);
+    renderPage();
+
+    const boton = screen.getByRole('button', { name: /Sincronizar día/i });
+    expect(boton.getAttribute('title')).toContain('1 con Tarea local');
+
+    await userEvent.click(boton);
+
+    // Solo viaja el Registro con Tarea existente (1 de 2); el local queda bloqueado.
+    expect(await screen.findByText(/Sincronizar 1 de 2 pendientes/i)).toBeInTheDocument();
   });
 });
 
