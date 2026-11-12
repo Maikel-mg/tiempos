@@ -273,23 +273,6 @@ export class IndexedDBStorage implements StorageStrategy {
     });
   }
 
-  // Process Recents
-  async addRecentProcess(proceso: number): Promise<void> {
-    await db.processRecents.put({ proceso, lastUsedAt: Date.now() }, proceso);
-  }
-
-  async getRecentProcesses(): Promise<Proceso[]> {
-    const recents = await db.processRecents
-      .orderBy('lastUsedAt')
-      .reverse()
-      .toArray();
-    const results: Proceso[] = [];
-    for (const r of recents) {
-      const p = await db.processes.get(r.proceso);
-      if (p) results.push(p);
-    }
-    return results;
-  }
 }
 
 // Exportar instancia singleton
