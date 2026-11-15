@@ -68,6 +68,15 @@ def cubierto(fichero, patrones):
     return False
 
 
+def ruta(linea_status):
+    """Ruta de una linea de `git status --porcelain` (XY + espacio + ruta).
+
+    git() quita el espacio inicial de la primera linea al hacer strip() sobre toda la salida,
+    asi que se recorta desde el caracter 2, no desde el 3.
+    """
+    return linea_status[2:].strip()
+
+
 def metrica(clave, valor):
     subprocess.run([sys.executable, str(FABRICA / "herramientas" / "obs.py"), "metrica",
                     str(RUN), "05-verificar", clave, str(valor)], capture_output=True)
@@ -99,12 +108,14 @@ def main():
     sucio = [l for l in git("status", "--porcelain").splitlines() if l.strip()]
     base_sucio = set()
     if (RUN / "baseline-status.txt").exists():
-        base_sucio = {l for l in (RUN / "baseline-status.txt").read_text(encoding="utf-8").splitlines() if l.strip()}
-    nuevos = [l for l in sucio if l not in base_sucio]
+        base_sucio = {l.strip() for l in
+                      (RUN / "baseline-status.txt").read_text(encoding="utf-8").splitlines()
+                      if l.strip()}
+    nuevos = [l for l in sucio if l.strip() not in base_sucio]
     if nuevos:
         devolver(["hay cambios sin commitear que no estaban al empezar: " + ", ".join(
-            l[3:] for l in nuevos[:10]) + ". Commitea lo que hayas tocado e intenta no dejar nada suelto."])
-    del_radio = [l[3:] for l in sucio if l[3:] in radio_de(plan)]
+            ruta(l) for l in nuevos[:10]) + ". Commitea lo que hayas tocado y deja el resto como estaba."])
+    del_radio = [ruta(l) for l in sucio if ruta(l) in radio_de(plan)]
     if del_radio:
         devolver(["ficheros del radio con cambios sin commitear: " + ", ".join(del_radio)])
 
@@ -189,6 +200,10 @@ def autotest():
     assert not cubierto("web-ui/src/features/agenda/components/deep/TotalRow.tsx", patrones)
     assert not cubierto("server.ts", patrones)
     assert radio_de(Path("no-existe.md")) == []
+    assert ruta(" M AGENTS.md") == "AGENTS.md"
+    assert ruta("M AGENTS.md") == "AGENTS.md"          # primera linea, ya sin el espacio inicial
+    assert ruta("?? .claude/") == ".claude/"
+    assert ruta("AM src/x.ts") == "src/x.ts"
     assert "fabrica/runs/x".startswith(PROHIBIDOS)
     print("autotest 05-verificar: OK")
 
