@@ -87,6 +87,68 @@ export function computeRangeBalance(
   return computeBanco(inRange, scheduleFn);
 }
 
+/** Una fila del desglose de balance: un día con registros (o con timer en marcha). */
+export interface BalanceRow {
+  /** YYYY-MM-DD */
+  date: string;
+  /** Segundos trabajados (sin registros recuperables). */
+  worked: number;
+  /** Objetivo del día en segundos. */
+  target: number;
+  /** worked - target. */
+  delta: number;
+}
+
+/**
+ * Desglose del balance de un rango: filas por día y su total.
+ *
+ * `total` es siempre la suma de `rows`, de modo que la card y el desglose no
+ * pueden divergir. Sólo aparecen días con registros; el timer en marcha se
+ * pliega en la fila de hoy (creándola si hace falta) únicamente cuando hoy cae
+ * dentro del rango. Los días pasados sin registros no son deuda.
+ * @param entries - entries históricas (se filtran por rango; sin recuperables)
+ * @param start - fecha inicio inclusiva (YYYY-MM-DD); vacío = sin límite
+ * @param end - fecha fin inclusiva (YYYY-MM-DD); vacío = sin límite
+ * @param elapsed - segundos del timer en marcha (0 si no corre)
+ * @param today - fecha de hoy (YYYY-MM-DD)
+ * @param scheduleFn - función para resolver el target diario
+ */
+export function computeBalanceBreakdown(
+  entries: TimeEntry[],
+  start: string,
+  end: string,
+  elapsed = 0,
+  today: string = toLocalDateString(),
+  scheduleFn: (date: string) => number = getDailyTarget,
+): { rows: BalanceRow[]; total: number } {
+  const workedByDate = new Map<string, number>();
+  for (const entry of entries) {
+    if (start && entry.date < start) continue;
+    if (end && entry.date > end) continue;
+    // Los recuperables no suman trabajado, pero su día cuenta como el de
+    // computeBanco (un permiso consume el objetivo del día).
+    const previous = workedByDate.get(entry.date) ?? 0;
+    workedByDate.set(entry.date, entry.recoverable ? previous : previous + entry.duration);
+  }
+
+  // El timer sólo cuenta si hoy está dentro del rango: fuera, no altera nada.
+  const todayInRange =
+    (!start || today >= start) && (!end || today <= end);
+  if (elapsed > 0 && todayInRange) {
+    workedByDate.set(today, (workedByDate.get(today) ?? 0) + elapsed);
+  }
+
+  const rows: BalanceRow[] = Array.from(workedByDate.entries())
+    .map(([date, worked]) => {
+      const target = scheduleFn(date) * 3600;
+      return { date, worked, target, delta: worked - target };
+    })
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  const total = rows.reduce((sum, row) => sum + row.delta, 0);
+  return { rows, total };
+}
+
 /**
  * Asigna el banco a permisos cronológicamente (más antiguo primero).
  * Permite asignación parcial.

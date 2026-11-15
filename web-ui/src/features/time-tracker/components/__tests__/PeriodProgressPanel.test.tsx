@@ -350,4 +350,34 @@ describe('PeriodProgressPanel', () => {
     expect(screen.queryByText('Lun 8 Jun')).not.toBeInTheDocument();
     expect(screen.getByText('Mar 9 Jun')).toBeInTheDocument();
   });
+
+  it('keeps the balance card and the drilldown total identical with only a running timer', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-06-11T14:00:00'));
+    const periodRange = {
+      start: new Date('2026-06-08T00:00:00'),
+      end: new Date('2026-06-14T23:59:59'),
+      startStr: '2026-06-08',
+      endStr: '2026-06-14',
+    };
+
+    render(
+      <PeriodProgressPanel
+        entries={[]}
+        period="week"
+        periodRange={periodRange}
+        timerElapsed={14400}
+        todayInRange
+      />,
+    );
+
+    // Sin registros: el timer se pliega en hoy con el objetivo del día → 4h - 8.25h
+    expect(screen.getByTestId('segment-balance-value')).toHaveTextContent('4:15');
+    expect(screen.getByText('horas en contra')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('segment-balance'));
+
+    expect(screen.getByTestId('balance-total')).toHaveTextContent('-4:15');
+    expect(screen.getByText('Jue 11 Jun')).toBeInTheDocument();
+  });
 });
