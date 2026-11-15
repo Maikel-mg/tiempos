@@ -4,6 +4,7 @@
  */
 
 import { getDailyTarget } from './schedule';
+import { toLocalDateString } from './localDate';
 import type { TimeEntry } from '../types';
 
 /**
@@ -44,7 +45,7 @@ export function computeWeeklyBalance(
   for (let i = 0; i < 7; i++) {
     const day = new Date(monday);
     day.setDate(monday.getDate() + i);
-    const dateStr = day.toISOString().slice(0, 10);
+    const dateStr = toLocalDateString(day);
     total += computeDailyBalance(entries, dateStr, scheduleFn);
   }
   return total;
