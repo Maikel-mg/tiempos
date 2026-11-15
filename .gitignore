@@ -6,4 +6,7 @@ skills-lock.json
 .atl
 .windsurf/skills
 .env
-.factory/
+logs/
+
+# Fábrica: las ejecuciones no se commitean
+fabrica/runs/
