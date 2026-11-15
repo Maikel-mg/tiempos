@@ -15,7 +15,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-FABRICA = Path(__file__).resolve().parent.parent
+FABRICA = Path(__file__).resolve().parent        # fabrica/fabrica.py
 REPO = FABRICA.parent
 OBS = FABRICA / "herramientas" / "obs.py"
 PY = sys.executable
@@ -27,6 +27,12 @@ def obs(*args):
     p = subprocess.run([PY, str(OBS), *args], capture_output=True, text=True,
                        encoding="utf-8", errors="replace")
     return p.returncode, (p.stdout or "").strip()
+
+
+def obs_stream(*args):
+    """Como obs(), pero sin capturar: el humano ve el paso mientras corre."""
+    env = {**os.environ, "PYTHONIOENCODING": "utf-8"}
+    return subprocess.run([PY, str(OBS), *args], env=env).returncode
 
 
 def entorno(extra=None):
@@ -44,7 +50,8 @@ def parar(motivo):
 
 def codigo(nombre, script, *args, espera_ok=False):
     """Ejecuta un paso de codigo dentro de obs.py. Devuelve True si salio bien."""
-    cod, salida = obs("paso", str(RUN), nombre, "--", PY, str(FABRICA / "pasos" / script), *args)
+    print(f"\n── {nombre} " + "─" * (60 - len(nombre)))
+    cod = obs_stream("paso", str(RUN), nombre, "--", PY, str(FABRICA / "pasos" / script), *args)
     if cod == 0:
         return True
     # obs.py devuelve el mismo codigo del comando: 2 es la puerta-sql pidiendo el OK.
@@ -61,8 +68,8 @@ def agente(nombre, modelo=""):
     args = [PY, str(FABRICA / "pasos" / "agente.py"), nombre]
     if modelo:
         args.append(modelo)
-    cod, _ = obs("paso", str(RUN), nombre, "--", *args)
-    return cod == 0
+    print(f"\n── {nombre} (agente) " + "─" * (50 - len(nombre)))
+    return obs_stream("paso", str(RUN), nombre, "--", *args) == 0
 
 
 def main():
