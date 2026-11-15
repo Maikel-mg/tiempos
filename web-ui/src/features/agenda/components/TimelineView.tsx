@@ -1,4 +1,4 @@
-import { formatDurationShort } from '@/lib/format';
+import { formatDurationShort, formatSignedDuration } from '@/lib/format';
 import { computeDailyBalance } from '@/features/time-tracker/lib/balance';
 import { getDailyTarget } from '@/features/time-tracker/lib/schedule';
 import { useHourAxis } from '../hooks/useHourAxis';
@@ -31,7 +31,8 @@ interface TimelineViewProps extends PlanViewProps {
  * Filas por Tarea de mayor a menor tiempo. En modo día el eje horizontal son las
  * horas y cada Registro de tiempo se sitúa en su posición real; en modo semana
  * las columnas son los días laborables y cada celda resume el tiempo dedicado a
- * esa Tarea ese día.
+ * esa Tarea ese día. La fila de totales cierra la vista en ambos modos con lo
+ * registrado y el balance frente al objetivo del día.
  */
 export function TimelineView({ entries, days, mode, workdayStart, ...laneProps }: TimelineViewProps) {
   const lanes = taskLanes(entries);
@@ -102,31 +103,47 @@ export function TimelineView({ entries, days, mode, workdayStart, ...laneProps }
         <TimelineLaneRow key={lane.taskName} lane={lane} days={days} mode={mode} axis={axis} {...laneProps} />
       ))}
 
-      {mode === 'week' && (
-        <div className="flex border-t bg-muted/20 font-mono text-[10px] text-muted-foreground">
-          <div className="flex w-48 shrink-0 items-center justify-between gap-2 border-r px-3 py-1.5">
-            <span className="font-sans font-semibold uppercase tracking-wider text-muted-foreground">Total</span>
-            <span className={weekTone.className} title={`Objetivo de la semana: ${formatDurationShort(weekTarget)}`}>
+      <div className="flex border-t bg-muted/20 font-mono text-[10px] text-muted-foreground">
+        <div className="flex w-48 shrink-0 items-center justify-between gap-2 border-r px-3 py-1.5">
+          <span className="font-sans font-semibold uppercase tracking-wider text-muted-foreground">Total</span>
+          {mode === 'week' && (
+            <span
+              className={`whitespace-nowrap ${weekTone.className}`}
+              title={`Objetivo de la semana: ${formatDurationShort(weekTarget)}`}
+            >
               {formatDurationShort(weekSeconds)}
+              {weekTarget > 0 && (
+                <>
+                  <span className="mx-1 opacity-40">·</span>
+                  {formatSignedDuration(weekBalance)}
+                </>
+              )}
               <span className="sr-only">{weekTone.label}</span>
             </span>
-          </div>
-          <div className="flex flex-1">
-            {totals.map(({ day, seconds, target, tone }, index) => (
-              <div
-                key={day}
-                title={`${formatDayShort(day)} · objetivo ${formatDurationShort(target)}`}
-                className={`flex flex-1 items-center justify-center py-1.5 ${
-                  index === 0 ? '' : 'border-l border-border/40'
-                } ${tone.className}`}
-              >
-                {formatDurationShort(seconds)}
-                <span className="sr-only">{tone.label}</span>
-              </div>
-            ))}
-          </div>
+          )}
         </div>
-      )}
+        <div className="flex flex-1">
+          {totals.map(({ day, seconds, balance, target, tone }, index) => (
+            <div
+              key={day}
+              title={`${formatDayShort(day)} · objetivo ${formatDurationShort(target)}`}
+              className={`flex flex-1 items-center justify-center whitespace-nowrap py-1.5 ${
+                index === 0 ? '' : 'border-l border-border/40'
+              } ${tone.className}`}
+            >
+              {formatDurationShort(seconds)}
+              {/* Un día sin objetivo no tiene balance: solo se pinta lo registrado. */}
+              {target > 0 && (
+                <>
+                  <span className="mx-1 opacity-40">·</span>
+                  {formatSignedDuration(balance)}
+                </>
+              )}
+              <span className="sr-only">{tone.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

@@ -27,3 +27,8 @@ export function formatDurationShort(totalSeconds: number): string {
   if (h > 0) return `${h}h ${m}m`;
   return `${m}m`;
 }
+
+/** Duración con signo explícito: `+1h 15m`, `−2h 30m` (también `+0m`). */
+export function formatSignedDuration(totalSeconds: number): string {
+  return `${totalSeconds < 0 ? '−' : '+'}${formatDurationShort(Math.abs(totalSeconds))}`;
+}
