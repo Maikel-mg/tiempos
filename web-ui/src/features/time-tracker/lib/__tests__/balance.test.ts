@@ -4,6 +4,7 @@ import {
   computeWeeklyBalance,
   computeBanco,
   computeRangeBalance,
+  computeBalanceBreakdown,
   allocateRecovery,
 } from '../balance';
 import type { TimeEntry } from '../../types';
@@ -230,5 +231,69 @@ describe('allocateRecovery', () => {
   it('returns empty map for empty permiso list', () => {
     const result = allocateRecovery(14400, []);
     expect(result.size).toBe(0);
+  });
+});
+
+describe('computeBalanceBreakdown', () => {
+  // Jueves 2026-06-11 → target 8.25h = 29700s
+  const THU = '2026-06-11';
+  const TARGET = 29700;
+
+  it('folds the running timer into a today row when there are no entries', () => {
+    const { rows, total } = computeBalanceBreakdown([], THU, THU, 14400, THU);
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ date: THU, worked: 14400, target: TARGET });
+    expect(rows[0].delta).toBe(14400 - TARGET);
+    expect(total).toBe(rows.reduce((sum, row) => sum + row.delta, 0));
+  });
+
+  it('adds the running timer to today row without double counting', () => {
+    const entries = [makeEntry({ date: THU, duration: 14400 })];
+    const { rows, total } = computeBalanceBreakdown(entries, THU, THU, 14400, THU);
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0].worked).toBe(28800);
+    expect(rows[0].delta).toBe(28800 - TARGET);
+    expect(total).toBe(28800 - TARGET);
+  });
+
+  it('does not charge empty past days as debt', () => {
+    // Sólo el lunes tiene registros; martes/miércoles vacíos no generan fila.
+    const entries = [makeEntry({ date: '2026-06-08', duration: 32400 })];
+    const { rows, total } = computeBalanceBreakdown(entries, '2026-06-08', '2026-06-10', 0, THU);
+
+    expect(rows.map((row) => row.date)).toEqual(['2026-06-08']);
+    expect(total).toBe(32400 - TARGET);
+  });
+
+  it('includes both range bounds', () => {
+    const entries = [
+      makeEntry({ id: 'a', date: '2026-06-08', duration: 3600 }),
+      makeEntry({ id: 'b', date: '2026-06-09', duration: 3600 }),
+      makeEntry({ id: 'c', date: '2026-06-10', duration: 3600 }),
+    ];
+    const { rows } = computeBalanceBreakdown(entries, '2026-06-08', '2026-06-09', 0, THU);
+
+    expect(rows.map((row) => row.date)).toEqual(['2026-06-08', '2026-06-09']);
+  });
+
+  it('ignores the timer when today falls outside the range', () => {
+    const entries = [makeEntry({ date: '2026-06-08', duration: 32400 })];
+    const withTimer = computeBalanceBreakdown(entries, '2026-06-08', '2026-06-10', 7200, THU);
+    const withoutTimer = computeBalanceBreakdown(entries, '2026-06-08', '2026-06-10', 0, THU);
+
+    expect(withTimer).toEqual(withoutTimer);
+  });
+
+  it('skips recoverable entries and equals computeBanco over an unbounded range', () => {
+    const entries = [
+      makeEntry({ id: 'a', date: '2026-06-08', duration: 32400 }),
+      makeEntry({ id: 'b', date: '2026-06-09', duration: 25200 }),
+      makeEntry({ id: 'p', date: '2026-06-10', duration: 7200, recoverable: true }),
+    ];
+    const { total } = computeBalanceBreakdown(entries, '', '', 0, THU);
+
+    expect(total).toBe(computeBanco(entries));
   });
 });

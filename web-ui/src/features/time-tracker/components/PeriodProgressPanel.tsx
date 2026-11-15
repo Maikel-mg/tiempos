@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,15 +6,14 @@ import { Label } from '@/components/ui/label';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Clock, Calendar, Landmark, CalendarDays } from 'lucide-react';
-import { computeDailyBalance, computeWeeklyBalance, computeBanco, computeRangeBalance } from '../lib/balance';
+import { computeDailyBalance, computeWeeklyBalance } from '../lib/balance';
 import { getDailyTarget } from '../lib/schedule';
 import { resolvePeriodRange } from '../lib/periodRange';
 import type { ResolvedPeriodRange } from '../lib/periodRange';
 import { toLocalDateString } from '../lib/localDate';
+import { useBalanceBreakdown } from '../hooks/useBalanceBreakdown';
 import type { TimeEntry } from '../types';
 import type { PeriodType } from '@/components/shared/PeriodSelector';
-
-type BalanceScope = 'period' | 'global';
 
 export interface PeriodProgressPanelProps {
   entries: TimeEntry[];
@@ -202,72 +201,27 @@ export function PeriodProgressPanel({
   const workedMonth = monthTargetSec + monthlyBalance + elapsed;
   const monthlyRemaining = monthTargetSec - workedMonth;
 
-  const banco = useMemo(() => computeBanco(entries), [entries]);
-
-  const [balanceScope, setBalanceScope] = useState<BalanceScope>('period');
-  const periodBalance = useMemo(
-    () => computeRangeBalance(entries, range.startStr, range.endStr) + elapsed,
-    [entries, range.startStr, range.endStr, elapsed],
-  );
-  const globalBalance = useMemo(() => banco + elapsed, [banco, elapsed]);
-  const balance = balanceScope === 'period' ? periodBalance : globalBalance;
-
   const [balanceSheetOpen, setBalanceSheetOpen] = useState(false);
-  const [balanceFilter, setBalanceFilter] = useState<'all' | 'positive' | 'negative'>('all');
-  const [balanceFrom, setBalanceFrom] = useState(range.startStr);
-  const [balanceTo, setBalanceTo] = useState(range.endStr);
 
-  useEffect(() => {
-    if (balanceScope === 'period') {
-      setBalanceFrom(range.startStr);
-      setBalanceTo(range.endStr);
-    } else {
-      setBalanceFrom('');
-      setBalanceTo('');
-    }
-  }, [balanceScope, range.startStr, range.endStr]);
-
-  const breakdown = useMemo(() => {
-    // Group entries by date (exclude recoverable)
-    const dateMap = new Map<string, number>(); // date -> worked seconds
-    for (const entry of entries) {
-      if (entry.recoverable) continue;
-      const existing = dateMap.get(entry.date) || 0;
-      dateMap.set(entry.date, existing + entry.duration);
-    }
-    // Include the running timer as in-progress work for today
-    if (elapsed > 0) {
-      const existing = dateMap.get(todayStr) || 0;
-      dateMap.set(todayStr, existing + elapsed);
-    }
-    // Convert to array with target and delta
-    const items = Array.from(dateMap.entries()).map(([date, worked]) => {
-      const target = getDailyTarget(date) * 3600;
-      return {
-        date,
-        worked,
-        target,
-        delta: worked - target,
-      };
-    });
-    // Sort by date ascending
-    items.sort((a, b) => a.date.localeCompare(b.date));
-    return items;
-  }, [entries, elapsed, todayStr]);
-
-  const filteredBreakdown = useMemo(() => {
-    let items = breakdown;
-    if (balanceFrom) items = items.filter((item) => item.date >= balanceFrom);
-    if (balanceTo) items = items.filter((item) => item.date <= balanceTo);
-    if (balanceFilter === 'positive') return items.filter((item) => item.delta > 0);
-    if (balanceFilter === 'negative') return items.filter((item) => item.delta < 0);
-    return items;
-  }, [breakdown, balanceFilter, balanceFrom, balanceTo]);
-
-  const filteredTotal = useMemo(
-    () => filteredBreakdown.reduce((sum, item) => sum + item.delta, 0),
-    [filteredBreakdown],
-  );
+  const {
+    scope: balanceScope,
+    setScope: setBalanceScope,
+    signFilter: balanceFilter,
+    setSignFilter: setBalanceFilter,
+    from: balanceFrom,
+    to: balanceTo,
+    setFrom: setBalanceFrom,
+    setTo: setBalanceTo,
+    total: balance,
+    rows: breakdown,
+    filteredRows: filteredBreakdown,
+    visibleTotal: filteredTotal,
+  } = useBalanceBreakdown({
+    entries,
+    periodRange: range,
+    timerElapsed: elapsed,
+    today: todayStr,
+  });
 
   const hoyPercent = percentWidth(workedToday, todayTargetSec);
   const semanaPercent = percentWidth(workedWeek, weekTargetSec);
