@@ -173,6 +173,12 @@ def main():
     }
     (RUN / "issue.json").write_text(json.dumps(datos, ensure_ascii=False, indent=2), encoding="utf-8")
 
+    # Linea base del arbol: la persona puede tener trabajo a medias y la fabrica no debe
+    # confundirlo con lo que deja sucio el implementador. Lo compara el paso 05.
+    (RUN / "baseline-status.txt").write_text(
+        subprocess.run(["git", "-C", str(REPO), "status", "--porcelain"], capture_output=True,
+                       text=True, encoding="utf-8", errors="replace").stdout, encoding="utf-8")
+
     metrica("criterios_aceptacion", len(criterios))
     metrica("toca_sql", int(bool(sql)))
     metrica("bloqueado", int(bool(pendientes)))

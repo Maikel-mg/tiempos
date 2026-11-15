@@ -96,10 +96,17 @@ def main():
     if actual != rama:
         devolver([f"la rama actual es `{actual}` y debería ser `{rama}`."])
 
-    sucio = git("status", "--porcelain")
-    if sucio:
-        devolver(["hay cambios sin commitear en el repo: " + ", ".join(
-            l[3:] for l in sucio.splitlines()[:10])])
+    sucio = [l for l in git("status", "--porcelain").splitlines() if l.strip()]
+    base_sucio = set()
+    if (RUN / "baseline-status.txt").exists():
+        base_sucio = {l for l in (RUN / "baseline-status.txt").read_text(encoding="utf-8").splitlines() if l.strip()}
+    nuevos = [l for l in sucio if l not in base_sucio]
+    if nuevos:
+        devolver(["hay cambios sin commitear que no estaban al empezar: " + ", ".join(
+            l[3:] for l in nuevos[:10]) + ". Commitea lo que hayas tocado e intenta no dejar nada suelto."])
+    del_radio = [l[3:] for l in sucio if l[3:] in radio_de(plan)]
+    if del_radio:
+        devolver(["ficheros del radio con cambios sin commitear: " + ", ".join(del_radio)])
 
     base = git("merge-base", BASE, "HEAD") or BASE
     ficheros = [f for f in git("diff", "--name-only", base, "HEAD").splitlines() if f]
