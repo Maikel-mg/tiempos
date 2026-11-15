@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { computePeriodTotal } from '../lib/computePeriodTotal';
 import { resolvePeriodRange, type ResolvedPeriodRange } from '../lib/periodRange';
+import { toLocalDateString } from '../lib/localDate';
 import { formatDurationHMS } from '@/lib/format';
 import type { PeriodType, DateRange } from '@/components/shared/PeriodSelector';
 import type { EntryViewTab, TimeEntry } from '../types';
@@ -34,8 +35,7 @@ export function usePeriodFilter({ entries, timerElapsed }: UsePeriodFilterParams
   );
 
   const todayInRange = useMemo(() => {
-    const now = new Date();
-    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const todayStr = toLocalDateString();
     return todayStr >= periodRange.startStr && todayStr <= periodRange.endStr;
   }, [periodRange]);
 

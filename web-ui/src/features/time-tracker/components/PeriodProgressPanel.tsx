@@ -10,6 +10,7 @@ import { computeDailyBalance, computeWeeklyBalance, computeBanco, computeRangeBa
 import { getDailyTarget } from '../lib/schedule';
 import { resolvePeriodRange } from '../lib/periodRange';
 import type { ResolvedPeriodRange } from '../lib/periodRange';
+import { toLocalDateString } from '../lib/localDate';
 import type { TimeEntry } from '../types';
 import type { PeriodType } from '@/components/shared/PeriodSelector';
 
@@ -26,17 +27,13 @@ export interface PeriodProgressPanelProps {
   todayInRange?: boolean;
 }
 
-function getTodayStr(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
 function getWeekStartStr(): string {
   const now = new Date();
   const dayOfWeek = now.getDay();
   const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
   const monday = new Date(now);
   monday.setDate(now.getDate() - diffToMonday);
-  return monday.toISOString().slice(0, 10);
+  return toLocalDateString(monday);
 }
 
 function getDaysInMonth(date: Date): number {
@@ -138,7 +135,7 @@ export function PeriodProgressPanel({
   timerElapsed = 0,
   todayInRange = false,
 }: PeriodProgressPanelProps) {
-  const todayStr = getTodayStr();
+  const todayStr = toLocalDateString();
   const weekStartStr = getWeekStartStr();
 
   const range = useMemo(
@@ -165,7 +162,7 @@ export function PeriodProgressPanel({
     for (let i = 0; i < 7; i++) {
       const day = new Date(monday);
       day.setDate(monday.getDate() + i);
-      const dateStr = day.toISOString().slice(0, 10);
+      const dateStr = toLocalDateString(day);
       const target = getDailyTarget(dateStr);
       if (target > 0) total += target * 3600;
     }
@@ -184,7 +181,7 @@ export function PeriodProgressPanel({
     const now = new Date();
     const daysInMonth = getDaysInMonth(now);
     for (let i = 1; i <= daysInMonth; i++) {
-      const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+      const dateStr = toLocalDateString(new Date(now.getFullYear(), now.getMonth(), i));
       const target = getDailyTarget(dateStr);
       if (target > 0) total += target * 3600;
     }
@@ -196,7 +193,7 @@ export function PeriodProgressPanel({
     const now = new Date();
     const daysInMonth = getDaysInMonth(now);
     for (let i = 1; i <= daysInMonth; i++) {
-      const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+      const dateStr = toLocalDateString(new Date(now.getFullYear(), now.getMonth(), i));
       total += computeDailyBalance(entries, dateStr);
     }
     return total;

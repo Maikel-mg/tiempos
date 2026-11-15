@@ -1,4 +1,5 @@
 import type { PeriodType, DateRange } from '@/components/shared/PeriodSelector';
+import { toLocalDateString } from './localDate';
 
 export interface ResolvedPeriodRange {
   start: Date;
@@ -7,13 +8,6 @@ export interface ResolvedPeriodRange {
   startStr: string;
   /** Inclusive day bound, YYYY-MM-DD. */
   endStr: string;
-}
-
-function toDateStr(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
 }
 
 /**
@@ -62,5 +56,10 @@ export function resolvePeriodRange(
       end = now;
   }
 
-  return { start, end, startStr: toDateStr(start), endStr: toDateStr(end) };
+  return {
+    start,
+    end,
+    startStr: toLocalDateString(start),
+    endStr: toLocalDateString(end),
+  };
 }
