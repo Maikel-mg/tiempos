@@ -163,3 +163,30 @@ describe('Registro que cruza dos franjas', () => {
     expect(cuadre.desajustes).toEqual([]);
   });
 });
+
+describe('día completado a mano', () => {
+  const day = '2026-11-04';
+
+  it('un día sin marcajes válidos se cuadra en cuanto el marcaje manual lo completa', () => {
+    const entries = [entry('a', day, '06:35', '13:30'), entry('b', day, '15:15', '16:13')];
+    const incompleto = ['06:35', '13:30', '15:15'];
+
+    expect(cuadrarDia({ day, today: HOY, times: incompleto, entries }).status).toBe('sin-marcajes-validos');
+
+    const completado = cuadrarDia({ day, today: HOY, times: [...incompleto, '16:13'], entries });
+    expect(completado.status).toBe('cuadra');
+    expect(completado.franjas).toEqual([
+      { start: '06:35', end: '13:30' },
+      { start: '15:15', end: '16:13' },
+    ]);
+  });
+
+  it('un manual duplicado deja el día impar y fuera del cuadre hasta que se borre', () => {
+    const entries = [entry('a', day, '06:35', '13:30')];
+    // La intranet devolvió tarde el mismo fichaje que el usuario ya había puesto a mano.
+    const duplicado = ['06:35', '06:35', '13:30'];
+
+    expect(cuadrarDia({ day, today: HOY, times: duplicado, entries }).status).toBe('sin-marcajes-validos');
+    expect(cuadrarDia({ day, today: HOY, times: ['06:35', '13:30'], entries }).status).toBe('cuadra');
+  });
+});

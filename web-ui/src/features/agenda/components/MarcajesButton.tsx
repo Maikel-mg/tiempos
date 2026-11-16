@@ -76,6 +76,9 @@ export function MarcajesButton({ days, entries, marcajes, cuadresPorDia, onApply
                 entries={entries.filter((entry) => entry.date === day)}
                 onApplyFix={onApplyFix}
                 onSplit={onSplit}
+                onAddManual={marcajes.addManual}
+                onUpdateManual={marcajes.updateManual}
+                onRemoveManual={marcajes.removeManual}
               />
             ))}
           </div>

@@ -1,6 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import '@testing-library/jest-dom';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MarcajesButton } from '../MarcajesButton';
 import { cuadrarDia } from '../../lib/cuadre';
@@ -36,6 +36,7 @@ async function openPopup({
   onSplit = vi.fn(),
   ignored = false,
   stale = false,
+  manualTimes = [],
 }: {
   times: string[];
   entries: TimeEntry[];
@@ -43,18 +44,26 @@ async function openPopup({
   onSplit?: (entry: TimeEntry) => void;
   ignored?: boolean;
   stale?: boolean;
+  manualTimes?: string[];
 }) {
-  const grupо = groupMarcajesByDay(times.map((time) => ({ date: DAY, time, origen: 'MAIL' })))[0];
+  const marcajesDelDia = [
+    ...times.map((time) => ({ date: DAY, time, origen: 'MAIL' })),
+    ...manualTimes.map((time) => ({ date: DAY, time, origen: 'manual', manual: true })),
+  ];
+  const grupо = groupMarcajesByDay(marcajesDelDia)[0];
+  const acciones = {
+    addManual: vi.fn(async () => undefined),
+    updateManual: vi.fn(async () => undefined),
+    removeManual: vi.fn(async () => undefined),
+    setIgnored: vi.fn(async () => undefined),
+  };
   const marcajes: MarcajesPeriodo = {
     byDay: new Map([
       [DAY, { ...(grupо ?? { day: DAY, times: [], coveredMinutes: 0, marcajes: [] }), stale, ignored }],
     ]),
     isRefreshing: false,
     error: null,
-    addManual: vi.fn(),
-    updateManual: vi.fn(),
-    removeManual: vi.fn(),
-    setIgnored: vi.fn(),
+    ...acciones,
   };
   const cuadresPorDia = new Map([[DAY, cuadrarDia({ day: DAY, today: TODAY, times, ignored, entries })]]);
 
@@ -69,7 +78,7 @@ async function openPopup({
     />,
   );
   await userEvent.click(screen.getByRole('button', { name: /Ver marcajes/ }));
-  return { onApplyFix, onSplit };
+  return { onApplyFix, onSplit, ...acciones };
 }
 
 describe('popup de marcajes — desajustes y ajuste de un Registro', () => {
@@ -174,5 +183,57 @@ describe('popup de marcajes — Registro que cruza dos franjas', () => {
 
     expect(onApplyFix).not.toHaveBeenCalled();
     expect(onSplit).not.toHaveBeenCalled();
+  });
+});
+
+describe('popup de marcajes — marcajes manuales', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('añade a mano un marcaje a un día pasado indicando solo la hora', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date('2026-11-05T09:00:00')); // hoy es el día siguiente
+    const { addManual } = await openPopup({ times: ['06:35'], entries: [entry('a', '06:35', '13:00')] });
+
+    await userEvent.type(screen.getByLabelText(`Nueva hora fichada el ${DAY}`), '13:30');
+    await userEvent.click(screen.getByRole('button', { name: /Añadir marcaje/ }));
+
+    expect(addManual).toHaveBeenCalledWith(DAY, '13:30');
+  });
+
+  it('no deja añadir marcajes a hoy ni a días futuros', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date(`${DAY}T09:00:00`));
+    await openPopup({ times: ['06:35'], entries: [entry('a', '06:35', '13:00')] });
+
+    expect(screen.queryByLabelText(`Nueva hora fichada el ${DAY}`)).not.toBeInTheDocument();
+  });
+
+  it('distingue el marcaje añadido a mano y deja corregirlo y borrarlo', async () => {
+    const { updateManual, removeManual } = await openPopup({
+      times: ['06:35', '14:17'],
+      entries: [entry('a', '06:35', '14:17')],
+      manualTimes: ['16:13'],
+    });
+
+    expect(screen.getByText('manual')).toBeInTheDocument();
+    expect(screen.getByLabelText('Hora del marcaje manual de las 16:13')).toHaveValue('16:13');
+
+    fireEvent.change(screen.getByLabelText('Hora del marcaje manual de las 16:13'), {
+      target: { value: '16:20' },
+    });
+    expect(updateManual).toHaveBeenCalledWith(DAY, '16:13', '16:20');
+
+    await userEvent.click(screen.getByRole('button', { name: /Borrar marcaje manual de las 16:13/ }));
+    expect(removeManual).toHaveBeenCalledWith(DAY, '16:13');
+  });
+
+  it('un marcaje de la intranet no ofrece corregir ni borrar', async () => {
+    await openPopup({ times: ['06:35', '14:17'], entries: [entry('a', '06:35', '14:17')] });
+
+    expect(screen.queryByText('manual')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Borrar marcaje/ })).not.toBeInTheDocument();
+    expect(screen.getAllByTitle('Marcaje de la intranet')).toHaveLength(2);
   });
 });
