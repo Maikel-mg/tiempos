@@ -65,6 +65,11 @@ inventario exhaustivo. Rutas relativas a la raíz del repo.
 | Acciones por Registro de tiempo en las vistas | `web-ui/src/features/agenda/components/EntryActionsMenu.tsx` |
 | Sincronizar el día o el período | `web-ui/src/features/agenda/components/SyncDayButton.tsx` |
 | Atajos de la Agenda (período, vistas, entradas) y chuleta | `web-ui/src/features/agenda/hooks/useAgendaShortcuts.ts`, `useEntryKeyboardNavigation.ts`, `useEntryActionShortcuts.ts`, `components/AgendaShortcutsDialog.tsx` |
+| Cuadre con los marcajes: franjas, validez del día, desajustes y correcciones | `web-ui/src/features/agenda/lib/cuadre.ts` |
+| Marcajes del período: caché local y refresco en segundo plano (hook) | `web-ui/src/features/agenda/hooks/useMarcajesPeriodo.ts` |
+| Popup de marcajes y tarjeta por día (desajustes, manuales, lote, ignorar) | `web-ui/src/features/agenda/components/MarcajesButton.tsx`, `MarcajesDayCard.tsx` |
+| Indicador de cuadre por día en las tres vistas | `web-ui/src/features/agenda/components/DayCuadreMark.tsx` |
+| Caché de Marcajes en IndexedDB | `web-ui/src/lib/storage/marcajesStorage.ts` |
 
 ## Frontend — otras features
 
