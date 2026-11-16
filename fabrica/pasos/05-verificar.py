@@ -153,7 +153,8 @@ def main():
     diff = git("diff", "--unified=0", base, "HEAD")
     tests_nuevos = len([l for l in diff.splitlines()
                         if l.startswith("+") and re.match(r"\+\s*(it|test)(\.\w+)?\(", l)])
-    lineas = sum(int(n) for n in re.findall(r"^[+-](?!\+\+|--)", diff, re.M))
+    lineas = len([l for l in diff.splitlines()
+                  if l[:1] in ("+", "-") and not l.startswith(("+++", "---"))])
     largos = [f for f in ficheros if f.endswith(".tsx")
               and (REPO / f).exists() and len((REPO / f).read_text(encoding="utf-8").splitlines()) > LIMITE_COMPONENTE]
     metrica("tests_nuevos", tests_nuevos)
