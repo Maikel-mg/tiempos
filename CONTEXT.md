@@ -67,3 +67,35 @@ _Avoid_: Modo edición del timer, editar desde la barra
 **Editor de registros**:
 Diálogo centrado y reutilizable para crear un Registro de tiempo o modificar uno existente desde cualquier pantalla de la aplicación.
 _Avoid_: Editor del timer, formulario de la barra
+
+**Marcaje**:
+Fichaje del sistema de control horario de la empresa para un usuario: un día y una hora. No lleva dirección propia; entrada o salida se deducen por su posición en el día. Los marcajes son la referencia contra la que se cuadran los Registros de tiempo.
+_Avoid_: Fichaje de la app, entrada/salida del timer, clock-in
+
+**Marcaje manual**:
+Marcaje que el usuario añade en la app para completar un día cuyo fichaje existió pero no llegó a registrarse. Vive solo en la app y nunca se envía al sistema de control horario. Se puede corregir y borrar; los marcajes que vienen del sistema, no.
+_Avoid_: Marcaje inventado, marcaje falso
+
+**Franja fichada**:
+Tramo entre un marcaje de entrada y el siguiente de salida, emparejados por posición. El conjunto de franjas de un día es lo que ese día tiene fichado.
+_Avoid_: Jornada, horario, turno
+
+**Día fichado válido**:
+Día cuyo número de marcajes es par y al menos dos, contando por separado cada hora repetida. Un día con marcajes impares o insuficientes no tiene franjas fiables y queda fuera del cuadre.
+_Avoid_: Día incompleto, día roto
+
+**Desajuste por defecto**:
+Tiempo dentro de una franja fichada que ningún Registro de tiempo cubre: el Registro empieza después de la entrada o acaba antes de la salida. Se corrige ampliando el Registro hasta el borde de la franja.
+_Avoid_: Hueco de marcaje (hueco ya significa otra cosa en la Agenda)
+
+**Desajuste por exceso**:
+Registro de tiempo que se sale de su franja fichada, por delante o por detrás. Se corrige recortando el Registro hasta el borde de la franja.
+_Avoid_: Exceso de horas, solape (el solape es entre Registros)
+
+**Cuadrar con marcajes**:
+Ajustar los horarios de un Registro de tiempo a su franja fichada. Los marcajes son la referencia, pero el cuadre nunca es automático, no impide guardar ni sincronizar y no modifica el Timer activo.
+_Avoid_: Validar, bloquear, corregir automáticamente
+
+**Ignorar marcajes**:
+Decisión local y reversible de excluir un día del cuadre porque sus marcajes se sabe que están mal.
+_Avoid_: Descartar día, desactivar validación

@@ -4,6 +4,7 @@ import { gapsOf, sortByStart, todayKey, totalSeconds } from '../lib/planRange';
 import { formatDayLong } from '../lib/planRange';
 import type { PlanViewProps } from '../types';
 import { AgendaEntryRow } from './AgendaEntryRow';
+import { DayCuadreMark } from './DayCuadreMark';
 import { SyncDayButton } from './SyncDayButton';
 
 interface AgendaViewProps extends PlanViewProps {
@@ -28,6 +29,7 @@ export function AgendaView({
   entries,
   days,
   mode,
+  cuadresPorDia,
   timerEntryId,
   activeEntryId,
   actions,
@@ -67,6 +69,9 @@ export function AgendaView({
                     hoy
                   </span>
                 )}
+                <span className="ml-2 align-middle">
+                  <DayCuadreMark cuadre={cuadresPorDia?.get(day)} />
+                </span>
               </h3>
               <div className="flex items-baseline gap-2">
                 <span className="font-mono text-xs text-muted-foreground">
