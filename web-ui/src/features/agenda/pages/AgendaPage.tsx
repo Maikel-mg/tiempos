@@ -22,7 +22,16 @@ import { useAgendaShortcuts } from '../hooks/useAgendaShortcuts';
 import { useEntryKeyboardNavigation } from '../hooks/useEntryKeyboardNavigation';
 import { useEntryActionShortcuts } from '../hooks/useEntryActionShortcuts';
 import { useMarcajesPeriodo } from '../hooks/useMarcajesPeriodo';
-import { conflictOf, cuadrarDia, patchEntry, type DayCuadre, type MarcajeFix } from '../lib/cuadre';
+import {
+  conflictOf,
+  cuadrarDia,
+  desajustesOf,
+  franjasOf,
+  isDiaFichadoValido,
+  patchEntry,
+  type DayCuadre,
+  type MarcajeFix,
+} from '../lib/cuadre';
 import { parseHHMM } from '@/lib/format';
 import { AGENDA_VIEW_ORDER } from '../lib/agendaViews';
 import {
@@ -168,6 +177,38 @@ export function AgendaPage() {
       return { applied };
     },
     [visibleEntries, updateEntry],
+  );
+
+  /**
+   * Aviso del Editor de registros: la franja del día y, si lo que hay escrito se
+   * sale de ella, la corrección exacta. Solo en días pasados y con marcajes
+   * fiables; hoy queda fuera del cuadre.
+   */
+  const evaluarMarcajeEnEditor = useCallback(
+    (form: { date: string; startTime: string; endTime: string }) => {
+      const info = marcajes.byDay.get(form.date);
+      const times = info?.times ?? [];
+      if (form.date === todayKey() || info?.ignored || !isDiaFichadoValido(times)) return null;
+
+      const franjas = franjasOf(times);
+      const borrador: TimeEntry = {
+        id: 'editor',
+        taskId: 0,
+        taskName: '',
+        proceso: { proceso: 0, nombre: '' },
+        date: form.date,
+        startTime: form.startTime,
+        endTime: form.endTime,
+        duration: 0,
+        synced: false,
+        createdAt: '',
+        updatedAt: '',
+      };
+      const [desajuste] = desajustesOf([borrador], franjas);
+
+      return { franjas, fixes: (desajuste?.fixes ?? []).map((fix) => ({ label: fix.label, patch: fix.patch })) };
+    },
+    [marcajes.byDay],
   );
 
   const handleCreate = async (draft: EntryDraft) => {
@@ -354,6 +395,7 @@ export function AgendaPage() {
         entry={editor.editingEntry}
         onOpenChange={editor.handleOpenChange}
         onSubmit={editor.submit}
+        evaluarMarcaje={evaluarMarcajeEnEditor}
       />
     </main>
   );

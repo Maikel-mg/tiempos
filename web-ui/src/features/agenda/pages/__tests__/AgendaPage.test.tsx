@@ -881,6 +881,35 @@ describe('AgendaPage — cuadre con los marcajes de la intranet', () => {
     expect(screen.getByText(/se solapa con Tarde \(15:30–16:13\)/)).toBeInTheDocument();
   });
 
+  it('el Editor de registros enseña la franja y el aviso, y deja guardar igual', async () => {
+    mockSession([entry('a', '2026-06-09', '07:00', '13:30', 'Clasificador')]);
+    mockMarcajes({ '2026-06-09': { times: ['06:35', '13:30'] } });
+
+    renderPage();
+    await userEvent.click(screen.getByLabelText('Período anterior'));
+    await userEvent.click(screen.getByRole('button', { name: 'Acciones de Clasificador' }));
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Editar' }));
+
+    expect(await screen.findByText('Fichado: 06:35–13:30')).toBeInTheDocument();
+    expect(screen.getByText(/no cuadra con tu franja fichada/)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /Guardar cambios/ }));
+    expect(vi.mocked(useTimeEntries).mock.results[0].value.updateEntry).toHaveBeenCalled();
+  });
+
+  it('en el día de hoy el Editor no muestra franja ni aviso', async () => {
+    mockSession([entry('a', '2026-06-10', '07:00', '13:30', 'Clasificador')]);
+    mockMarcajes({ '2026-06-10': { times: ['06:35', '13:30'] } });
+
+    renderPage();
+    await userEvent.click(screen.getByRole('button', { name: 'Acciones de Clasificador' }));
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Editar' }));
+
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+    expect(screen.queryByText(/Fichado:/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/no cuadra con tu franja fichada/)).not.toBeInTheDocument();
+  });
+
   it('el popup sigue enseñando marcadas frente a registradas y avisa del dato viejo', async () => {
     mockSession([entry('a', '2026-06-09', '06:35', '13:30', 'Clasificador')]);
     mockMarcajes({ '2026-06-09': { times: ['06:35', '13:30'], stale: true } });
