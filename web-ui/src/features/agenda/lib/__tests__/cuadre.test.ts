@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cuadrarDia, franjasOf, isDiaFichadoValido } from '../cuadre';
+import { conflictOf, cuadrarDia, franjasOf, isDiaFichadoValido, patchEntry, type MarcajeFix } from '../cuadre';
 import type { TimeEntry } from '@/features/time-tracker/types';
 
 const HOY = '2026-11-05';
@@ -82,5 +82,44 @@ describe('cuadrarDia — estado del día', () => {
 
     expect(cuadre.desajustes).toEqual([]);
     expect(cuadre.franjas).toHaveLength(1);
+  });
+});
+
+describe('cuadre aplicado — el día deja de estar descuadrado', () => {
+  const day = '2026-11-04';
+
+  it('aplicar la corrección propuesta deja el día cuadrado', () => {
+    const descuadrado = entry('a', day, '07:00', '13:30');
+    const antes = cuadrarDia({ day, today: HOY, times: ['06:35', '13:30'], entries: [descuadrado] });
+    const fix = antes.desajustes[0].fixes[0];
+
+    expect(fix.patch).toEqual({ startTime: '06:35' });
+    const corregido = patchEntry(descuadrado, fix);
+    expect(corregido.startTime).toBe('06:35');
+    expect(corregido.duration).toBe((13 * 60 + 30 - (6 * 60 + 35)) * 60);
+
+    const despues = cuadrarDia({ day, today: HOY, times: ['06:35', '13:30'], entries: [corregido] });
+    expect(despues.status).toBe('cuadra');
+    expect(despues.desajustes).toEqual([]);
+  });
+
+  it('detecta el Registro con el que chocaría la corrección', () => {
+    const entries = [entry('a', day, '06:35', '14:30'), entry('b', day, '13:00', '14:00')];
+    const fix = cuadrarDia({ day, today: HOY, times: ['06:35', '13:30'], entries }).desajustes[0].fixes[0];
+
+    expect(fix.patch).toEqual({ endTime: '13:30' });
+    expect(conflictOf(entries, fix)?.id).toBe('b');
+  });
+
+  it('sin solape no hay conflicto y la corrección se puede aplicar', () => {
+    const entries = [entry('a', day, '06:35', '13:00'), entry('b', day, '13:30', '14:00')];
+    const fix: MarcajeFix = {
+      entryId: 'a',
+      kind: 'recortar-fin',
+      patch: { endTime: '13:30' },
+      label: 'Recortar fin a 13:30',
+    };
+
+    expect(conflictOf(entries, fix)).toBeNull();
   });
 });

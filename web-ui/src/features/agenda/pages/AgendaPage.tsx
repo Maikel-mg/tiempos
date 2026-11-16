@@ -22,7 +22,7 @@ import { useAgendaShortcuts } from '../hooks/useAgendaShortcuts';
 import { useEntryKeyboardNavigation } from '../hooks/useEntryKeyboardNavigation';
 import { useEntryActionShortcuts } from '../hooks/useEntryActionShortcuts';
 import { useMarcajesPeriodo } from '../hooks/useMarcajesPeriodo';
-import { cuadrarDia, type DayCuadre } from '../lib/cuadre';
+import { conflictOf, cuadrarDia, type DayCuadre, type MarcajeFix } from '../lib/cuadre';
 import { AGENDA_VIEW_ORDER } from '../lib/agendaViews';
 import {
   addDays,
@@ -46,7 +46,7 @@ import {
  */
 export function AgendaPage() {
   const session = useTimeTrackingSession();
-  const { entries, createEntry, timer, editor } = session;
+  const { entries, createEntry, updateEntry, timer, editor } = session;
 
   const [cursor, setCursor] = useState(() => toWorkday(todayKey()));
   const [composer, setComposer] = useState<ComposerSlot | null>(null);
@@ -114,6 +114,23 @@ export function AgendaPage() {
       setComposer({ date, startTime: start, endTime: addMinutesToTime(start, DEFAULT_ENTRY_MINUTES) });
     },
     [visibleEntries],
+  );
+
+  /**
+   * Aplica una corrección del cuadre con el servicio de siempre, que recalcula
+   * la duración. Antes comprueba solape: si choca, no se mueve nada y se explica
+   * con qué Registro.
+   */
+  const applyMarcajeFix = useCallback(
+    async (fix: MarcajeFix) => {
+      const conflict = conflictOf(visibleEntries, fix);
+      if (conflict) {
+        return `No se aplicó «${fix.label}»: se solapa con ${conflict.taskName} (${conflict.startTime}–${conflict.endTime})`;
+      }
+      await updateEntry(fix.entryId, fix.patch);
+      return null;
+    },
+    [visibleEntries, updateEntry],
   );
 
   const handleCreate = async (draft: EntryDraft) => {
@@ -210,7 +227,14 @@ export function AgendaPage() {
           onJump={(day) => setCursor(toWorkday(day))}
         >
           <ViewPills value={view} available={AGENDA_VIEW_ORDER} onChange={setView} />
-          <MarcajesButton days={days} entries={visibleEntries} marcajes={marcajes} cuadresPorDia={cuadresPorDia} />
+          <MarcajesButton
+            days={days}
+            entries={visibleEntries}
+            marcajes={marcajes}
+            cuadresPorDia={cuadresPorDia}
+            onApplyFix={applyMarcajeFix}
+            onSplit={split.handleSplitEntry}
+          />
           {view === 'timeline' && <SyncDayButton entries={visibleEntries} onSyncDay={syncMany} label="Sincronizar período" />}
         </PeriodBar>
         {sync.syncPanelOpen && (

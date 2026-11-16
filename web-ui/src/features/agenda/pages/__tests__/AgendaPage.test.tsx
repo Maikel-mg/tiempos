@@ -832,6 +832,33 @@ describe('AgendaPage — cuadre con los marcajes de la intranet', () => {
     expect(screen.queryAllByLabelText('descuadrado con marcajes')).toHaveLength(0);
   });
 
+  it('el ajuste del popup se aplica con el horario exacto y la duración la recalcula el servicio', async () => {
+    mockSession([entry('a', '2026-06-09', '07:00', '13:30', 'Clasificador')]);
+    mockMarcajes({ '2026-06-09': { times: ['06:35', '13:30'] } });
+
+    renderPage();
+    await userEvent.click(screen.getByLabelText('Período anterior'));
+    await userEvent.click(screen.getByRole('button', { name: /Ver marcajes/ }));
+    await userEvent.click(await screen.findByRole('button', { name: /Ampliar inicio a 06:35/ }));
+
+    expect(vi.mocked(useTimeEntries).mock.results[0].value.updateEntry).toHaveBeenCalledWith('a', {
+      startTime: '06:35',
+    });
+  });
+
+  it('si el ajuste solaparía con otro Registro no se escribe nada y se dice con cuál', async () => {
+    mockSession([entry('a', '2026-06-09', '06:35', '14:30', 'Clasificador'), entry('b', '2026-06-09', '13:00', '14:00', 'Revisión')]);
+    mockMarcajes({ '2026-06-09': { times: ['06:35', '13:30'] } });
+
+    renderPage();
+    await userEvent.click(screen.getByLabelText('Período anterior'));
+    await userEvent.click(screen.getByRole('button', { name: /Ver marcajes/ }));
+    await userEvent.click(await screen.findByRole('button', { name: /Recortar fin a 13:30/ }));
+
+    expect(await screen.findByText(/se solapa con Revisión \(13:00–14:00\)/)).toBeInTheDocument();
+    expect(vi.mocked(useTimeEntries).mock.results[0].value.updateEntry).not.toHaveBeenCalled();
+  });
+
   it('el popup sigue enseñando marcadas frente a registradas y avisa del dato viejo', async () => {
     mockSession([entry('a', '2026-06-09', '06:35', '13:30', 'Clasificador')]);
     mockMarcajes({ '2026-06-09': { times: ['06:35', '13:30'], stale: true } });
