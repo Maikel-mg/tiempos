@@ -21,6 +21,8 @@ import { useAgendaPreferences } from '../hooks/useAgendaPreferences';
 import { useAgendaShortcuts } from '../hooks/useAgendaShortcuts';
 import { useEntryKeyboardNavigation } from '../hooks/useEntryKeyboardNavigation';
 import { useEntryActionShortcuts } from '../hooks/useEntryActionShortcuts';
+import { useMarcajesPeriodo } from '../hooks/useMarcajesPeriodo';
+import { cuadrarDia, type DayCuadre } from '../lib/cuadre';
 import { AGENDA_VIEW_ORDER } from '../lib/agendaViews';
 import {
   addDays,
@@ -76,6 +78,26 @@ export function AgendaPage() {
   );
   const visibleEntries = useMemo(() => entriesOfDays(allEntries, days), [allEntries, days]);
   const workdayStart = useMemo(() => getWorkdayStart(cursor), [cursor]);
+
+  // Marcajes del período: caché local primero, refresco en segundo plano.
+  const marcajes = useMarcajesPeriodo(days);
+  const cuadresPorDia = useMemo(() => {
+    const today = todayKey();
+    const map = new Map<string, DayCuadre>();
+    for (const day of days) {
+      const info = marcajes.byDay.get(day);
+      const cuadre = cuadrarDia({
+        day,
+        today,
+        times: info?.times ?? [],
+        ignored: info?.ignored,
+        // El Timer activo queda fuera: mientras corre no hay salida contra la que comparar.
+        entries: visibleEntries.filter((entry) => entry.date === day && entry.id !== liveTimerEntry?.id),
+      });
+      map.set(day, { ...cuadre, stale: info?.marcajes.length ? info.stale : false });
+    }
+    return map;
+  }, [days, marcajes.byDay, visibleEntries, liveTimerEntry?.id]);
 
   /** Abre el compositor en un hueco del día visible. */
   const openComposer = useCallback(
@@ -188,7 +210,7 @@ export function AgendaPage() {
           onJump={(day) => setCursor(toWorkday(day))}
         >
           <ViewPills value={view} available={AGENDA_VIEW_ORDER} onChange={setView} />
-          <MarcajesButton days={days} entries={visibleEntries} />
+          <MarcajesButton days={days} entries={visibleEntries} marcajes={marcajes} cuadresPorDia={cuadresPorDia} />
           {view === 'timeline' && <SyncDayButton entries={visibleEntries} onSyncDay={syncMany} label="Sincronizar período" />}
         </PeriodBar>
         {sync.syncPanelOpen && (
@@ -205,6 +227,7 @@ export function AgendaPage() {
             days={days}
             mode={mode}
             workdayStart={workdayStart}
+            cuadresPorDia={cuadresPorDia}
             timerEntryId={liveTimerEntry?.id}
             activeEntryId={activeEntryId}
             actions={actions}
@@ -222,6 +245,7 @@ export function AgendaPage() {
             days={days}
             mode={mode}
             workdayStart={workdayStart}
+            cuadresPorDia={cuadresPorDia}
             timerEntryId={liveTimerEntry?.id}
             activeEntryId={activeEntryId}
             actions={actions}
@@ -241,6 +265,7 @@ export function AgendaPage() {
             timerEntryId={liveTimerEntry?.id}
             activeEntryId={activeEntryId}
             workdayStart={workdayStart}
+            cuadresPorDia={cuadresPorDia}
             actions={actions}
             onAdd={(day, startTime) => openComposer(day, startTime)}
             onPickDay={(day) => {

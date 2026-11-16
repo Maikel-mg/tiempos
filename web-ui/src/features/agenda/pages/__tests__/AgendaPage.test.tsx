@@ -9,9 +9,15 @@ import { InlineComposer } from '../../components/InlineComposer';
 import { useTimeEntries } from '@/features/time-tracker/hooks/useTimeEntries';
 import { useTimer } from '@/features/time-tracker/hooks/useTimer';
 import type { TimeEntry } from '@/features/time-tracker/types';
+import { useMarcajesPeriodo } from '@/features/agenda/hooks/useMarcajesPeriodo';
+import type { MarcajeDia, MarcajesPeriodo } from '@/features/agenda/hooks/useMarcajesPeriodo';
+import { groupMarcajesByDay } from '@/features/agenda/lib/marcajes';
 
 vi.mock('@/features/time-tracker/hooks/useTimeEntries');
 vi.mock('@/features/time-tracker/hooks/useTimer');
+vi.mock('@/features/agenda/hooks/useMarcajesPeriodo', () => ({
+  useMarcajesPeriodo: vi.fn(() => periodoVacio()),
+}));
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
@@ -55,6 +61,39 @@ function mockSession(entries: TimeEntry[]) {
     updateDescription: vi.fn(),
     cancel: vi.fn(),
   } as unknown as ReturnType<typeof useTimer>);
+}
+
+function periodoVacio(): MarcajesPeriodo {
+  return {
+    byDay: new Map<string, MarcajeDia>(),
+    isRefreshing: false,
+    error: null,
+    addManual: vi.fn(),
+    updateManual: vi.fn(),
+    removeManual: vi.fn(),
+    setIgnored: vi.fn(),
+  };
+}
+
+/** Marcajes por día tal como los deja la caché local. */
+function mockMarcajes(
+  days: Record<string, { times: string[]; stale?: boolean; ignored?: boolean; manual?: boolean }>,
+) {
+  const byDay = new Map<string, MarcajeDia>();
+  for (const [day, info] of Object.entries(days)) {
+    const marcajes = info.times.map((time) => ({
+      date: day,
+      time,
+      origen: info.manual ? 'manual' : 'MAIL',
+      manual: info.manual,
+    }));
+    byDay.set(day, {
+      ...(groupMarcajesByDay(marcajes)[0] ?? { day, times: [], coveredMinutes: 0, marcajes: [] }),
+      stale: info.stale ?? false,
+      ignored: info.ignored ?? false,
+    });
+  }
+  vi.mocked(useMarcajesPeriodo).mockReturnValue({ ...periodoVacio(), byDay });
 }
 
 function renderPage() {
@@ -738,5 +777,72 @@ describe('AgendaPage — teclado', () => {
     fireEvent.keyDown(description, { key: 'e' });
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+});
+
+describe('AgendaPage — cuadre con los marcajes de la intranet', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date('2026-06-10T10:00:00')); // miércoles
+    vi.mocked(useMarcajesPeriodo).mockImplementation(() => periodoVacio());
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.clearAllMocks();
+    vi.mocked(useMarcajesPeriodo).mockImplementation(() => periodoVacio());
+  });
+
+  it('marca el día descuadrado en Calendario, Agenda y Timeline', async () => {
+    // Martes 9: fichado 06:35–13:30, registrado desde las 07:00.
+    mockSession([entry('a', '2026-06-09', '07:00', '13:30', 'Clasificador')]);
+    mockMarcajes({ '2026-06-09': { times: ['06:35', '13:30'] } });
+
+    renderPage();
+    await userEvent.click(screen.getByLabelText('Período anterior'));
+
+    // Vista Agenda (la de entrada).
+    expect(screen.getAllByLabelText('descuadrado con marcajes').length).toBeGreaterThan(0);
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Calendario' }));
+    expect(screen.getAllByLabelText('descuadrado con marcajes').length).toBeGreaterThan(0);
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Timeline' }));
+    expect(screen.getAllByLabelText('descuadrado con marcajes').length).toBeGreaterThan(0);
+  });
+
+  it('el día de hoy queda fuera del cuadre aunque tenga marcajes', () => {
+    mockSession([entry('a', '2026-06-10', '07:00', '13:30', 'Clasificador')]);
+    mockMarcajes({ '2026-06-10': { times: ['06:35', '13:30'] } });
+
+    renderPage();
+
+    expect(screen.queryAllByLabelText('descuadrado con marcajes')).toHaveLength(0);
+  });
+
+  it('sin marcajes y sin red los días se quedan sin información, sin error bloqueante', () => {
+    mockSession([entry('a', '2026-06-09', '07:00', '13:30', 'Clasificador')]);
+    vi.mocked(useMarcajesPeriodo).mockReturnValue({ ...periodoVacio(), error: 'Network Error' });
+
+    const { container } = renderPage();
+    fireEvent.keyDown(window, { key: 'ArrowLeft' });
+
+    expect(container.textContent).not.toContain('Network Error');
+    expect(screen.queryAllByLabelText('descuadrado con marcajes')).toHaveLength(0);
+  });
+
+  it('el popup sigue enseñando marcadas frente a registradas y avisa del dato viejo', async () => {
+    mockSession([entry('a', '2026-06-09', '06:35', '13:30', 'Clasificador')]);
+    mockMarcajes({ '2026-06-09': { times: ['06:35', '13:30'], stale: true } });
+
+    renderPage();
+    await userEvent.click(screen.getByLabelText('Período anterior'));
+    await userEvent.click(screen.getByRole('button', { name: /Ver marcajes/ }));
+
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog.textContent).toContain('6h 55m marcadas');
+    expect(dialog.textContent).toContain('6h 55m registradas');
+    expect(dialog.textContent).toContain('dato viejo');
   });
 });

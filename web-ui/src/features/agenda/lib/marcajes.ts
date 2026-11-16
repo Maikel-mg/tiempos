@@ -5,6 +5,13 @@ export interface Marcaje {
   date: string; // YYYY-MM-DD
   time: string; // HH:MM
   origen: string;
+  /** Marcaje que el usuario añadió a mano porque la intranet no lo registró. */
+  manual?: boolean;
+}
+
+/** Clave de upsert de un Marcaje: fecha + hora + origen. */
+export function marcajeKey(marcaje: Pick<Marcaje, 'date' | 'time' | 'origen'>): string {
+  return `${marcaje.date}|${marcaje.time}|${marcaje.origen}`;
 }
 
 /** Los marcajes de un día, con lo que cubren de jornada. */
@@ -13,6 +20,8 @@ export interface DayMarcajes {
   times: string[];
   /** Minutos entre pares entrada→salida consecutivos. */
   coveredMinutes: number;
+  /** Los Marcajes del día, ordenados por hora. */
+  marcajes: Marcaje[];
 }
 
 /**
@@ -21,22 +30,25 @@ export interface DayMarcajes {
  * porque no se sabe cuánto duró.
  */
 export function groupMarcajesByDay(marcajes: Marcaje[]): DayMarcajes[] {
-  const byDay = new Map<string, string[]>();
+  const byDay = new Map<string, Marcaje[]>();
   for (const marcaje of marcajes) {
-    const times = byDay.get(marcaje.date) ?? [];
-    times.push(marcaje.time);
-    byDay.set(marcaje.date, times);
+    const day = byDay.get(marcaje.date) ?? [];
+    day.push(marcaje);
+    byDay.set(marcaje.date, day);
   }
 
   return [...byDay.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([day, times]) => {
-      const sorted = [...times].sort();
+    .map(([day, dayMarcajes]) => {
+      const sorted = [...dayMarcajes].sort(
+        (a, b) => a.time.localeCompare(b.time) || a.origen.localeCompare(b.origen),
+      );
+      const times = sorted.map((marcaje) => marcaje.time);
       let coveredMinutes = 0;
-      for (let i = 0; i + 1 < sorted.length; i += 2) {
-        coveredMinutes += parseHHMM(sorted[i + 1]) - parseHHMM(sorted[i]);
+      for (let i = 0; i + 1 < times.length; i += 2) {
+        coveredMinutes += parseHHMM(times[i + 1]) - parseHHMM(times[i]);
       }
-      return { day, times: sorted, coveredMinutes };
+      return { day, times, coveredMinutes, marcajes: sorted };
     });
 }
 

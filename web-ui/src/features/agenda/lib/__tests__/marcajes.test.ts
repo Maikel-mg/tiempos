@@ -12,9 +12,10 @@ describe('groupMarcajesByDay', () => {
       marcaje('2026-11-02', '16:13'),
     ]);
 
-    expect(result).toEqual([
+    expect(result).toMatchObject([
       { day: '2026-11-02', times: ['06:43', '14:17', '15:15', '16:13'], coveredMinutes: 7 * 60 + 34 + 58 },
     ]);
+    expect(result[0].marcajes).toHaveLength(4);
   });
 
   it('no suma un marcaje impar: sin salida no se sabe cuánto duró', () => {
@@ -35,6 +36,17 @@ describe('groupMarcajesByDay', () => {
     ]);
 
     expect(result.map((day) => day.day)).toEqual(['2026-11-02', '2026-11-03']);
+    expect(result[0].times).toEqual(['06:43', '14:17']);
+    expect(result[0].marcajes.map((m) => m.time)).toEqual(['06:43', '14:17']);
+  });
+
+  it('separa los Marcajes manuales de los de la intranet dentro del día', () => {
+    const result = groupMarcajesByDay([
+      marcaje('2026-11-02', '06:43'),
+      { date: '2026-11-02', time: '14:17', origen: 'manual', manual: true },
+    ]);
+
+    expect(result[0].marcajes.map((m) => m.manual ?? false)).toEqual([false, true]);
     expect(result[0].times).toEqual(['06:43', '14:17']);
   });
 
