@@ -23,12 +23,25 @@ export interface TimeEntryFormData {
   recoverable: boolean;
 }
 
+/** Aviso de cuadre con los marcajes del día, ya calculado por quien conoce la fecha. */
+export interface MarcajeAviso {
+  /** Franjas fichadas del día, en `HH:MM`. */
+  franjas: Array<{ start: string; end: string }>;
+  /** Correcciones propuestas para los horarios que se están editando. */
+  fixes: Array<{ label: string; patch: { startTime?: string; endTime?: string } }>;
+}
+
 interface TimeEntryEditorDialogProps {
   open: boolean;
   mode: 'create' | 'edit';
   entry?: TimeEntry | null;
   onOpenChange: (open: boolean) => void;
   onSubmit: (data: TimeEntryFormData) => Promise<void>;
+  /**
+   * Aviso de cuadre con los marcajes, recalculado con lo que hay en el
+   * formulario. Solo informa: guardar nunca se bloquea por esto.
+   */
+  evaluarMarcaje?: (form: Pick<TimeEntryFormData, 'date' | 'startTime' | 'endTime'>) => MarcajeAviso | null;
 }
 
 function formatDuration(seconds: number): string {
@@ -71,6 +84,7 @@ export function TimeEntryEditorDialog({
   entry,
   onOpenChange,
   onSubmit,
+  evaluarMarcaje,
 }: TimeEntryEditorDialogProps) {
   const descriptionRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState<TimeEntryFormData>(() => formDataFromEntry(entry));
@@ -91,6 +105,7 @@ export function TimeEntryEditorDialog({
   );
   const isValid = form.taskId !== 0 && !!form.date && !!form.startTime && !!form.endTime && durationSeconds > 0;
   const isDirty = hasFormChanged(form, initialForm);
+  const marcaje = evaluarMarcaje?.({ date: form.date, startTime: form.startTime, endTime: form.endTime }) ?? null;
   const title = mode === 'edit' ? 'Editar registro de tiempo' : 'Nuevo registro de tiempo';
   const description = mode === 'edit'
     ? `Modificando ${entry?.taskName ?? 'registro seleccionado'}.`
@@ -202,6 +217,38 @@ export function TimeEntryEditorDialog({
               />
             </div>
           </div>
+
+          {marcaje && (
+            <div className="space-y-1.5 rounded-md border border-dashed p-2.5">
+              <p className="font-mono text-[11px] text-muted-foreground">
+                Fichado: {marcaje.franjas.map((franja) => `${franja.start}–${franja.end}`).join(' · ')}
+              </p>
+              {marcaje.fixes.length > 0 && (
+                <>
+                  <p className="text-xs text-amber-600 dark:text-amber-400">
+                    Este Registro no cuadra con tu franja fichada. Los marcajes son una guía: puedes guardar igual.
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {marcaje.fixes.map((fix) => (
+                      <Button
+                        key={fix.label}
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => {
+                          updateForm('startTime', fix.patch.startTime ?? form.startTime);
+                          updateForm('endTime', fix.patch.endTime ?? form.endTime);
+                        }}
+                      >
+                        {fix.label}
+                      </Button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
 
           <div className="flex items-center justify-between gap-4">
             <span className="font-mono text-sm tabular-nums">Duración: {formatDuration(durationSeconds)}</span>

@@ -2,6 +2,27 @@ import Dexie, { type Table, type Transaction } from 'dexie';
 import type { StorageStrategy } from './StorageStrategy';
 import type { TimeEntry, TimerState, Proceso, LocalProcess } from '../../features/time-tracker/types';
 
+/** Un Marcaje guardado en local. `key` es fecha + hora + origen. */
+export interface MarcajeRow {
+  key: string;
+  date: string;
+  time: string;
+  origen: string;
+  /** Añadido a mano: los de la intranet nunca se tocan. */
+  manual?: boolean;
+  /** ISO de cuando se guardó. */
+  savedAt: string;
+}
+
+/** Estado local de un día con Marcajes: cuándo se leyó y si se ignora. */
+export interface MarcajeDiaRow {
+  date: string;
+  /** ISO de la última lectura correcta de un rango que incluía este día. */
+  readAt?: string;
+  /** El usuario excluyó el día del cuadre. */
+  ignored?: boolean;
+}
+
 /**
  * Migración v1→v2: convierte taskId de string a number.
  * Elimina entradas con taskId inválido (no finite, <= 0, no integer).
@@ -67,6 +88,8 @@ class TimeTrackerDB extends Dexie {
   processes!: Table<Proceso, number>;
   processRecents!: Table<{ proceso: number; lastUsedAt: number }, number>;
   localProcesses!: Table<LocalProcess, number>;
+  marcajes!: Table<MarcajeRow, string>;
+  marcajeDias!: Table<MarcajeDiaRow, string>;
   migrationMeta!: Table<{ key: string; value: unknown }, string>;
 
   constructor() {
@@ -108,6 +131,19 @@ class TimeTrackerDB extends Dexie {
       processes: 'proceso, nombre, faseNombre, proyectoNombre, clienteNombre',
       processRecents: 'proceso, lastUsedAt',
       localProcesses: 'proceso, nombre',
+      migrationMeta: 'key',
+    });
+
+    // v5: caché local de Marcajes de la intranet y estado de cuadre por día.
+    // Solo añade tablas: los Registros guardados no se tocan.
+    this.version(5).stores({
+      timeEntries: 'id, taskId, date, startTime, endTime, synced, createdAt, serverId, recoverable',
+      timerState: 'id',
+      processes: 'proceso, nombre, faseNombre, proyectoNombre, clienteNombre',
+      processRecents: 'proceso, lastUsedAt',
+      localProcesses: 'proceso, nombre',
+      marcajes: 'key, date',
+      marcajeDias: 'date',
       migrationMeta: 'key',
     });
   }

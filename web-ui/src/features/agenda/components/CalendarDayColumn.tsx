@@ -2,9 +2,11 @@ import { Plus } from 'lucide-react';
 import { formatDurationShort } from '@/lib/format';
 import { sortByStart, todayKey, totalSeconds, minutesToHHMM } from '../lib/planRange';
 import type { HourAxis } from '../hooks/useHourAxis';
+import type { DayCuadre } from '../lib/cuadre';
 import type { EntryActions } from '../types';
 import type { TimeEntry } from '@/features/time-tracker/types';
 import { CalendarEntryBlock } from './CalendarEntryBlock';
+import { DayCuadreMark } from './DayCuadreMark';
 import { SyncDayButton } from './SyncDayButton';
 
 export const HOUR_PX = 64;
@@ -15,6 +17,8 @@ interface CalendarDayColumnProps {
   label: string;
   entries: TimeEntry[];
   axis: HourAxis;
+  /** Resumen de cuadre del día, si tiene marcajes evaluables. */
+  cuadre?: DayCuadre;
   timerEntryId?: string;
   activeEntryId?: string;
   actions?: EntryActions;
@@ -30,6 +34,7 @@ export function CalendarDayColumn({
   label,
   entries,
   axis,
+  cuadre,
   timerEntryId,
   activeEntryId,
   actions,
@@ -52,7 +57,10 @@ export function CalendarDayColumn({
           className="min-w-0 text-left text-xs font-medium capitalize hover:underline"
           title="Ver este día"
         >
-          <span className="block truncate capitalize">{label}</span>
+          <span className="flex items-center gap-1 truncate capitalize">
+            <span className="truncate">{label}</span>
+            <DayCuadreMark cuadre={cuadre} compact />
+          </span>
           <span className="block font-mono text-[10px] font-normal text-muted-foreground">
             {formatDurationShort(totalSeconds(dayEntries))}
           </span>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Fingerprint } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -8,27 +8,44 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { formatDurationShort } from '@/lib/format';
 import type { TimeEntry } from '@/features/time-tracker/types';
-import { useMarcajes } from '../hooks/useMarcajes';
-import { formatMarcajesDelta, groupMarcajesByDay } from '../lib/marcajes';
-import { formatDayLong, totalSeconds } from '../lib/planRange';
+import type { MarcajesPeriodo } from '../hooks/useMarcajesPeriodo';
+import type { DayCuadre, MarcajeFix } from '../lib/cuadre';
+import { MarcajesDayCard } from './MarcajesDayCard';
 
 interface MarcajesButtonProps {
   /** Días del período visible. */
   days: string[];
   /** Registros de tiempo del período, para comparar con lo marcado. */
   entries: TimeEntry[];
+  /** Marcajes del período, leídos de la caché y refrescados en segundo plano. */
+  marcajes: MarcajesPeriodo;
+  /** Estado del cuadre de cada día del período. */
+  cuadresPorDia: Map<string, DayCuadre>;
+  /** Aplica una corrección; devuelve el motivo si no se pudo. */
+  onApplyFix: (fix: MarcajeFix) => Promise<string | null>;
+  /** Abre Dividir sobre el Registro que cruza dos franjas. */
+  onSplit: (entry: TimeEntry) => void;
+  /** Aplica de una vez los ajustes simples de un día. */
+  onApplyAll: (fixes: MarcajeFix[]) => Promise<{ applied: number; blocked?: string }>;
 }
 
 /**
- * Popup con los marcajes de la intranet del período: horas fichadas, total
- * cubierto y diferencia con lo registrado. Se pide solo al abrirlo.
+ * Popup con los marcajes de la intranet del período: día a día, lo fichado
+ * frente a lo registrado y los Registros que no caben en su franja. Lo leído
+ * vive en la caché local, así que el popup enseña lo último que se sabe aunque
+ * no haya VPN.
  */
-export function MarcajesButton({ days, entries }: MarcajesButtonProps) {
+export function MarcajesButton({
+  days,
+  entries,
+  marcajes,
+  cuadresPorDia,
+  onApplyFix,
+  onSplit,
+  onApplyAll,
+}: MarcajesButtonProps) {
   const [open, setOpen] = useState(false);
-  const { data, isFetching, error } = useMarcajes({ days, enabled: open });
-  const byDay = useMemo(() => groupMarcajesByDay(data ?? []), [data]);
 
   return (
     <>
@@ -52,43 +69,30 @@ export function MarcajesButton({ days, entries }: MarcajesButtonProps) {
             </DialogDescription>
           </DialogHeader>
 
-          {isFetching && <p className="text-sm text-muted-foreground">Leyendo marcajes…</p>}
-          {error && <p className="text-sm text-destructive">{error.message}</p>}
-          {!isFetching && !error && byDay.length === 0 && (
-            <p className="text-sm text-muted-foreground">La intranet no devuelve marcajes de este período.</p>
+          {marcajes.isRefreshing && <p className="text-sm text-muted-foreground">Leyendo marcajes…</p>}
+          {marcajes.error && (
+            <p className="text-sm text-muted-foreground">
+              Sin conexión con la intranet: se muestran los marcajes guardados.
+            </p>
           )}
 
           <div className="max-h-[60vh] space-y-2 overflow-y-auto">
-            {byDay.map((day) => {
-              const registered = totalSeconds(entries.filter((entry) => entry.date === day.day));
-              const delta = day.coveredMinutes * 60 - registered;
-              return (
-                <section key={day.day} className="space-y-1.5 rounded-lg border p-3">
-                  <header className="flex flex-wrap items-baseline justify-between gap-2">
-                    <h3 className="text-sm font-semibold capitalize">{formatDayLong(day.day)}</h3>
-                    <span className="font-mono text-xs text-muted-foreground">
-                      {formatDurationShort(day.coveredMinutes * 60)} marcadas · {formatDurationShort(registered)}{' '}
-                      registradas
-                    </span>
-                  </header>
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    {day.times.map((time, index) => (
-                      <span key={`${time}-${index}`} className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
-                        {time}
-                      </span>
-                    ))}
-                    <span
-                      className={`ml-auto font-mono text-xs font-medium ${
-                        delta === 0 ? 'text-muted-foreground' : 'text-primary'
-                      }`}
-                      title="Marcadas − registradas"
-                    >
-                      {formatMarcajesDelta(delta)}
-                    </span>
-                  </div>
-                </section>
-              );
-            })}
+            {days.map((day) => (
+              <MarcajesDayCard
+                key={day}
+                day={day}
+                info={marcajes.byDay.get(day)}
+                cuadre={cuadresPorDia.get(day)}
+                entries={entries.filter((entry) => entry.date === day)}
+                onApplyFix={onApplyFix}
+                onSplit={onSplit}
+                onAddManual={marcajes.addManual}
+                onUpdateManual={marcajes.updateManual}
+                onRemoveManual={marcajes.removeManual}
+                onToggleIgnored={marcajes.setIgnored}
+                onApplyAll={onApplyAll}
+              />
+            ))}
           </div>
         </DialogContent>
       </Dialog>

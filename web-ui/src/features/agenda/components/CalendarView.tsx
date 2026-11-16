@@ -16,7 +16,7 @@ interface CalendarViewProps extends PlanViewProps {
  * Cada Registro de tiempo se pinta como bloque proporcional a su duración y
  * posicionado por su hora real. En modo semana, una columna por día laborable.
  */
-export function CalendarView({ entries, days, mode, workdayStart, ...columnProps }: CalendarViewProps) {
+export function CalendarView({ entries, days, mode, workdayStart, cuadresPorDia, ...columnProps }: CalendarViewProps) {
   const axis = useHourAxis(entries, workdayStart);
   const height = ((axis.to - axis.from) / 60) * HOUR_PX;
 
@@ -46,6 +46,7 @@ export function CalendarView({ entries, days, mode, workdayStart, ...columnProps
               label={mode === 'week' ? formatDayShort(day) : formatDayLong(day)}
               entries={entries.filter((entry) => entry.date === day)}
               axis={axis}
+              cuadre={cuadresPorDia?.get(day)}
               {...columnProps}
             />
           ))}

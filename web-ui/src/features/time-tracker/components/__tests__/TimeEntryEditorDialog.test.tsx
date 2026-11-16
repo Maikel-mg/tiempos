@@ -155,3 +155,120 @@ describe('TimeEntryEditorDialog', () => {
     expect(onOpenChange).not.toHaveBeenCalledWith(false);
   });
 });
+
+describe('TimeEntryEditorDialog — aviso de cuadre con los marcajes', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setup();
+  });
+
+  const franjas = [
+    { start: '06:35', end: '13:30' },
+    { start: '15:15', end: '16:13' },
+  ];
+
+  /** Aviso real: la franja del día y la corrección de los horarios del formulario. */
+  function evaluarMarcaje(form: { startTime: string; endTime: string }) {
+    const toMinutes = (time: string) => {
+      const [h, m] = time.split(':').map(Number);
+      return h * 60 + m;
+    };
+    const start = toMinutes(form.startTime);
+    const end = toMinutes(form.endTime);
+    const franja = franjas.find((f) => start >= toMinutes(f.start) && end <= toMinutes(f.end)) ?? franjas[0];
+
+    const fixes: Array<{ label: string; patch: { startTime?: string; endTime?: string } }> = [];
+    if (start > toMinutes(franja.start)) fixes.push({ label: `Ampliar inicio a ${franja.start}`, patch: { startTime: franja.start } });
+    if (end < toMinutes(franja.end)) fixes.push({ label: `Ampliar fin a ${franja.end}`, patch: { endTime: franja.end } });
+
+    return { franjas, fixes };
+  }
+
+  it('muestra la franja fichada del día aunque el Registro cuadre', () => {
+    render(
+      <TimeEntryEditorDialog
+        open
+        mode="edit"
+        entry={{ ...entry, startTime: '06:35', endTime: '13:30' }}
+        onOpenChange={vi.fn()}
+        onSubmit={vi.fn()}
+        evaluarMarcaje={evaluarMarcaje}
+      />
+    );
+
+    expect(screen.getByText('Fichado: 06:35–13:30 · 15:15–16:13')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Ampliar/ })).not.toBeInTheDocument();
+  });
+
+  it('un Registro fuera de la franja muestra el aviso con el botón de ajuste exacto', () => {
+    render(
+      <TimeEntryEditorDialog
+        open
+        mode="edit"
+        entry={entry}
+        onOpenChange={vi.fn()}
+        onSubmit={vi.fn()}
+        evaluarMarcaje={evaluarMarcaje}
+      />
+    );
+
+    expect(screen.getByText(/no cuadra con tu franja fichada/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Ampliar inicio a 06:35' })).toBeInTheDocument();
+  });
+
+  it('los botones de ajuste dejan el Registro dentro de la franja', async () => {
+    render(
+      <TimeEntryEditorDialog
+        open
+        mode="edit"
+        entry={entry}
+        onOpenChange={vi.fn()}
+        onSubmit={vi.fn()}
+        evaluarMarcaje={evaluarMarcaje}
+      />
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'Ampliar inicio a 06:35' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Ampliar fin a 13:30' }));
+
+    expect(screen.getByLabelText('Inicio')).toHaveValue('06:35');
+    expect(screen.getByLabelText('Fin')).toHaveValue('13:30');
+    // Ya cubre su franja: el aviso desaparece.
+    expect(screen.queryByText(/no cuadra con tu franja fichada/)).not.toBeInTheDocument();
+  });
+
+  it('guardar sigue funcionando igual con el aviso visible, sin confirmación ni bloqueo', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(
+      <TimeEntryEditorDialog
+        open
+        mode="edit"
+        entry={entry}
+        onOpenChange={vi.fn()}
+        onSubmit={onSubmit}
+        evaluarMarcaje={evaluarMarcaje}
+      />
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: /Guardar cambios/ }));
+
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    expect(onSubmit.mock.calls[0][0]).toMatchObject({ startTime: '10:00', endTime: '11:30' });
+  });
+
+  it('sin franja conocida no se muestra ningún aviso', () => {
+    render(
+      <TimeEntryEditorDialog
+        open
+        mode="edit"
+        entry={entry}
+        onOpenChange={vi.fn()}
+        onSubmit={vi.fn()}
+        evaluarMarcaje={() => null}
+      />
+    );
+
+    expect(screen.queryByText(/Fichado:/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/no cuadra con tu franja fichada/)).not.toBeInTheDocument();
+  });
+});

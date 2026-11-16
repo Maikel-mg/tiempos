@@ -4,6 +4,7 @@ import { getDailyTarget } from '@/features/time-tracker/lib/schedule';
 import { useHourAxis } from '../hooks/useHourAxis';
 import { formatDayShort, taskLanes, todayKey, totalSeconds } from '../lib/planRange';
 import type { PlanViewProps } from '../types';
+import { DayCuadreMark } from './DayCuadreMark';
 import { TimelineLaneRow } from './TimelineLaneRow';
 
 /**
@@ -34,7 +35,7 @@ interface TimelineViewProps extends PlanViewProps {
  * esa Tarea ese día. La fila de totales cierra la vista en ambos modos con lo
  * registrado y el balance frente al objetivo del día.
  */
-export function TimelineView({ entries, days, mode, workdayStart, ...laneProps }: TimelineViewProps) {
+export function TimelineView({ entries, days, mode, workdayStart, cuadresPorDia, ...laneProps }: TimelineViewProps) {
   const lanes = taskLanes(entries);
   const axis = useHourAxis(entries, workdayStart);
   const today = todayKey();
@@ -71,7 +72,10 @@ export function TimelineView({ entries, days, mode, workdayStart, ...laneProps }
     <div className="overflow-hidden rounded-xl border bg-card">
       <div className="flex border-b bg-muted/20">
         <div className="w-48 shrink-0 border-r px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-          Tarea
+          <span className="inline-flex items-center gap-1.5">
+            Tarea
+            {mode === 'day' && <DayCuadreMark cuadre={cuadresPorDia?.get(days[0])} compact />}
+          </span>
         </div>
         <div className="relative h-7 flex-1">
           {mode === 'week'
@@ -85,6 +89,7 @@ export function TimelineView({ entries, days, mode, workdayStart, ...laneProps }
                   style={{ left: `${((index + 0.5) / days.length) * 100}%` }}
                 >
                   {formatDayShort(day)}
+                  <DayCuadreMark cuadre={cuadresPorDia?.get(day)} compact />
                 </button>
               ))
             : axis.hours.map((hour) => (

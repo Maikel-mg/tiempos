@@ -1,4 +1,5 @@
 import type { Proceso, TimeEntry } from '@/features/time-tracker/types';
+import type { DayCuadre } from './lib/cuadre';
 import type { PlanMode } from './lib/planRange';
 
 /** Vistas del plan: la misma información del período, tres lecturas distintas. */
@@ -54,4 +55,9 @@ export interface PlanViewProps {
   activeEntryId?: string;
   actions?: EntryActions;
   onPickDay?: (day: string) => void;
+  /**
+   * Resumen de cuadre con marcajes por día. Un día sin entrada no lleva marca y
+   * se pinta exactamente como siempre.
+   */
+  cuadresPorDia?: Map<string, DayCuadre>;
 }
