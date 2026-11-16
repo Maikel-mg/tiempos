@@ -27,6 +27,8 @@ interface MarcajesDayCardProps {
   onUpdateManual: (day: string, fromTime: string, toTime: string) => Promise<void>;
   /** Borra un Marcaje manual. */
   onRemoveManual: (day: string, time: string) => Promise<void>;
+  /** Excluye el día del cuadre, o deshace la exclusión. */
+  onToggleIgnored: (day: string, ignored: boolean) => Promise<void>;
 }
 
 /**
@@ -44,6 +46,7 @@ export function MarcajesDayCard({
   onAddManual,
   onUpdateManual,
   onRemoveManual,
+  onToggleIgnored,
 }: MarcajesDayCardProps) {
   const [error, setError] = useState<string | null>(null);
   const [nuevaHora, setNuevaHora] = useState('');
@@ -118,6 +121,16 @@ export function MarcajesDayCard({
         >
           {formatMarcajesDelta(delta)}
         </span>
+        {day !== todayKey() && (info?.marcajes.length ?? 0) > 0 && (
+          <button
+            type="button"
+            onClick={() => void onToggleIgnored(day, !info?.ignored)}
+            className="rounded px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
+            title="Excluir este día del cuadre"
+          >
+            {info?.ignored ? 'Dejar de ignorar' : 'Ignorar este día'}
+          </button>
+        )}
       </div>
 
       {cuadre && cuadre.franjas.length > 0 && (

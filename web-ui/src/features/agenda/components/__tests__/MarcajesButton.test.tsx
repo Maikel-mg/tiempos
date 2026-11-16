@@ -237,3 +237,48 @@ describe('popup de marcajes — marcajes manuales', () => {
     expect(screen.getAllByTitle('Marcaje de la intranet')).toHaveLength(2);
   });
 });
+
+describe('popup de marcajes — ignorar un día', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('cualquier día con marcajes ofrece ignorarlo, no solo los mal formados', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date('2026-11-05T09:00:00'));
+    const { setIgnored } = await openPopup({ times: ['06:35', '13:30'], entries: [entry('a', '06:35', '13:30')] });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Ignorar este día' }));
+    expect(setIgnored).toHaveBeenCalledWith(DAY, true);
+  });
+
+  it('un día ignorado no muestra desajustes ni botones de ajuste, y se identifica', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date('2026-11-05T09:00:00'));
+    const { setIgnored } = await openPopup({
+      times: ['06:35', '13:30'],
+      entries: [entry('a', '07:00', '13:30')],
+      ignored: true,
+    });
+
+    expect(screen.getByText('marcajes ignorados')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Ampliar|Recortar/ })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Dejar de ignorar' }));
+    expect(setIgnored).toHaveBeenCalledWith(DAY, false);
+  });
+
+  it('el día de hoy y los días sin marcajes no ofrecen ignorar', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date(`${DAY}T09:00:00`));
+    await openPopup({ times: ['06:35', '13:30'], entries: [entry('a', '06:35', '13:30')] });
+    expect(screen.queryByRole('button', { name: /Ignorar/ })).not.toBeInTheDocument();
+  });
+
+  it('un día sin marcajes no ofrece la acción aunque ya pasó', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date('2026-11-05T09:00:00'));
+    await openPopup({ times: [], entries: [] });
+
+    expect(screen.queryByRole('button', { name: /Ignorar/ })).not.toBeInTheDocument();
+  });
+});

@@ -79,6 +79,7 @@ export function MarcajesButton({ days, entries, marcajes, cuadresPorDia, onApply
                 onAddManual={marcajes.addManual}
                 onUpdateManual={marcajes.updateManual}
                 onRemoveManual={marcajes.removeManual}
+                onToggleIgnored={marcajes.setIgnored}
               />
             ))}
           </div>

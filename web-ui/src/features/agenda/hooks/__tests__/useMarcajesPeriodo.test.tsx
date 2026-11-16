@@ -137,3 +137,39 @@ describe('useMarcajesPeriodo — caché primero, refresco en segundo plano', () 
     );
   });
 });
+
+describe('useMarcajesPeriodo — día ignorado', () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    await db.delete();
+    await db.open();
+    mockDbConfig.mockReturnValue({ server: 'srv', database: 'db', username: 'u', password: '' } as never);
+    mockWizardConfig.mockReturnValue({ usuario: 'usured' } as never);
+    mockPost.mockRejectedValue(new Error('Network Error'));
+  });
+
+  it('el ignorado sobrevive a recargas y no toca los marcajes guardados', async () => {
+    await saveMarcajesLeidos(
+      [
+        { date: '2026-11-02', time: '06:35', origen: 'MAIL' },
+        { date: '2026-11-02', time: '13:30', origen: 'MAIL' },
+      ],
+      DAYS,
+    );
+
+    const primera = renderHook(() => useMarcajesPeriodo(DAYS), { wrapper });
+    await waitFor(() => expect(primera.result.current.byDay.get('2026-11-02')?.times).toHaveLength(2));
+    await primera.result.current.setIgnored('2026-11-02', true);
+    await waitFor(() => expect(primera.result.current.byDay.get('2026-11-02')?.ignored).toBe(true));
+    primera.unmount();
+
+    // Otra sesión de la app, mismo navegador: el día sigue ignorado.
+    const segunda = renderHook(() => useMarcajesPeriodo(DAYS), { wrapper });
+    await waitFor(() => expect(segunda.result.current.byDay.get('2026-11-02')?.ignored).toBe(true));
+    expect(segunda.result.current.byDay.get('2026-11-02')?.times).toEqual(['06:35', '13:30']);
+
+    await segunda.result.current.setIgnored('2026-11-02', false);
+    await waitFor(() => expect(segunda.result.current.byDay.get('2026-11-02')?.ignored).toBe(false));
+    expect(segunda.result.current.byDay.get('2026-11-02')?.times).toEqual(['06:35', '13:30']);
+  });
+});
