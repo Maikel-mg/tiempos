@@ -89,6 +89,13 @@ describe('marca de cuadre en las tres vistas del período', () => {
     expect(screen.queryAllByRole('img')).toHaveLength(0);
   });
 
+  it('avisa cuando lo pintado viene de una lectura de hace más de un día', () => {
+    const viejo = new Map([['2026-06-09', { ...cuadre('2026-06-09', 'descuadrado')[1], stale: true }]]);
+    render(<AgendaView entries={entries} days={week} mode="week" workdayStart={540} cuadresPorDia={viejo} />);
+
+    expect(screen.getByLabelText('descuadrado con marcajes · dato viejo')).toBeInTheDocument();
+  });
+
   it('un día sin marcajes no lleva marca aunque el período tenga otros días marcados', () => {
     const soloUnDia = new Map([cuadre('2026-06-09', 'sin-marcajes')]);
     render(<AgendaView entries={entries} days={week} mode="week" workdayStart={540} cuadresPorDia={soloUnDia} />);

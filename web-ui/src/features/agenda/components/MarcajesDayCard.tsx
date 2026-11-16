@@ -1,13 +1,14 @@
 import { useState } from 'react';
-import { Check, Info, Plus, SplitSquareHorizontal, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Info } from 'lucide-react';
 import { formatDurationShort } from '@/lib/format';
 import type { TimeEntry } from '@/features/time-tracker/types';
 import type { MarcajeDia } from '../hooks/useMarcajesPeriodo';
-import { DAY_CUADRE_LABEL, fixPreview, fixesAjustables, type DayCuadre, type MarcajeFix } from '../lib/cuadre';
+import { DAY_CUADRE_LABEL, type DayCuadre, type MarcajeFix } from '../lib/cuadre';
 import { formatMarcajesDelta } from '../lib/marcajes';
 import { formatDayLong, todayKey, totalSeconds } from '../lib/planRange';
+import { MarcajesAjusteDia } from './MarcajesAjusteDia';
+import { MarcajesDayMarcajes } from './MarcajesDayMarcajes';
+import { MarcajesDesajustes } from './MarcajesDesajustes';
 
 interface MarcajesDayCardProps {
   day: string;
@@ -21,11 +22,8 @@ interface MarcajesDayCardProps {
   onApplyFix: (fix: MarcajeFix) => Promise<string | null>;
   /** Abre Dividir sobre un Registro que cruza dos franjas. */
   onSplit?: (entry: TimeEntry) => void;
-  /** Añade un Marcaje manual al día. */
   onAddManual: (day: string, time: string) => Promise<void>;
-  /** Corrige la hora de un Marcaje manual. */
   onUpdateManual: (day: string, fromTime: string, toTime: string) => Promise<void>;
-  /** Borra un Marcaje manual. */
   onRemoveManual: (day: string, time: string) => Promise<void>;
   /** Excluye el día del cuadre, o deshace la exclusión. */
   onToggleIgnored: (day: string, ignored: boolean) => Promise<void>;
@@ -33,16 +31,11 @@ interface MarcajesDayCardProps {
   onApplyAll: (fixes: MarcajeFix[]) => Promise<{ applied: number; blocked?: string }>;
 }
 
-/** Resultado de `Ajustar el día`, para contarlo tal cual al usuario. */
-interface LoteResultado {
-  applied: number;
-  blocked?: string;
-}
-
 /**
- * Un día del popup de marcajes: lo fichado frente a lo registrado, y cada
- * Registro que no cabe en su Franja fichada con el botón que propone el horario
- * exacto. Nada se aplica solo: cada corrección es una pulsación.
+ * Un día del popup de marcajes: lo fichado frente a lo registrado, cada Registro
+ * que no cabe en su Franja fichada con el botón que propone el horario exacto, y
+ * el alta de Marcajes manuales. Nada se aplica solo: cada corrección es una
+ * pulsación, con su previsualización cuando va en lote.
  */
 export function MarcajesDayCard({
   day,
@@ -58,16 +51,16 @@ export function MarcajesDayCard({
   onApplyAll,
 }: MarcajesDayCardProps) {
   const [error, setError] = useState<string | null>(null);
-  const [nuevaHora, setNuevaHora] = useState('');
-  const [previsualizando, setPrevisualizando] = useState(false);
-  const [lote, setLote] = useState<LoteResultado | null>(null);
-  // Solo se completa a mano lo que ya pasó: el fichaje de hoy aún está por llegar.
-  const puedeAnadir = day < todayKey();
+
   const registered = totalSeconds(entries);
   const delta = (info?.coveredMinutes ?? 0) * 60 - registered;
 
-  const apply = async (fix: MarcajeFix) => {
-    setError(await onApplyFix(fix));
+  // Un fallo de escritura no puede quedarse en un rechazo sin dueño.
+  const sinRomper = (accion: () => Promise<void>) => {
+    void accion().catch((fallo: Error) => setError(fallo.message));
+  };
+  const aplicar = (fix: MarcajeFix) => {
+    void onApplyFix(fix).then(setError).catch((fallo: Error) => setError(fallo.message));
   };
 
   return (
@@ -81,43 +74,6 @@ export function MarcajesDayCard({
       </header>
 
       <div className="flex flex-wrap items-center gap-1.5">
-        {(info?.marcajes ?? []).map((marcaje) =>
-          marcaje.manual ? (
-            <span
-              key={`${marcaje.time}-manual`}
-              className="inline-flex items-center gap-1 rounded border border-dashed border-primary/50 bg-primary/5 px-1.5 py-0.5"
-              title="Marcaje añadido a mano"
-            >
-              <input
-                type="time"
-                value={marcaje.time}
-                aria-label={`Hora del marcaje manual de las ${marcaje.time}`}
-                onChange={(event) => {
-                  if (event.target.value) void onUpdateManual(day, marcaje.time, event.target.value);
-                }}
-                className="w-[70px] bg-transparent font-mono text-xs text-primary"
-              />
-              <span className="text-[9px] font-semibold uppercase tracking-wide text-primary">manual</span>
-              <button
-                type="button"
-                aria-label={`Borrar marcaje manual de las ${marcaje.time}`}
-                title="Borrar marcaje manual"
-                onClick={() => void onRemoveManual(day, marcaje.time)}
-                className="rounded p-0.5 text-primary/70 transition hover:bg-primary/10 hover:text-primary"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </span>
-          ) : (
-            <span
-              key={`${marcaje.time}-${marcaje.origen}`}
-              title="Marcaje de la intranet"
-              className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs"
-            >
-              {marcaje.time}
-            </span>
-          ),
-        )}
         {info?.stale && (
           <span className="rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">
             dato viejo
@@ -135,7 +91,7 @@ export function MarcajesDayCard({
         {day !== todayKey() && (info?.marcajes.length ?? 0) > 0 && (
           <button
             type="button"
-            onClick={() => void onToggleIgnored(day, !info?.ignored)}
+            onClick={() => sinRomper(() => onToggleIgnored(day, !info?.ignored))}
             className="rounded px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
             title="Excluir este día del cuadre"
           >
@@ -144,164 +100,23 @@ export function MarcajesDayCard({
         )}
       </div>
 
+      <MarcajesDayMarcajes
+        day={day}
+        info={info}
+        onAddManual={(dia, hora) => sinRomper(() => onAddManual(dia, hora))}
+        onUpdateManual={(dia, desde, hasta) => sinRomper(() => onUpdateManual(dia, desde, hasta))}
+        onRemoveManual={(dia, hora) => sinRomper(() => onRemoveManual(dia, hora))}
+      />
+
       {cuadre && cuadre.franjas.length > 0 && (
         <p className="font-mono text-[11px] text-muted-foreground">
           fichado {cuadre.franjas.map((franja) => `${franja.start}–${franja.end}`).join(' · ')}
         </p>
       )}
 
-      {cuadre && cuadre.status === 'descuadrado' && (
-        <ul className="divide-y rounded-md border border-dashed">
-          {cuadre.desajustes.map((desajuste) => {
-            const entry = entries.find((candidate) => candidate.id === desajuste.entryId);
-            if (!entry) return null;
-            const cruza = desajuste.kind === 'cruza-franja';
-            return (
-              <li
-                key={desajuste.entryId}
-                className={`space-y-1 px-2 py-1.5 ${cruza ? 'border-l-2 border-amber-500/70 bg-amber-500/5' : ''}`}
-              >
-                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-xs">
-                  <span className="font-medium">{entry.taskName}</span>
-                  <span className="font-mono text-muted-foreground">
-                    {entry.startTime}–{entry.endTime}
-                  </span>
-                  {cruza ? (
-                    <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
-                      cruza dos franjas
-                    </span>
-                  ) : (
-                    <span className="text-[11px] text-muted-foreground">
-                      {desajuste.kind.startsWith('ampliar') ? 'no cubre' : 'se sale de'} su franja
-                    </span>
-                  )}
-                </div>
-                {cruza && (
-                  <p className="text-[11px] text-muted-foreground">
-                    {formatDurationShort(desajuste.minutosFichados * 60)} fichados ·{' '}
-                    {formatDurationShort(desajuste.minutosNoFichados * 60)} sin fichar
-                  </p>
-                )}
-                <div className="flex flex-wrap items-center gap-1.5">
-                  {desajuste.fixes.map((fix) => (
-                    <Button
-                      key={fix.kind + fix.label}
-                      variant="outline"
-                      size="sm"
-                      className="h-7 text-xs"
-                      onClick={() => void apply(fix)}
-                    >
-                      <Check className="mr-1 h-3 w-3" />
-                      {fix.label}
-                    </Button>
-                  ))}
-                  {cruza && onSplit && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 text-xs"
-                      onClick={() => onSplit(entry)}
-                      title="Repartir el Registro entre las dos franjas"
-                    >
-                      <SplitSquareHorizontal className="mr-1 h-3 w-3" />
-                      Dividir
-                    </Button>
-                  )}
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      <MarcajesDesajustes cuadre={cuadre} entries={entries} onApplyFix={aplicar} onSplit={onSplit} />
 
-      {cuadre && cuadre.status === 'descuadrado' && fixesAjustables(cuadre.desajustes).length > 0 && (
-        <div className="space-y-1.5 rounded-md bg-muted/40 p-2">
-          {!previsualizando ? (
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 text-xs"
-              onClick={() => {
-                setLote(null);
-                setPrevisualizando(true);
-              }}
-            >
-              Ajustar el día
-            </Button>
-          ) : (
-            <>
-              <p className="text-[11px] font-medium">Antes de aplicar, esto es lo que cambia:</p>
-              <ul className="space-y-0.5">
-                {fixesAjustables(cuadre.desajustes).map((fix) => {
-                  const entry = entries.find((candidate) => candidate.id === fix.entryId);
-                  if (!entry) return null;
-                  const preview = fixPreview(entry, fix);
-                  return (
-                    <li key={fix.entryId + fix.label} className="font-mono text-[11px] text-muted-foreground">
-                      {preview.taskName}: {entry.startTime}–{entry.endTime} → {preview.range}
-                    </li>
-                  );
-                })}
-              </ul>
-              <div className="flex flex-wrap gap-1.5">
-                <Button
-                  size="sm"
-                  className="h-7 text-xs"
-                  onClick={() => {
-                    void onApplyAll(fixesAjustables(cuadre.desajustes)).then((resultado) => {
-                      setPrevisualizando(false);
-                      setLote(resultado);
-                    });
-                  }}
-                >
-                  Aplicar {fixesAjustables(cuadre.desajustes).length} ajustes
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 text-xs"
-                  onClick={() => setPrevisualizando(false)}
-                >
-                  Cancelar
-                </Button>
-              </div>
-            </>
-          )}
-        </div>
-      )}
-
-      {puedeAnadir && (
-        <form
-          className="flex items-center gap-1.5"
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (!nuevaHora) return;
-            void onAddManual(day, nuevaHora);
-            setNuevaHora('');
-          }}
-        >
-          <Input
-            type="time"
-            value={nuevaHora}
-            onChange={(event) => setNuevaHora(event.target.value)}
-            aria-label={`Nueva hora fichada el ${day}`}
-            className="h-7 w-[104px] py-0 text-xs"
-          />
-          <Button type="submit" variant="outline" size="sm" className="h-7 text-xs" disabled={!nuevaHora}>
-            <Plus className="mr-1 h-3 w-3" />
-            Añadir marcaje
-          </Button>
-        </form>
-      )}
-
-      {lote && (
-        <p className="text-[11px] text-muted-foreground">
-          {lote.applied === 0
-            ? 'No se aplicó ningún ajuste.'
-            : `Se ${lote.applied === 1 ? 'aplicó 1 ajuste' : `aplicaron ${lote.applied} ajustes`}.`}
-          {lote.blocked && ` Se detuvo en ${lote.blocked}`}
-        </p>
-      )}
+      <MarcajesAjusteDia cuadre={cuadre} entries={entries} onApplyAll={onApplyAll} />
 
       {error && (
         <p className="flex items-start gap-1 text-xs text-destructive">

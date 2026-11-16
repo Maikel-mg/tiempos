@@ -25,7 +25,8 @@ export function DayCuadreMark({ cuadre, compact = false }: { cuadre?: DayCuadre;
   const tone = MARK_TONE[cuadre.status];
   if (!tone) return null;
 
-  const label = DAY_CUADRE_LABEL[cuadre.status];
+  // Lo pintado desde una lectura de hace más de un día se etiqueta como viejo.
+  const label = `${DAY_CUADRE_LABEL[cuadre.status]}${cuadre.stale ? ' · dato viejo' : ''}`;
   const { Icon, className } = tone;
 
   return (
