@@ -194,14 +194,17 @@ export function desajustesOf(entries: TimeEntry[], franjas: FranjaFichada[]): Re
         overlapMinutes(startOf(entry), endOf(entry), startOfFranja(franja), endOfFranja(franja)) > 0,
     );
 
-  // Cruces: el Registro no cabe en ninguna franja y ocupa el hueco entre dos.
+  // Cruces: el Registro no cabe en ninguna franja y se mete en el hueco entre
+  // dos. Nunca se parte solo: se ofrece el recorte y, aparte, Dividir.
   const cruzan = new Set<string>();
   for (const entry of entries) {
     if (endOf(entry) <= startOf(entry)) continue;
     const cruzadas = franjasQueCruza(entry);
-    if (cruzadas.length < 2) continue;
+    const primera = cruzadas[0];
+    if (!primera) continue;
+    if (cruzadas.length < 2 && !seMeteEnElHueco(entry, primera, franjas)) continue;
 
-    const fix = cruzaFranjaFix(entry, cruzadas[0]);
+    const fix = cruzaFranjaFix(entry, primera);
     if (!fix) continue;
     cruzan.add(entry.id);
     addFix(entry, fix);
@@ -256,19 +259,47 @@ export function desajustesOf(entries: TimeEntry[], franjas: FranjaFichada[]): Re
   return [...porRegistro.values()];
 }
 
+/**
+ * ¿El Registro se sale de esta franja hacia un hueco interno del día? Un hueco
+ * entre la franja anterior o la siguiente, no el borde de la jornada.
+ */
+function seMeteEnElHueco(entry: TimeEntry, franja: FranjaFichada, franjas: FranjaFichada[]): boolean {
+  const index = franjas.indexOf(franja);
+  if (index < 0) return false;
+  const siguiente = franjas[index + 1];
+  const anterior = franjas[index - 1];
+
+  if (
+    endOf(entry) > endOfFranja(franja) &&
+    siguiente &&
+    endOf(entry) <= startOfFranja(siguiente)
+  ) {
+    return true;
+  }
+
+  return Boolean(
+    startOf(entry) < startOfFranja(franja) && anterior && startOf(entry) >= endOfFranja(anterior),
+  );
+}
+
 /** Recorte al borde de la franja donde el Registro empieza, con enlace a Dividir. */
 function cruzaFranjaFix(entry: TimeEntry, franja: FranjaFichada): MarcajeFix | null {
-  // El borde donde el Registro empieza: si arranca antes del fichaje, el inicio
-  // de la franja; si arranca dentro, el fin.
-  if (startOf(entry) < startOfFranja(franja)) {
+  const start = startOf(entry);
+  const fStart = startOfFranja(franja);
+
+  // Arranca antes del fichaje: se recorta el borde por el que empieza.
+  if (start < fStart) {
+    const soloInicio = endOf(entry) <= endOfFranja(franja);
     return {
       entryId: entry.id,
       kind: 'cruza-franja',
-      patch: { startTime: franja.start, endTime: franja.end },
-      label: `Recortar a ${franja.start}–${franja.end}`,
+      patch: soloInicio ? { startTime: franja.start } : { startTime: franja.start, endTime: franja.end },
+      label: soloInicio ? `Recortar inicio a ${franja.start}` : `Recortar a ${franja.start}–${franja.end}`,
       dividir: true,
     };
   }
+
+  if (endOf(entry) <= endOfFranja(franja)) return null;
 
   return {
     entryId: entry.id,

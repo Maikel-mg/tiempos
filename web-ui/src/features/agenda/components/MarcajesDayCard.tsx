@@ -81,18 +81,31 @@ export function MarcajesDayCard({ day, info, cuadre, entries, onApplyFix, onSpli
             if (!entry) return null;
             const cruza = desajuste.kind === 'cruza-franja';
             return (
-              <li key={desajuste.entryId} className="space-y-1 px-2 py-1.5">
+              <li
+                key={desajuste.entryId}
+                className={`space-y-1 px-2 py-1.5 ${cruza ? 'border-l-2 border-amber-500/70 bg-amber-500/5' : ''}`}
+              >
                 <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-xs">
                   <span className="font-medium">{entry.taskName}</span>
                   <span className="font-mono text-muted-foreground">
                     {entry.startTime}–{entry.endTime}
                   </span>
-                  <span className="text-[11px] text-muted-foreground">
-                    {cruza
-                      ? `cruza dos franjas: ${formatDurationShort(desajuste.minutosFichados * 60)} fichados · ${formatDurationShort(desajuste.minutosNoFichados * 60)} sin fichar`
-                      : `${desajuste.kind.startsWith('ampliar') ? 'no cubre' : 'se sale de'} su franja`}
-                  </span>
+                  {cruza ? (
+                    <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
+                      cruza dos franjas
+                    </span>
+                  ) : (
+                    <span className="text-[11px] text-muted-foreground">
+                      {desajuste.kind.startsWith('ampliar') ? 'no cubre' : 'se sale de'} su franja
+                    </span>
+                  )}
                 </div>
+                {cruza && (
+                  <p className="text-[11px] text-muted-foreground">
+                    {formatDurationShort(desajuste.minutosFichados * 60)} fichados ·{' '}
+                    {formatDurationShort(desajuste.minutosNoFichados * 60)} sin fichar
+                  </p>
+                )}
                 <div className="flex flex-wrap items-center gap-1.5">
                   {desajuste.fixes.map((fix) => (
                     <Button

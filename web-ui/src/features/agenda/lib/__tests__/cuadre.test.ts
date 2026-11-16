@@ -123,3 +123,43 @@ describe('cuadre aplicado — el día deja de estar descuadrado', () => {
     expect(conflictOf(entries, fix)).toBeNull();
   });
 });
+
+describe('Registro que cruza dos franjas', () => {
+  const day = '2026-11-04';
+  // Fichado 06:35–13:30 y 15:15–16:13: la comida no se fichó.
+  const times = ['06:35', '13:30', '15:15', '16:13'];
+
+  it('se distingue del resto y dice cuántos minutos quedan dentro y fuera', () => {
+    const cuadre = cuadrarDia({ day, today: HOY, times, entries: [entry('a', day, '13:00', '14:00')] });
+
+    expect(cuadre.status).toBe('descuadrado');
+    expect(cuadre.desajustes).toHaveLength(1);
+    expect(cuadre.desajustes[0]).toMatchObject({
+      kind: 'cruza-franja',
+      minutosFichados: 30,
+      minutosNoFichados: 30,
+    });
+  });
+
+  it('ofrece el recorte al borde de la franja donde empieza y un enlace a Dividir', () => {
+    const cuadre = cuadrarDia({ day, today: HOY, times, entries: [entry('a', day, '13:00', '14:00')] });
+    const fix = cuadre.desajustes[0].fixes[0];
+
+    expect(fix).toMatchObject({ kind: 'cruza-franja', patch: { endTime: '13:30' }, dividir: true });
+    expect(fix.label).toBe('Recortar fin a 13:30');
+    // Nunca se parte el Registro en dos por su cuenta: solo se ofrece la corrección.
+    expect(cuadre.desajustes[0].fixes).toHaveLength(1);
+  });
+
+  it('un día con marcajes válidos y sin cruces no cambia', () => {
+    const cuadre = cuadrarDia({
+      day,
+      today: HOY,
+      times,
+      entries: [entry('a', day, '06:35', '13:30'), entry('b', day, '15:15', '16:13')],
+    });
+
+    expect(cuadre.status).toBe('cuadra');
+    expect(cuadre.desajustes).toEqual([]);
+  });
+});

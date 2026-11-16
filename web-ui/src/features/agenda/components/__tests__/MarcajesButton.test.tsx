@@ -33,12 +33,14 @@ async function openPopup({
   times,
   entries,
   onApplyFix = vi.fn(async () => null),
+  onSplit = vi.fn(),
   ignored = false,
   stale = false,
 }: {
   times: string[];
   entries: TimeEntry[];
   onApplyFix?: (fix: never) => Promise<string | null>;
+  onSplit?: (entry: TimeEntry) => void;
   ignored?: boolean;
   stale?: boolean;
 }) {
@@ -63,11 +65,11 @@ async function openPopup({
       marcajes={marcajes}
       cuadresPorDia={cuadresPorDia}
       onApplyFix={onApplyFix as never}
-      onSplit={vi.fn()}
+      onSplit={onSplit}
     />,
   );
   await userEvent.click(screen.getByRole('button', { name: /Ver marcajes/ }));
-  return { onApplyFix };
+  return { onApplyFix, onSplit };
 }
 
 describe('popup de marcajes — desajustes y ajuste de un Registro', () => {
@@ -139,5 +141,38 @@ describe('popup de marcajes — desajustes y ajuste de un Registro', () => {
 
     expect(onApplyFix).toHaveBeenCalledTimes(1);
     expect(onApplyFix).toHaveBeenCalledWith(expect.objectContaining({ patch: { endTime: '15:35' } }));
+  });
+});
+
+describe('popup de marcajes — Registro que cruza dos franjas', () => {
+  // Fichado 06:35–13:30 y 15:15–16:13: el hueco de la comida no se fichó.
+  const times = ['06:35', '13:30', '15:15', '16:13'];
+
+  it('se distingue como cruce y dice los minutos fichados y los que no', async () => {
+    await openPopup({ times, entries: [entry('a', '13:00', '14:00')] });
+
+    expect(screen.getByText('cruza dos franjas')).toBeInTheDocument();
+    expect(screen.getByText('30m fichados · 30m sin fichar')).toBeInTheDocument();
+  });
+
+  it('ofrece el recorte al borde donde empieza y un enlace a Dividir', async () => {
+    const onSplit = vi.fn();
+    const { onApplyFix } = await openPopup({ times, entries: [entry('a', '13:00', '14:00')], onSplit });
+
+    await userEvent.click(screen.getByRole('button', { name: /Recortar fin a 13:30/ }));
+    expect(onApplyFix).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'cruza-franja', patch: { endTime: '13:30' } }),
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: /Dividir/ }));
+    expect(onSplit).toHaveBeenCalledTimes(1);
+    expect(onSplit.mock.calls[0][0]).toMatchObject({ id: 'a', startTime: '13:00', endTime: '14:00' });
+  });
+
+  it('no crea ningún Registro nuevo sin intervención del usuario', async () => {
+    const { onApplyFix, onSplit } = await openPopup({ times, entries: [entry('a', '13:00', '14:00')] });
+
+    expect(onApplyFix).not.toHaveBeenCalled();
+    expect(onSplit).not.toHaveBeenCalled();
   });
 });
