@@ -859,6 +859,28 @@ describe('AgendaPage — cuadre con los marcajes de la intranet', () => {
     expect(vi.mocked(useTimeEntries).mock.results[0].value.updateEntry).not.toHaveBeenCalled();
   });
 
+  it('Ajustar el día aplica en orden de hora y se para en el primer solape, dejando lo anterior corregido', async () => {
+    mockSession([
+      entry('a', '2026-06-09', '07:00', '13:30', 'Clasificador'),
+      entry('b', '2026-06-09', '15:30', '16:13', 'Tarde'),
+      entry('c', '2026-06-09', '15:20', '15:40', 'Revisión'),
+    ]);
+    mockMarcajes({ '2026-06-09': { times: ['06:35', '13:30', '15:15', '16:13'] } });
+
+    renderPage();
+    await userEvent.click(screen.getByLabelText('Período anterior'));
+    await userEvent.click(screen.getByRole('button', { name: /Ver marcajes/ }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Ajustar el día' }));
+    await userEvent.click(screen.getByRole('button', { name: /Aplicar 2 ajustes/ }));
+
+    const updateEntry = vi.mocked(useTimeEntries).mock.results[0].value.updateEntry;
+    // El primero (el de la mañana) sí se corrige.
+    expect(updateEntry).toHaveBeenCalledTimes(1);
+    expect(updateEntry).toHaveBeenCalledWith('a', { startTime: '06:35' });
+    expect(await screen.findByText(/Se aplicó 1 ajuste/)).toBeInTheDocument();
+    expect(screen.getByText(/se solapa con Tarde \(15:30–16:13\)/)).toBeInTheDocument();
+  });
+
   it('el popup sigue enseñando marcadas frente a registradas y avisa del dato viejo', async () => {
     mockSession([entry('a', '2026-06-09', '06:35', '13:30', 'Clasificador')]);
     mockMarcajes({ '2026-06-09': { times: ['06:35', '13:30'], stale: true } });

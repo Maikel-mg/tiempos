@@ -22,7 +22,8 @@ import { useAgendaShortcuts } from '../hooks/useAgendaShortcuts';
 import { useEntryKeyboardNavigation } from '../hooks/useEntryKeyboardNavigation';
 import { useEntryActionShortcuts } from '../hooks/useEntryActionShortcuts';
 import { useMarcajesPeriodo } from '../hooks/useMarcajesPeriodo';
-import { conflictOf, cuadrarDia, type DayCuadre, type MarcajeFix } from '../lib/cuadre';
+import { conflictOf, cuadrarDia, patchEntry, type DayCuadre, type MarcajeFix } from '../lib/cuadre';
+import { parseHHMM } from '@/lib/format';
 import { AGENDA_VIEW_ORDER } from '../lib/agendaViews';
 import {
   addDays,
@@ -133,6 +134,42 @@ export function AgendaPage() {
     [visibleEntries, updateEntry],
   );
 
+  /**
+   * `Ajustar el día`: aplica en orden de hora y se para en el primer solape,
+   * dejando corregidos los ajustes anteriores y diciendo cuál quedó sin aplicar.
+   */
+  const applyMarcajesLote = useCallback(
+    async (fixes: MarcajeFix[]) => {
+      // Orden de hora: por dónde queda el Registro después del ajuste.
+      const ordenKey = (fix: MarcajeFix) => {
+        const entry = visibleEntries.find((candidate) => candidate.id === fix.entryId);
+        if (!entry) return Number.MAX_SAFE_INTEGER;
+        const patched = patchEntry(entry, fix);
+        return parseHHMM(patched.startTime) * 24 * 60 + parseHHMM(patched.endTime);
+      };
+      const enOrden = [...fixes].sort((a, b) => ordenKey(a) - ordenKey(b));
+
+      let entriesAhora = visibleEntries;
+      let applied = 0;
+
+      for (const fix of enOrden) {
+        const conflict = conflictOf(entriesAhora, fix);
+        if (conflict) {
+          return {
+            applied,
+            blocked: `«${fix.label}»: se solapa con ${conflict.taskName} (${conflict.startTime}–${conflict.endTime})`,
+          };
+        }
+        await updateEntry(fix.entryId, fix.patch);
+        entriesAhora = entriesAhora.map((entry) => (entry.id === fix.entryId ? patchEntry(entry, fix) : entry));
+        applied++;
+      }
+
+      return { applied };
+    },
+    [visibleEntries, updateEntry],
+  );
+
   const handleCreate = async (draft: EntryDraft) => {
     await createEntry(draft);
     setComposer(null);
@@ -234,6 +271,7 @@ export function AgendaPage() {
             cuadresPorDia={cuadresPorDia}
             onApplyFix={applyMarcajeFix}
             onSplit={split.handleSplitEntry}
+            onApplyAll={applyMarcajesLote}
           />
           {view === 'timeline' && <SyncDayButton entries={visibleEntries} onSyncDay={syncMany} label="Sincronizar período" />}
         </PeriodBar>

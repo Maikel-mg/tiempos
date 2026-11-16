@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { conflictOf, cuadrarDia, franjasOf, isDiaFichadoValido, patchEntry, type MarcajeFix } from '../cuadre';
+import { parseHHMM } from '@/lib/format';
+import {
+  conflictOf,
+  cuadrarDia,
+  fixesAjustables,
+  franjasOf,
+  isDiaFichadoValido,
+  patchEntry,
+  type MarcajeFix,
+} from '../cuadre';
 import type { TimeEntry } from '@/features/time-tracker/types';
 
 const HOY = '2026-11-05';
@@ -188,5 +197,37 @@ describe('día completado a mano', () => {
 
     expect(cuadrarDia({ day, today: HOY, times: duplicado, entries }).status).toBe('sin-marcajes-validos');
     expect(cuadrarDia({ day, today: HOY, times: ['06:35', '13:30'], entries }).status).toBe('cuadra');
+  });
+});
+
+describe('Ajustar el día en lote', () => {
+  const day = '2026-11-04';
+  const times = ['06:35', '13:30', '15:15', '16:13'];
+
+  it('aplica los desajustes simples en orden de hora y el día deja de estar descuadrado', () => {
+    const entries = [
+      entry('tarde', day, '15:30', '16:13'),
+      entry('manana', day, '07:00', '13:30'),
+    ];
+    const antes = cuadrarDia({ day, today: HOY, times, entries });
+    const fixes = fixesAjustables(antes.desajustes).sort(
+      (a, b) => parseHHMM(patchEntry(entries.find((e) => e.id === a.entryId)!, a).startTime) - parseHHMM(patchEntry(entries.find((e) => e.id === b.entryId)!, b).startTime),
+    );
+
+    let corregidos = entries;
+    for (const fix of fixes) {
+      corregidos = corregidos.map((e) => (e.id === fix.entryId ? patchEntry(e, fix) : e));
+    }
+
+    expect(fixes.map((fix) => fix.entryId)).toEqual(['manana', 'tarde']);
+    const despues = cuadrarDia({ day, today: HOY, times, entries: corregidos });
+    expect(despues.status).toBe('cuadra');
+  });
+
+  it('el lote no incluye los Registros que cruzan franjas', () => {
+    const cuadre = cuadrarDia({ day, today: HOY, times, entries: [entry('a', day, '13:00', '14:00')] });
+
+    expect(cuadre.desajustes[0].kind).toBe('cruza-franja');
+    expect(fixesAjustables(cuadre.desajustes)).toEqual([]);
   });
 });

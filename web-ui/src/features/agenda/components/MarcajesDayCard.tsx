@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { formatDurationShort } from '@/lib/format';
 import type { TimeEntry } from '@/features/time-tracker/types';
 import type { MarcajeDia } from '../hooks/useMarcajesPeriodo';
-import { DAY_CUADRE_LABEL, type DayCuadre, type MarcajeFix } from '../lib/cuadre';
+import { DAY_CUADRE_LABEL, fixPreview, fixesAjustables, type DayCuadre, type MarcajeFix } from '../lib/cuadre';
 import { formatMarcajesDelta } from '../lib/marcajes';
 import { formatDayLong, todayKey, totalSeconds } from '../lib/planRange';
 
@@ -29,6 +29,14 @@ interface MarcajesDayCardProps {
   onRemoveManual: (day: string, time: string) => Promise<void>;
   /** Excluye el día del cuadre, o deshace la exclusión. */
   onToggleIgnored: (day: string, ignored: boolean) => Promise<void>;
+  /** Aplica de una vez los ajustes simples del día, en orden de hora. */
+  onApplyAll: (fixes: MarcajeFix[]) => Promise<{ applied: number; blocked?: string }>;
+}
+
+/** Resultado de `Ajustar el día`, para contarlo tal cual al usuario. */
+interface LoteResultado {
+  applied: number;
+  blocked?: string;
 }
 
 /**
@@ -47,9 +55,12 @@ export function MarcajesDayCard({
   onUpdateManual,
   onRemoveManual,
   onToggleIgnored,
+  onApplyAll,
 }: MarcajesDayCardProps) {
   const [error, setError] = useState<string | null>(null);
   const [nuevaHora, setNuevaHora] = useState('');
+  const [previsualizando, setPrevisualizando] = useState(false);
+  const [lote, setLote] = useState<LoteResultado | null>(null);
   // Solo se completa a mano lo que ya pasó: el fichaje de hoy aún está por llegar.
   const puedeAnadir = day < todayKey();
   const registered = totalSeconds(entries);
@@ -203,6 +214,62 @@ export function MarcajesDayCard({
         </ul>
       )}
 
+      {cuadre && cuadre.status === 'descuadrado' && fixesAjustables(cuadre.desajustes).length > 0 && (
+        <div className="space-y-1.5 rounded-md bg-muted/40 p-2">
+          {!previsualizando ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => {
+                setLote(null);
+                setPrevisualizando(true);
+              }}
+            >
+              Ajustar el día
+            </Button>
+          ) : (
+            <>
+              <p className="text-[11px] font-medium">Antes de aplicar, esto es lo que cambia:</p>
+              <ul className="space-y-0.5">
+                {fixesAjustables(cuadre.desajustes).map((fix) => {
+                  const entry = entries.find((candidate) => candidate.id === fix.entryId);
+                  if (!entry) return null;
+                  const preview = fixPreview(entry, fix);
+                  return (
+                    <li key={fix.entryId + fix.label} className="font-mono text-[11px] text-muted-foreground">
+                      {preview.taskName}: {entry.startTime}–{entry.endTime} → {preview.range}
+                    </li>
+                  );
+                })}
+              </ul>
+              <div className="flex flex-wrap gap-1.5">
+                <Button
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => {
+                    void onApplyAll(fixesAjustables(cuadre.desajustes)).then((resultado) => {
+                      setPrevisualizando(false);
+                      setLote(resultado);
+                    });
+                  }}
+                >
+                  Aplicar {fixesAjustables(cuadre.desajustes).length} ajustes
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => setPrevisualizando(false)}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
       {puedeAnadir && (
         <form
           className="flex items-center gap-1.5"
@@ -225,6 +292,15 @@ export function MarcajesDayCard({
             Añadir marcaje
           </Button>
         </form>
+      )}
+
+      {lote && (
+        <p className="text-[11px] text-muted-foreground">
+          {lote.applied === 0
+            ? 'No se aplicó ningún ajuste.'
+            : `Se ${lote.applied === 1 ? 'aplicó 1 ajuste' : `aplicaron ${lote.applied} ajustes`}.`}
+          {lote.blocked && ` Se detuvo en ${lote.blocked}`}
+        </p>
       )}
 
       {error && (

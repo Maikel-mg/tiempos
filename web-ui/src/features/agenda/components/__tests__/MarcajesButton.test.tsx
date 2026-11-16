@@ -34,6 +34,7 @@ async function openPopup({
   entries,
   onApplyFix = vi.fn(async () => null),
   onSplit = vi.fn(),
+  onApplyAll = vi.fn(async () => ({ applied: 0 })),
   ignored = false,
   stale = false,
   manualTimes = [],
@@ -42,6 +43,7 @@ async function openPopup({
   entries: TimeEntry[];
   onApplyFix?: (fix: never) => Promise<string | null>;
   onSplit?: (entry: TimeEntry) => void;
+  onApplyAll?: (fixes: never[]) => Promise<{ applied: number; blocked?: string }>;
   ignored?: boolean;
   stale?: boolean;
   manualTimes?: string[];
@@ -75,10 +77,11 @@ async function openPopup({
       cuadresPorDia={cuadresPorDia}
       onApplyFix={onApplyFix as never}
       onSplit={onSplit}
+      onApplyAll={onApplyAll as never}
     />,
   );
   await userEvent.click(screen.getByRole('button', { name: /Ver marcajes/ }));
-  return { onApplyFix, onSplit, ...acciones };
+  return { onApplyFix, onSplit, onApplyAll, ...acciones };
 }
 
 describe('popup de marcajes — desajustes y ajuste de un Registro', () => {
@@ -280,5 +283,68 @@ describe('popup de marcajes — ignorar un día', () => {
     await openPopup({ times: [], entries: [] });
 
     expect(screen.queryByRole('button', { name: /Ignorar/ })).not.toBeInTheDocument();
+  });
+});
+
+describe('popup de marcajes — Ajustar el día', () => {
+  it('solo aparece en días con desajustes ajustables', async () => {
+    await openPopup({ times: ['06:35', '13:30'], entries: [entry('a', '06:35', '13:30')] });
+    expect(screen.queryByRole('button', { name: 'Ajustar el día' })).not.toBeInTheDocument();
+  });
+
+  it('un día cuyo único desajuste cruza franjas no entra en el lote', async () => {
+    await openPopup({
+      times: ['06:35', '13:30', '15:15', '16:13'],
+      entries: [entry('a', '13:00', '14:00')],
+    });
+
+    expect(screen.queryByRole('button', { name: 'Ajustar el día' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Recortar fin a 13:30/ })).toBeInTheDocument();
+  });
+
+  it('antes de aplicar se ve qué Registro y con qué horario queda; cancelar no toca nada', async () => {
+    const { onApplyAll } = await openPopup({
+      times: ['06:35', '13:30'],
+      entries: [entry('a', '07:00', '13:30')],
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Ajustar el día' }));
+    expect(screen.getByText('Clasificador: 07:00–13:30 → 06:35–13:30')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+    expect(onApplyAll).not.toHaveBeenCalled();
+  });
+
+  it('confirmar aplica los ajustes del día en orden de hora', async () => {
+    const { onApplyAll } = await openPopup({
+      times: ['06:35', '13:30', '15:15', '16:13'],
+      // Las dos necesitan ampliar su inicio: la de la tarde se pasa antes al array.
+      entries: [entry('a', '15:30', '16:13', 'Tarde'), entry('b', '07:00', '13:30', 'Mañana')],
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Ajustar el día' }));
+    await userEvent.click(screen.getByRole('button', { name: /Aplicar 2 ajustes/ }));
+
+    expect(onApplyAll).toHaveBeenCalledTimes(1);
+    const fixes = vi.mocked(onApplyAll).mock.calls[0][0] as { entryId: string }[];
+    expect(fixes.map((fix) => fix.entryId)).toEqual(['b', 'a']);
+  });
+
+  it('si un paso genera solape se detiene y dice cuál quedó sin aplicar', async () => {
+    const onApplyAll = vi.fn(async () => ({
+      applied: 1,
+      blocked: '«Ampliar inicio a 15:15»: se solapa con Revisión (15:00–15:20)',
+    }));
+    await openPopup({
+      times: ['06:35', '13:30', '15:15', '16:13'],
+      entries: [entry('a', '15:30', '16:13', 'Tarde'), entry('b', '07:00', '13:30', 'Mañana')],
+      onApplyAll,
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Ajustar el día' }));
+    await userEvent.click(screen.getByRole('button', { name: /Aplicar 2 ajustes/ }));
+
+    expect(await screen.findByText(/Se aplicó 1 ajuste\./)).toBeInTheDocument();
+    expect(screen.getByText(/se solapa con Revisión \(15:00–15:20\)/)).toBeInTheDocument();
   });
 });

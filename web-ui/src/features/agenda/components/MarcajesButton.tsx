@@ -26,6 +26,8 @@ interface MarcajesButtonProps {
   onApplyFix: (fix: MarcajeFix) => Promise<string | null>;
   /** Abre Dividir sobre el Registro que cruza dos franjas. */
   onSplit: (entry: TimeEntry) => void;
+  /** Aplica de una vez los ajustes simples de un día. */
+  onApplyAll: (fixes: MarcajeFix[]) => Promise<{ applied: number; blocked?: string }>;
 }
 
 /**
@@ -34,7 +36,15 @@ interface MarcajesButtonProps {
  * vive en la caché local, así que el popup enseña lo último que se sabe aunque
  * no haya VPN.
  */
-export function MarcajesButton({ days, entries, marcajes, cuadresPorDia, onApplyFix, onSplit }: MarcajesButtonProps) {
+export function MarcajesButton({
+  days,
+  entries,
+  marcajes,
+  cuadresPorDia,
+  onApplyFix,
+  onSplit,
+  onApplyAll,
+}: MarcajesButtonProps) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -80,6 +90,7 @@ export function MarcajesButton({ days, entries, marcajes, cuadresPorDia, onApply
                 onUpdateManual={marcajes.updateManual}
                 onRemoveManual={marcajes.removeManual}
                 onToggleIgnored={marcajes.setIgnored}
+                onApplyAll={onApplyAll}
               />
             ))}
           </div>
