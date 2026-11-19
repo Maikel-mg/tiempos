@@ -7,3 +7,10 @@ skills-lock.json
 .windsurf/skills
 .env
 .factory/
+
+# Artefactos locales: cachés de herramientas, logs y datos personales
+.claude/
+.codegraph/
+fabrica/
+logs/
+diario-*.json
