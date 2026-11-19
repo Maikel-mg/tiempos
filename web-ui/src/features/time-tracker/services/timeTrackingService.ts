@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { StorageStrategy } from '@/lib/storage/StorageStrategy';
 import { buildSplitHalves, planSplit } from '../lib/splitEntry';
 import type { SplitDescriptions } from '../lib/splitEntry';
+import type { ImportedEntryInput } from '../lib/parseImportEntries';
 import type { TimeEntry, TimerState, Proceso } from '../types';
 
 function formatTimeHHMM(date: Date): string {
@@ -174,6 +175,49 @@ export class TimeTrackingService {
       first: persistedFirst,
       timerStartTime: new Date(`${second.date}T${second.startTime}:00`).toISOString(),
     };
+  }
+
+  /**
+   * Da de alta en bloque los Registros de un fichero importado, todos con la misma
+   * Tarea (Proceso) y pendientes de sincronizar. Los que ya existen en local con esa
+   * Tarea, fecha y horario se omiten, para que importar dos veces no duplique.
+   */
+  async importEntries(
+    inputs: ImportedEntryInput[],
+    proceso: Proceso,
+  ): Promise<{ imported: number; skipped: number }> {
+    if (inputs.length === 0) return { imported: 0, skipped: 0 };
+
+    const dates = inputs.map((input) => input.date).sort();
+    const existing = await this.storage.getEntriesByDateRange(dates[0], dates[dates.length - 1]);
+    const key = (taskId: number, date: string, startTime: string, endTime: string) =>
+      `${taskId}|${date}|${startTime}|${endTime}`;
+    const seen = new Set(existing.map((e) => key(e.taskId, e.date, e.startTime, e.endTime)));
+
+    const now = new Date().toISOString();
+    const entries: TimeEntry[] = [];
+    for (const input of inputs) {
+      const k = key(proceso.proceso, input.date, input.startTime, input.endTime);
+      if (seen.has(k)) continue;
+      seen.add(k);
+      entries.push({
+        id: uuidv4(),
+        taskId: proceso.proceso,
+        taskName: proceso.nombre,
+        proceso,
+        date: input.date,
+        startTime: input.startTime,
+        endTime: input.endTime,
+        duration: calculateDurationSeconds(input.startTime, input.endTime),
+        description: input.description,
+        createdAt: now,
+        updatedAt: now,
+        synced: false,
+      });
+    }
+
+    await this.storage.saveEntries(entries);
+    return { imported: entries.length, skipped: inputs.length - entries.length };
   }
 
   /**

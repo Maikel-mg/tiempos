@@ -28,6 +28,7 @@ import { dbConfig, wizardConfig, proposalConfig, scheduleConfig, remindersConfig
 import { useNotificationPermission } from '@/hooks/useNotificationPermission';
 import { showReminderNotification } from '@/lib/notifications';
 import { useTestDbConnection } from '@/features/db-connection';
+import { ImportEntriesCard } from '@/features/time-tracker/components/ImportEntriesCard';
 import type { DbConfig } from '@/lib/types';
 
 interface WizardConfig {
@@ -831,6 +832,10 @@ export function SettingsPage() {
             </div>
           </CardContent>
         </Card>
+
+        <div className="mt-6">
+          <ImportEntriesCard />
+        </div>
 
         <Card className="mt-6">
           <CardHeader>

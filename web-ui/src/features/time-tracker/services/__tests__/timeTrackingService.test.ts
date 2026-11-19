@@ -246,3 +246,47 @@ describe('TimeTrackingService.splitRunningTimer', () => {
     expect(storage.saveEntry).not.toHaveBeenCalled();
   });
 });
+
+describe('TimeTrackingService.importEntries', () => {
+  let storage: StorageStrategy;
+  let service: TimeTrackingService;
+  const proceso = { proceso: 1234, nombre: 'Elecnor' };
+
+  beforeEach(() => {
+    storage = createMockStorage();
+    service = new TimeTrackingService(storage);
+  });
+
+  it('da de alta el lote pendiente de sincronizar con la Tarea elegida', async () => {
+    const outcome = await service.importEntries(
+      [{ date: '2026-11-02', startTime: '07:00', endTime: '08:00', description: 'Alta' }],
+      proceso
+    );
+
+    expect(outcome).toEqual({ imported: 1, skipped: 0 });
+    const [entries] = vi.mocked(storage.saveEntries).mock.calls[0];
+    expect(entries[0]).toMatchObject({
+      taskId: 1234,
+      taskName: 'Elecnor',
+      date: '2026-11-02',
+      duration: 3600,
+      synced: false,
+    });
+  });
+
+  it('omite los Registros que ya existen en local con la misma Tarea, fecha y horario', async () => {
+    vi.mocked(storage.getEntriesByDateRange).mockResolvedValue([
+      { taskId: 1234, date: '2026-11-02', startTime: '07:00', endTime: '08:00' } as TimeEntry,
+    ]);
+
+    const outcome = await service.importEntries(
+      [
+        { date: '2026-11-02', startTime: '07:00', endTime: '08:00' },
+        { date: '2026-11-02', startTime: '08:00', endTime: '09:00' },
+      ],
+      proceso
+    );
+
+    expect(outcome).toEqual({ imported: 1, skipped: 1 });
+  });
+});

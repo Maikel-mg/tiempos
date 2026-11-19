@@ -45,6 +45,7 @@ inventario exhaustivo. Rutas relativas a la raíz del repo.
 | Balance y periodo | `web-ui/src/features/time-tracker/lib/balance.ts`, `computePeriodTotal.ts`, `periodRange.ts` |
 | Panel de progreso del periodo | `web-ui/src/features/time-tracker/components/PeriodProgressPanel.tsx` |
 | Servicio de entradas (persistencia) | `web-ui/src/features/time-tracker/services/timeTrackingService.ts` |
+| Importar historial desde JSON (Ajustes) | `web-ui/src/features/time-tracker/components/ImportEntriesCard.tsx`, `lib/parseImportEntries.ts` |
 | Sincronización con SQL Server (UI) | `web-ui/src/features/time-tracker/components/SyncPanel.tsx` |
 | Sincronización con SQL Server (validación) | `web-ui/src/features/sync-validator/index.ts` |
 | Guard de configuración | `web-ui/src/features/time-tracker/hooks/useConfigGuard.ts` |
